@@ -54,7 +54,7 @@
   function greet() {
     if (greeted) return;
     greeted = true;
-    addMsg('Hi — I\u2019m your setup co-pilot. I\u2019ll walk you through getting your dashboard live: connect your socials, grab starter templates, run your first lead search, and set up your first campaign. Ask me anything, or just work down the checklist.', 'bot');
+    addMsg('What do you want to do first, or do you want me to suggest?', 'bot');
   }
 
   formEl.addEventListener('submit', function (e) {
