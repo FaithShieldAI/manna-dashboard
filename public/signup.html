@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign up — D2RM Dashboard</title>
+<link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+<div class="card wide">
+  <div class="brand"><div class="logo"><span class="d2">D2</span><span class="rm">RM</span></div></div>
+  <div class="tagline">Big agency data, little guy money.</div>
+  <h1>Create your account</h1>
+  <p class="sub">14-day free trial. No credit card required.</p>
+  <div class="error" id="err"></div>
+  <div class="success" id="ok"></div>
+  <form id="signup-form" autocomplete="on">
+    <label>Choose your plan</label>
+    <div class="plan-grid">
+      <label class="plan selected" id="plan-starter">
+        <input type="radio" name="plan" value="starter" checked>
+        <div class="pname">Starter</div>
+        <div class="pprice">$50/mo</div>
+        <div class="pdesc">2 projects · 5,000 emails/mo<br>Email + social dashboards, goal tracking, lead collection.</div>
+      </label>
+      <label class="plan" id="plan-pro">
+        <input type="radio" name="plan" value="pro">
+        <div class="pname">Pro</div>
+        <div class="pprice">$100/mo</div>
+        <div class="pdesc">10 projects · 20,000 emails/mo<br>Everything in Starter, plus ROI tracking &amp; priority insights.</div>
+      </label>
+    </div>
+    <p class="hint">Need more? <a href="mailto:hello@d2rm.com" style="color:var(--gold)">Talk to us</a> about a custom plan.</p>
+    <label for="company">Company / project name</label>
+    <input type="text" id="company" name="company" required maxlength="120" autocomplete="organization">
+    <label for="name">Your name</label>
+    <input type="text" id="name" name="name" maxlength="80" autocomplete="name">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required autocomplete="username">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required autocomplete="new-password" minlength="12">
+    <p class="hint">At least 12 characters.</p>
+    <button class="primary" type="submit" id="submit">Start my free trial</button>
+  </form>
+  <div class="links"><a href="/login">Already have an account? Log in</a></div>
+</div>
+<script src="/js/auth.js"></script>
+<script src="/js/signup.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in — D2RM Dashboard</title>
+<link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+<div class="card">
+  <div class="brand"><div class="logo"><span class="d2">D2</span><span class="rm">RM</span></div></div>
+  <div class="tagline">Big agency data, little guy money.</div>
+  <h1>Log in</h1>
+  <p class="sub">Welcome back to your marketing command center.</p>
+  <div class="error" id="err"></div>
+  <form id="login-form" autocomplete="on">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required autocomplete="username">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required autocomplete="current-password">
+    <button class="primary" type="submit" id="submit">Log in</button>
+  </form>
+  <div class="links">
+    <a href="/forgot">Forgot password?</a>
+    <a href="/signup">Create account</a>
+  </div>
+</div>
+<script src="/js/auth.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>

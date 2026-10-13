@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup — D2RM Dashboard</title>
+<link rel="stylesheet" href="/css/auth.css">
+<style>
+  body { display: block; padding: 0; }
+  .ob-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+  .ob-head { text-align: center; margin-bottom: 24px; }
+  .ob-head .logo { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+  .ob-head .logo .d2 { color: #fff; } .ob-head .logo .rm { color: var(--red); }
+  .ob-head h1 { margin: 10px 0 4px; }
+  .ob-head .sub { color: var(--text2); font-size: 14px; }
+  .ob-progress { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; height: 12px; overflow: hidden; margin: 18px 0 6px; }
+  .ob-progress > div { height: 100%; background: var(--gold); width: 0%; transition: width .4s; }
+  .ob-progress-label { font-size: 12px; color: var(--text3); text-align: right; margin-bottom: 18px; }
+  .ob-cols { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .ob-cols { grid-template-columns: 1fr; } }
+  .step-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+  .step-card.current { border-color: var(--gold); }
+  .step-card.done { opacity: .75; }
+  .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .step-card.done .step-num { background: var(--green); border-color: var(--green); color: #0f0f1a; }
+  .step-card.current .step-num { border-color: var(--gold); color: var(--gold); }
+  .step-head h2 { font-size: 17px; margin: 0; }
+  .step-desc { color: var(--text2); font-size: 13px; margin: 0 0 12px 42px; }
+  .step-body { margin-left: 42px; }
+  .step-body .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .step-body input[type=text], .step-body select { width: auto; flex: 1; min-width: 140px; }
+  .step-body button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .step-body button.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .step-body button:disabled { opacity: .5; cursor: default; }
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .pill { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 12px; color: var(--text2); }
+  .pill button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 12px; margin-left: 6px; padding: 0; }
+  .tpl { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg); }
+  .tpl label { display: flex; gap: 10px; align-items: flex-start; margin: 0; cursor: pointer; }
+  .tpl .tname { font-size: 14px; font-weight: 700; }
+  .tpl .tsub { font-size: 12px; color: var(--text3); }
+  .tpl input[type=checkbox] { margin-top: 3px; }
+  .chat-col { position: sticky; top: 20px; }
+  .chat-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; height: 560px; }
+  .chat-head { padding: 14px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .chat-head .prov { font-size: 11px; color: var(--text3); font-weight: 400; margin-left: 8px; }
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .d2rm-msg { max-width: 92%; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+  .d2rm-msg.bot { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; }
+  .d2rm-msg.user { background: rgba(201,162,39,.15); border: 1px solid var(--gold); align-self: flex-end; }
+  .d2rm-msg.typing { color: var(--text3); font-style: italic; }
+  .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+  .chat-form input { flex: 1; }
+  .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+  .ob-foot { text-align: center; margin-top: 26px; font-size: 13px; color: var(--text3); }
+  .ob-foot a { color: var(--gold); text-decoration: none; margin: 0 10px; }
+  .ob-done-banner { background: rgba(46,204,113,.12); border: 1px solid var(--green); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px; }
+  .ob-done-banner h2 { margin: 0 0 8px; }
+  .ob-done-banner a { display: inline-block; margin-top: 10px; background: var(--green); color: #0f0f1a; padding: 12px 26px; border-radius: 8px; font-weight: 700; text-decoration: none; }
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+  .alert.err { background: rgba(230,57,70,.12); border: 1px solid var(--red); color: #ff8a93; }
+  .alert.ok { background: rgba(46,204,113,.12); border: 1px solid var(--green); color: #7fe0a8; }
+</style>
+</head>
+<body>
+<div class="ob-wrap">
+  <div class="ob-head">
+    <div class="logo"><span class="d2">D2</span><span class="rm">RM</span></div>
+    <h1>Get set up in 10 minutes</h1>
+    <div class="sub">Big agency data, little guy money. Your co-pilot walks you through every step.</div>
+  </div>
+
+  <div id="done-banner" class="ob-done-banner" style="display:none">
+    <h2>🎉 You're all set up!</h2>
+    <div style="color:var(--text2);font-size:14px">Your dashboard is live and collecting. Go make something.</div>
+    <a href="/app">Open my dashboard →</a>
+  </div>
+
+  <div class="ob-progress"><div id="progress-bar"></div></div>
+  <div class="ob-progress-label" id="progress-label"></div>
+
+  <div class="ob-cols">
+    <div id="steps"></div>
+    <div class="chat-col">
+      <div class="chat-box">
+        <div class="chat-head">🤖 Setup co-pilot<span class="prov" id="chat-prov"></span></div>
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <form class="chat-form" id="chat-form">
+          <input id="chat-input" type="text" placeholder="Ask me anything about setup…" maxlength="2000" autocomplete="off">
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="ob-foot">
+    <a href="/app">Skip to dashboard →</a>
+    <a href="#" id="restart-link">Restart setup</a>
+    <a href="#" id="dismiss-link">Skip setup entirely</a>
+  </div>
+</div>
+<script src="/js/onboarding.js"></script>
+</body>
+</html>

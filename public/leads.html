@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead Collection — D2RM Dashboard</title>
+<link rel="stylesheet" href="/css/auth.css">
+<style>
+  body { display: block; align-items: normal; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .topbar .logo { font-size: 22px; font-weight: 800; }
+  .topbar .logo .d2 { color: #fff; } .topbar .logo .rm { color: var(--red); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+  .job { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 12px; background: var(--bg2); }
+  .job .jh { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .job .jt { font-weight: 700; }
+  .job .jm { color: var(--text3); font-size: 13px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <div class="logo"><span class="d2">D2</span><span class="rm">RM</span> <span style="font-size:14px;color:var(--text3);font-weight:400">Lead Collection</span></div>
+      <div class="small">Turnkey lead gen — keywords in, emails out, straight into your list.</div>
+    </div>
+    <div class="row">
+      <button class="ghost" onclick="location.href='/app'">← Dashboard</button>
+      <button class="ghost" id="logout">Log out</button>
+    </div>
+  </div>
+
+  <div class="error" id="err"></div>
+  <div class="success" id="ok"></div>
+
+  <div class="card wide" style="max-width:none">
+    <h1 style="margin-top:0">New collection job</h1>
+    <div class="grid2">
+      <div>
+        <label for="source">Source</label>
+        <select id="source">
+          <option value="youtube">YouTube channel search — keywords → channel emails</option>
+          <option value="weblist">Seed URL list — paste pages → contact emails</option>
+        </select>
+      </div>
+      <div>
+        <label for="maxr">Max leads per job</label>
+        <select id="maxr">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+    <div id="kw-block">
+      <label for="keywords">Keywords — one per line (your niche)</label>
+      <textarea id="keywords" placeholder="fitness coach&#10;sourdough baking&#10;indie game dev"></textarea>
+      <p class="hint">We search public YouTube channels matching each keyword and pull business emails from their about pages + linked sites. No login needed.</p>
+    </div>
+    <div id="seed-block" style="display:none">
+      <label for="seeds">Seed URLs — one per line</label>
+      <textarea id="seeds" placeholder="https://example-creator.com&#10;https://directory.example/niche"></textarea>
+      <p class="hint">We fetch each page and extract public contact emails. Paste homepages, link-in-bio pages, or directories.</p>
+    </div>
+    <button class="primary" id="run-job" style="max-width:320px">Create &amp; run job</button>
+    <p class="hint" id="run-hint" style="display:none">Running — this can take a minute or two. Please wait…</p>
+  </div>
+
+  <h2 style="margin-top:28px">Your jobs</h2>
+  <div id="jobs"><p class="small">Loading…</p></div>
+</div>
+<script src="/js/auth.js"></script>
+<script src="/js/leads.js"></script>
+</body>
+</html>
