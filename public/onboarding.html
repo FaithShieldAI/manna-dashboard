@@ -9,21 +9,38 @@
   :root {
     --lime: #a3e635;
     --lime-bg: rgba(163, 230, 53, 0.10);
-    --blue-m: #6aa8ff;
-    --blue-m-bg: rgba(106, 168, 255, 0.10);
-    --purple-m: #a78bfa;
-    --purple-m-bg: rgba(167, 139, 250, 0.10);
-    --red-m: #e5484d;
-    --red-m-bg: rgba(229, 72, 77, 0.10);
+    /* D2RM design tokens — Manna keeps gold as its accent, lime replaces amber */
+    --dbg: #0f1117;
+    --dbg2: #161b27;
+    --dbg3: #1e2535;
+    --dbg4: #252d3d;
+    --dborder: rgba(255,255,255,0.07);
+    --dborder2: rgba(255,255,255,0.13);
+    --dtext: #e8eaf0;
+    --dtext2: #8892a4;
+    --dtext3: #545f73;
+    --dgreen: #22c98a;
+    --dgreen-bg: rgba(34,201,138,0.1);
+    --dblue: #4fa3e8;
+    --dblue-bg: rgba(79,163,232,0.1);
+    --dpurple: #a78bfa;
+    --dpurple-bg: rgba(167,139,250,0.1);
+    --dred: #e85c5c;
+    --dred-bg: rgba(232,92,92,0.1);
+    --mgold: #d9a441;
+    --mgold-bg: rgba(217,164,65,0.10);
+    color-scheme: dark;
   }
-  body { display: block; padding: 0; }
-  .dash-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+  * { box-sizing: border-box; }
+  body { display: block; padding: 0; background: var(--dbg); color: var(--dtext);
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size: 14px; min-height: 100vh; }
+  .dash-wrap { max-width: 1440px; margin: 0 auto; padding: 1.5rem 1.5rem 60px; }
 
   /* 1 — Manna logo at the top */
   .brand-top { text-align: center; margin-bottom: 18px; }
   .brand-top .brand-logo { width: 190px; max-width: 60%; height: auto; margin: 0 auto 2px; display: block; filter: drop-shadow(0 2px 14px rgba(217,164,65,.25)); }
   .brand-top .manna-name { font-family: var(--serif); font-size: 20px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-bright); }
-  .brand-top .tagline { color: var(--text2); font-size: 13px; margin-top: 6px; }
+  .brand-top .tagline { color: var(--dtext2); font-size: 13px; margin-top: 6px; }
 
   /* 2 — AI instructor chat box directly under the logo */
   .instructor { max-width: 760px; margin: 0 auto 24px; background: var(--bg2); border: 1px solid var(--border-gold); border-radius: var(--radius); display: flex; flex-direction: column; height: 340px; box-shadow: 0 4px 24px rgba(217,164,65,.08); }
@@ -38,66 +55,61 @@
   .chat-form input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
   .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
 
-  /* 3 — D2RM-style dashboard frame */
-  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  /* 3 — D2RM dashboard frame */
+  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-  .card-title { font-size: 14px; font-weight: 600; }
-  .card-sub { font-size: 12px; color: var(--text2); }
-  .goals-card { border: 1px solid var(--border-gold); margin-bottom: 1.25rem; }
-  .goals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  @media (max-width: 900px) { .goals-grid { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 560px) { .goals-grid { grid-template-columns: 1fr; } }
-  .goal-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
-  .goal-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .goal-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-  .goal-label { font-size: 12px; color: var(--text2); }
-  .goal-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-  .goal-value .goal-target { font-size: 12px; color: var(--text3); font-weight: 400; }
-  .sharebar { height: 10px; border-radius: 5px; background: var(--bg3); overflow: hidden; margin: 8px 0 4px; }
-  .sharebar > div { height: 100%; border-radius: 5px; }
-  .goal-funnel { font-size: 11px; color: var(--text3); margin-top: 4px; }
-  .goal-now { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--dtext); }
+  .card-sub { font-size: 12px; color: var(--dtext2); }
+  .goals-card { border: 1px solid rgba(217,164,65,0.35); margin-bottom: 1.25rem; }
+  .top-card { border: 1px solid rgba(217,164,65,0.4); }
 
-  /* Main navigation tabs (D2RM-style, gold active) */
-  .main-tabs { display: flex; gap: 10px; margin: 0 0 1.25rem; flex-wrap: wrap; border-bottom: 2px solid var(--border); padding-bottom: 12px; }
-  .main-tab { background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
-    padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: var(--sans); }
-  .main-tab:hover { border-color: var(--gold); color: var(--text); }
-  .main-tab.active { background: var(--gold); border-color: var(--gold); color: #0f0f1a; }
+  /* D2RM stat cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.25rem; }
+  .stats-grid.goals { grid-template-columns: repeat(3, 1fr); }
+  .card .stats-grid:last-child { margin-bottom: 0; }
+  @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } .stats-grid.goals { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .stats-grid.goals { grid-template-columns: 1fr; } }
+  .stat-card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.1rem 1.25rem; transition: border-color .2s; }
+  .stat-card:hover { border-color: var(--dborder2); }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .stat-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .stat-label { font-size: 12px; color: var(--dtext2); }
+  .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; color: var(--dtext); }
+  .stat-value .stat-target { font-size: 13px; color: var(--dtext3); font-weight: 400; letter-spacing: 0; }
+  .stat-change { font-size: 11px; margin-top: 5px; color: var(--dtext3); }
+  .sharebar { height: 6px; border-radius: 3px; background: var(--dbg4); overflow: hidden; min-width: 80px; }
+  .sharebar > div { height: 100%; border-radius: 3px; }
+  .goal-funnel { font-size: 11px; color: var(--dtext3); margin-top: 4px; }
+  .goal-now { font-size: 11px; color: var(--dtext2); margin-top: 2px; }
+
+  /* Main navigation tabs — D2RM structure, Manna gold active (never white) */
+  .main-tabs { display: flex; gap: 10px; margin: 0 0 1.5rem; flex-wrap: wrap; border-bottom: 2px solid var(--dborder); padding-bottom: 12px; }
+  .main-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; }
+  .main-tab:hover { border-color: var(--mgold); color: var(--dtext); }
+  .main-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; }
   .main-tab-panel { animation: fadeIn 0.2s ease-in; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
   /* Time-range tabs */
   .range-tabs { display: flex; align-items: center; gap: 8px; margin: 0 0 1.25rem; flex-wrap: wrap; }
-  .range-label { color: var(--text2); font-size: 13px; font-weight: 600; }
-  .range-tab { background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
-    padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: var(--sans); }
-  .range-tab:hover { border-color: var(--gold); color: var(--text); }
-  .range-tab.active { background: var(--gold); border-color: var(--gold); color: #0f0f1a; font-weight: 600; }
+  .range-label { color: var(--dtext2); font-size: 13px; font-weight: 600; }
+  .range-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
+    padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
+  .range-tab:hover { border-color: var(--mgold); color: var(--dtext); }
+  .range-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; font-weight: 600; }
 
-  /* Key numbers stat grid */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.25rem; }
-  @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-  .stat-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
-  .stat-value { font-size: 24px; font-weight: 700; color: var(--text3); }
-  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  /* Badges — D2RM style + lime */
+  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; display: inline-block; text-transform: capitalize; }
+  .b-lime { background: var(--lime-bg); color: var(--lime); border: 1px solid rgba(163,230,53,0.2); }
+  .b-blue { background: var(--dblue-bg); color: var(--dblue); border: 1px solid rgba(79,163,232,0.2); }
+  .b-purple { background: var(--dpurple-bg); color: var(--dpurple); border: 1px solid rgba(167,139,250,0.2); }
+  .b-gold { background: var(--mgold-bg); color: var(--mgold); border: 1px solid rgba(217,164,65,0.3); }
+  .b-red { background: var(--dred-bg); color: var(--dred); border: 1px solid rgba(232,92,92,0.2); }
+  .b-green { background: var(--dgreen-bg); color: var(--dgreen); border: 1px solid rgba(34,201,138,0.2); }
 
-  .mod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1rem; }
-  @media (max-width: 900px) { .mod-grid { grid-template-columns: 1fr; } }
-  .mod-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; min-height: 120px; }
-  .mod-card h3 { font-size: 14px; margin: 0 0 8px; }
-  .mod-card .empty { color: var(--text3); font-size: 13px; text-align: center; padding: 18px 8px; }
-  .mod-card .empty-hint { color: var(--text3); font-size: 12px; text-align: center; padding: 0 8px 8px; }
-  .empty { text-align: center; color: var(--text3); padding: 24px; font-size: 13px; }
-
-  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; display: inline-block; }
-  .b-lime { background: var(--lime-bg); color: var(--lime); border: 1px solid rgba(163,230,53,0.25); }
-  .b-blue { background: var(--blue-m-bg); color: var(--blue-m); border: 1px solid rgba(106,168,255,0.25); }
-  .b-purple { background: var(--purple-m-bg); color: var(--purple-m); border: 1px solid rgba(167,139,250,0.25); }
-  .b-gold { background: var(--gold-faint); color: var(--gold-bright); border: 1px solid var(--border-gold); }
-  .b-red { background: var(--red-m-bg); color: var(--red-m); border: 1px solid rgba(229,72,77,0.25); }
-  .b-green { background: rgba(61,220,151,.12); color: #7fe0a8; border: 1px solid rgba(61,220,151,0.25); }
+  .empty { text-align: center; color: var(--dtext3); padding: 24px; font-size: 13px; }
 
   /* Setup checklist inside the dashboard frame */
   .section-title { font-family: var(--serif); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright); margin: 26px 0 12px; }
@@ -141,20 +153,20 @@
   @media (max-width: 600px) {
     .dash-wrap { padding: 16px 12px 40px; }
 
-    /* 4 — AI instructor full width, shorter on phone */
+    /* AI instructor full width, shorter on phone */
     .instructor { height: 300px; margin: 0 0 18px; }
     .d2rm-msg { font-size: 14px; }
 
-    /* 2 — main tabs: single horizontal scroll row instead of wrapping */
+    /* main tabs: single horizontal scroll row instead of wrapping */
     .main-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-      gap: 8px; padding-bottom: 10px; scrollbar-width: none; }
+      gap: 8px; padding-bottom: 10px; scrollbar-width: none; margin-bottom: 1.25rem; }
     .main-tabs::-webkit-scrollbar { display: none; }
     .main-tab { flex-shrink: 0; padding: 9px 14px; font-size: 13px; }
     .range-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .range-tabs::-webkit-scrollbar { display: none; }
     .range-tab { flex-shrink: 0; }
 
-    /* 5 — iOS Safari auto-zooms on focus when inputs are < 16px; prevent it */
+    /* iOS Safari auto-zooms on focus when inputs are < 16px; prevent it */
     .chat-form input { font-size: 16px; min-width: 0; }
     .chat-form button { padding: 10px 14px; flex-shrink: 0; }
     .step-body input[type=text], .step-body select { font-size: 16px; min-width: 0; }
@@ -164,9 +176,7 @@
     .step-head h2 { font-size: 15px; }
     .step-card { padding: 14px; }
 
-    /* 1 & 3 — goals stack (also handled at 560px), key numbers 2-col */
     .card { padding: 1rem; }
-    .goal-value { font-size: 20px; }
     .stat-card { padding: 12px; }
     .stat-value { font-size: 20px; }
 
@@ -213,23 +223,23 @@
     <button class="main-tab" data-tab="ipregistry">🔒 IP Registry</button>
   </nav>
 
-  <!-- 4. Key Numbers — under the tabs -->
+    <!-- 4. Key Numbers — under the tabs -->
   <div class="card">
-      <div class="card-header"><div>
-        <div class="card-title">📊 Key Numbers</div>
-        <div class="card-sub">your command center at a glance</div>
-      </div></div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Total sent</div><div class="stat-value">—</div><div class="stat-sub">no sends yet</div></div>
-        <div class="stat-card"><div class="stat-label">Opens</div><div class="stat-value">—</div><div class="stat-sub">open rate</div></div>
-        <div class="stat-card"><div class="stat-label">Clicks</div><div class="stat-value">—</div><div class="stat-sub">click rate</div></div>
-        <div class="stat-card"><div class="stat-label">Warm clickers</div><div class="stat-value">—</div><div class="stat-sub">hottest retargeting leads</div></div>
-        <div class="stat-card"><div class="stat-label">Influencers</div><div class="stat-value">—</div><div class="stat-sub">across all categories</div></div>
-        <div class="stat-card"><div class="stat-label">Sites tracked</div><div class="stat-value">—</div><div class="stat-sub">live analytics</div></div>
-        <div class="stat-card"><div class="stat-label">IP assets</div><div class="stat-value">—</div><div class="stat-sub">in the registry</div></div>
-        <div class="stat-card"><div class="stat-label">Social accounts</div><div class="stat-value">—</div><div class="stat-sub">connected</div></div>
-      </div>
+    <div class="card-header"><div>
+      <div class="card-title">📊 Key Numbers</div>
+      <div class="card-sub">your command center at a glance</div>
+    </div></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dblue-bg)">📧</span></div><div class="stat-label">Total sent</div><div class="stat-value">—</div><div class="stat-change">no sends yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dgreen-bg)">👁️</span></div><div class="stat-label">Opens</div><div class="stat-value">—</div><div class="stat-change">open rate</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--mgold-bg)">🖱️</span></div><div class="stat-label">Clicks</div><div class="stat-value">—</div><div class="stat-change">click rate</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--mgold-bg)">🔥</span></div><div class="stat-label">Warm clickers</div><div class="stat-value">—</div><div class="stat-change">hottest retargeting leads</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dpurple-bg)">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">—</div><div class="stat-change">across all categories</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dblue-bg)">🌐</span></div><div class="stat-label">Sites tracked</div><div class="stat-value">—</div><div class="stat-change">live analytics</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dred-bg)">🔒</span></div><div class="stat-label">IP assets</div><div class="stat-value">—</div><div class="stat-change">in the registry</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--lime-bg)">📸</span></div><div class="stat-label">Social accounts</div><div class="stat-value">—</div><div class="stat-change">connected</div></div>
     </div>
+  </div>
 
   <!-- 5. Your Goals — underneath Key Numbers -->
   <div class="card goals-card">
@@ -237,55 +247,19 @@
       <div class="card-title">🎯 Your Goals</div>
       <div class="card-sub">round-number targets · live progress</div>
     </div></div>
-    <div class="goals-grid">
-      <div class="goal-card">
-        <div class="goal-top"><span class="goal-icon" style="background:rgba(61,220,151,.12)">📥</span><span class="goal-label">Email Collection</span></div>
-        <div class="goal-value">— <span class="goal-target">/ 10,000 emails</span></div>
-        <div class="sharebar"><div style="width:0%;background:var(--green)"></div></div>
-        <div class="goal-funnel">🎯 funnel: sent → opens → clicks → signups</div>
-        <div class="goal-now">📍 now: no emails collected yet</div>
-      </div>
-      <div class="goal-card">
-        <div class="goal-top"><span class="goal-icon" style="background:var(--purple-m-bg)">👥</span><span class="goal-label">Influencers</span></div>
-        <div class="goal-value">— <span class="goal-target">/ 100 affiliates</span></div>
-        <div class="sharebar"><div style="width:0%;background:var(--purple-m)"></div></div>
-        <div class="goal-funnel">🎯 funnel: collected → vetted → signed up</div>
-        <div class="goal-now">📍 now: no influencers yet</div>
-      </div>
-      <div class="goal-card">
-        <div class="goal-top"><span class="goal-icon" style="background:var(--gold-faint)">🧲</span><span class="goal-label">Leads</span></div>
-        <div class="goal-value">— <span class="goal-target">/ 1,000 leads</span></div>
-        <div class="sharebar"><div style="width:0%;background:var(--gold)"></div></div>
-        <div class="goal-funnel">🎯 funnel: searched → collected → contacted</div>
-        <div class="goal-now">📍 now: no leads yet</div>
-      </div>
-      <div class="goal-card">
-        <div class="goal-top"><span class="goal-icon" style="background:var(--blue-m-bg)">🌐</span><span class="goal-label">Sites</span></div>
-        <div class="goal-value">— <span class="goal-target">/ 2 projects</span></div>
-        <div class="sharebar"><div style="width:0%;background:var(--blue-m)"></div></div>
-        <div class="goal-funnel">🎯 funnel: added → tracking → converting</div>
-        <div class="goal-now">📍 now: no sites tracked yet</div>
-      </div>
-      <div class="goal-card">
-        <div class="goal-top"><span class="goal-icon" style="background:var(--lime-bg)">📸</span><span class="goal-label">Social</span></div>
-        <div class="goal-value">— <span class="goal-target">/ 4 accounts</span></div>
-        <div class="sharebar"><div style="width:0%;background:var(--lime)"></div></div>
-        <div class="goal-funnel">🎯 funnel: connected → posting → growing</div>
-        <div class="goal-now">📍 now: no social accounts connected</div>
-      </div>
-      <div class="goal-card">
-        <div class="goal-top"><span class="goal-icon" style="background:var(--red-m-bg)">🔒</span><span class="goal-label">IP Registry</span></div>
-        <div class="goal-value">— <span class="goal-target">assets</span></div>
-        <div class="sharebar"><div style="width:0%;background:var(--red-m)"></div></div>
-        <div class="goal-funnel">🎯 funnel: created → hashed → registered</div>
-        <div class="goal-now">📍 now: no IP assets registered yet</div>
-      </div>
+    <div class="stats-grid goals">
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📥</span></div><div class="stat-label">Email Collection</div><div class="stat-value">— <span class="stat-target">/ 10,000 emails</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dgreen)"></div></div><div class="goal-funnel">🎯 funnel: sent → opens → clicks → signups</div><div class="goal-now">📍 now: no emails collected yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">— <span class="stat-target">/ 100 affiliates</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dpurple)"></div></div><div class="goal-funnel">🎯 funnel: collected → vetted → signed up</div><div class="goal-now">📍 now: no influencers yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🧲</span></div><div class="stat-label">Leads</div><div class="stat-value">— <span class="stat-target">/ 1,000 leads</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--mgold)"></div></div><div class="goal-funnel">🎯 funnel: searched → collected → contacted</div><div class="goal-now">📍 now: no leads yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🌐</span></div><div class="stat-label">Sites</div><div class="stat-value">— <span class="stat-target">/ 2 projects</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dblue)"></div></div><div class="goal-funnel">🎯 funnel: added → tracking → converting</div><div class="goal-now">📍 now: no sites tracked yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📸</span></div><div class="stat-label">Social</div><div class="stat-value">— <span class="stat-target">/ 4 accounts</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--lime)"></div></div><div class="goal-funnel">🎯 funnel: connected → posting → growing</div><div class="goal-now">📍 now: no social accounts connected</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🔒</span></div><div class="stat-label">IP Registry</div><div class="stat-value">— <span class="stat-target">assets</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dred)"></div></div><div class="goal-funnel">🎯 funnel: created → hashed → registered</div><div class="goal-now">📍 now: no IP assets registered yet</div></div>
     </div>
   </div>
 
-  <!-- ============ TAB: OVERVIEW ============ -->
+<!-- ============ TAB: OVERVIEW ============ -->
   <div class="main-tab-panel" id="panel-overview">
-    <div class="card">
+    <div class="card top-card">
       <div class="card-header"><div>
         <div class="card-title">⭐ Top Performer</div>
         <div class="card-sub">best campaign · top clicked link</div>
