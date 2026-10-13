@@ -337,3 +337,8 @@ code.k {
   h1 { font-size: 23px; }
   .brand-logo { width: 104px; }
 }
+
+/* ---------- legal footer (Terms / Privacy links) ---------- */
+.legal-footer{margin-top:22px;text-align:center;font-size:13px;color:var(--text3)}
+.legal-footer a{color:var(--text3);text-decoration:none;margin:0 8px}
+.legal-footer a:hover{color:var(--gold-bright);text-decoration:underline}

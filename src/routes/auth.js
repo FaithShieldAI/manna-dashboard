@@ -96,6 +96,10 @@ router.post('/register', async (req, res) => {
       'INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)'
     ).run(created.userId, tokenHash, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
 
+    // Session-fixation defense: the session identifier must change at the
+    // privilege boundary. Revoke any session the client presented before
+    // minting the post-registration session (no-op when none was presented).
+    sessions.revokeSession(req.cookies && req.cookies[sessions.COOKIE_NAME]);
     const sess = sessions.createSession(created.userId, { ip: req.ip, userAgent: req.get('User-Agent') });
     res.cookie(sessions.COOKIE_NAME, sess.token, sessions.cookieOptions());
 
@@ -137,6 +141,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ ok: false, error: 'invalid_credentials' });
     }
 
+    // Session-fixation defense: revoke any session the client presented so
+    // the post-login session identifier is always fresh (no-op when the
+    // client presented none).
+    sessions.revokeSession(req.cookies && req.cookies[sessions.COOKIE_NAME]);
     const sess = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('User-Agent') });
     res.cookie(sessions.COOKIE_NAME, sess.token, sessions.cookieOptions());
     const tenant = unscoped.getTenantById(user.tenant_id);

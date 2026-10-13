@@ -1,0 +1,211 @@
+  :root {
+    --lime: #a3e635;
+    --lime-bg: rgba(163, 230, 53, 0.10);
+    /* D2RM design tokens — Manna keeps gold as its accent, lime replaces amber */
+    --dbg: #0f1117;
+    --dbg2: #161b27;
+    --dbg3: #1e2535;
+    --dbg4: #252d3d;
+    --dborder: rgba(255,255,255,0.07);
+    --dborder2: rgba(255,255,255,0.13);
+    --dtext: #e8eaf0;
+    --dtext2: #8892a4;
+    --dtext3: #545f73;
+    --dgreen: #22c98a;
+    --dgreen-bg: rgba(34,201,138,0.1);
+    --dblue: #4fa3e8;
+    --dblue-bg: rgba(79,163,232,0.1);
+    --dpurple: #a78bfa;
+    --dpurple-bg: rgba(167,139,250,0.1);
+    --dred: #e85c5c;
+    --dred-bg: rgba(232,92,92,0.1);
+    --mgold: #d9a441;
+    --mgold-bg: rgba(217,164,65,0.10);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { display: block; padding: 0; background: var(--dbg); color: var(--dtext);
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size: 14px; min-height: 100vh; }
+  .dash-wrap { max-width: 1440px; margin: 0 auto; padding: 1.5rem 1.5rem 60px; }
+
+  /* 1 — Manna logo at the top */
+  .brand-top { text-align: center; margin-bottom: 18px; }
+  .brand-top .brand-logo { width: 190px; max-width: 60%; height: auto; margin: 0 auto 2px; display: block; filter: drop-shadow(0 2px 14px rgba(217,164,65,.25)); }
+  .brand-top .manna-name { font-family: var(--serif); font-size: 20px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-bright); }
+  .brand-top .tagline { color: var(--dtext2); font-size: 13px; margin-top: 6px; }
+
+  /* 2 — AI instructor chat box directly under the logo */
+  .instructor { max-width: 760px; margin: 0 auto 24px; background: var(--bg2); border: 1px solid var(--border-gold); border-radius: var(--radius); display: flex; flex-direction: column; height: 340px; box-shadow: 0 4px 24px rgba(217,164,65,.08); }
+  .instructor-head { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .instructor-head .scribe-name { font-family: var(--serif); font-weight: 400; font-size: 20px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-bright); margin-left: 6px; }
+  .instructor-head .prov { font-size: 11px; color: var(--text3); font-weight: 400; margin-left: 8px; }
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .d2rm-msg { max-width: 92%; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+  .d2rm-msg.bot { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; }
+  .d2rm-msg.user { background: rgba(217,164,65,.14); border: 1px solid var(--gold); align-self: flex-end; }
+  .d2rm-msg.typing { color: var(--text3); font-style: italic; }
+  .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+  .chat-form input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
+  .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+
+  /* 3 — D2RM dashboard frame */
+  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--dtext); }
+  .card-sub { font-size: 12px; color: var(--dtext2); }
+  .goals-card { border: 1px solid rgba(217,164,65,0.35); margin-bottom: 1.25rem; }
+  .top-card { border: 1px solid rgba(217,164,65,0.4); }
+
+  /* D2RM stat cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.25rem; }
+  .stats-grid.goals { grid-template-columns: repeat(3, 1fr); }
+  .card .stats-grid:last-child { margin-bottom: 0; }
+  @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } .stats-grid.goals { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .stats-grid.goals { grid-template-columns: 1fr; } }
+  .stat-card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.1rem 1.25rem; transition: border-color .2s; }
+  .stat-card:hover { border-color: var(--dborder2); }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .stat-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .stat-label { font-size: 12px; color: var(--dtext2); }
+  .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; color: var(--dtext); }
+  .stat-value .stat-target { font-size: 13px; color: var(--dtext3); font-weight: 400; letter-spacing: 0; }
+  .stat-change { font-size: 11px; margin-top: 5px; color: var(--dtext3); }
+  .sharebar { height: 6px; border-radius: 3px; background: var(--dbg4); overflow: hidden; min-width: 80px; }
+  .sharebar > div { height: 100%; border-radius: 3px; }
+  .goal-funnel { font-size: 11px; color: var(--dtext3); margin-top: 4px; }
+  .goal-now { font-size: 11px; color: var(--dtext2); margin-top: 2px; }
+
+  /* Main navigation tabs — D2RM structure, Manna gold active (never white) */
+  .main-tabs { display: flex; gap: 10px; margin: 0 0 1.5rem; flex-wrap: wrap; border-bottom: 2px solid var(--dborder); padding-bottom: 12px; }
+  .main-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; }
+  .main-tab:hover { border-color: var(--mgold); color: var(--dtext); }
+  .main-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; }
+  .main-tab-panel { animation: fadeIn 0.2s ease-in; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Time-range tabs */
+  .range-tabs { display: flex; align-items: center; gap: 8px; margin: 0 0 1.25rem; flex-wrap: wrap; }
+  .range-label { color: var(--dtext2); font-size: 13px; font-weight: 600; }
+  .range-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
+    padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
+  .range-tab:hover { border-color: var(--mgold); color: var(--dtext); }
+  .range-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; font-weight: 600; }
+
+  /* Badges — D2RM style + lime */
+  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; display: inline-block; text-transform: capitalize; }
+  .b-lime { background: var(--lime-bg); color: var(--lime); border: 1px solid rgba(163,230,53,0.2); }
+  .b-blue { background: var(--dblue-bg); color: var(--dblue); border: 1px solid rgba(79,163,232,0.2); }
+  .b-purple { background: var(--dpurple-bg); color: var(--dpurple); border: 1px solid rgba(167,139,250,0.2); }
+  .b-gold { background: var(--mgold-bg); color: var(--mgold); border: 1px solid rgba(217,164,65,0.3); }
+  .b-red { background: var(--dred-bg); color: var(--dred); border: 1px solid rgba(232,92,92,0.2); }
+  .b-green { background: var(--dgreen-bg); color: var(--dgreen); border: 1px solid rgba(34,201,138,0.2); }
+
+  .empty { text-align: center; color: var(--dtext3); padding: 24px; font-size: 13px; }
+
+  /* Setup checklist inside the dashboard frame */
+  .section-title { font-family: var(--serif); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright); margin: 26px 0 12px; }
+  .ob-progress { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; height: 12px; overflow: hidden; margin: 12px 0 6px; }
+  .ob-progress > div { height: 100%; background: var(--gold); width: 0%; transition: width .4s; }
+  .ob-progress-label { font-size: 12px; color: var(--text3); text-align: right; margin-bottom: 12px; }
+  .step-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .step-card.current { border-color: var(--gold); }
+  .step-card.done { opacity: .75; }
+  .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .step-card.done .step-num { background: var(--green); border-color: var(--green); color: #0f0f1a; }
+  .step-card.current .step-num { border-color: var(--gold); color: var(--gold); }
+  .step-head h2 { font-size: 16px; margin: 0; }
+  .step-desc { color: var(--text2); font-size: 13px; margin: 0 0 12px 42px; }
+  .step-body { margin-left: 42px; }
+  .step-body .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .step-body input[type=text], .step-body select { width: auto; flex: 1; min-width: 140px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
+  .step-body button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .step-body button.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .step-body button:disabled { opacity: .5; cursor: default; }
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 12px; color: var(--text2); }
+  .pill button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 12px; margin-left: 6px; padding: 0; }
+  .tpl { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg2); }
+  .tpl label { display: flex; gap: 10px; align-items: flex-start; margin: 0; cursor: pointer; }
+  .tpl .tname { font-size: 14px; font-weight: 700; }
+  .tpl .tsub { font-size: 12px; color: var(--text3); }
+  .tpl input[type=checkbox] { margin-top: 3px; }
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+  .alert.err { background: rgba(229,72,77,.12); border: 1px solid var(--red); color: #ff8a93; }
+  .alert.ok { background: rgba(61,220,151,.12); border: 1px solid var(--green); color: #7fe0a8; }
+
+  #done-banner { background: rgba(61,220,151,.10); border: 1px solid var(--green); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px; }
+  #done-banner h2 { margin: 0 0 8px; }
+  #done-banner a { display: inline-block; margin-top: 10px; background: var(--green); color: #0f0f1a; padding: 12px 26px; border-radius: 8px; font-weight: 700; text-decoration: none; }
+  .ob-foot { text-align: center; margin-top: 26px; font-size: 13px; color: var(--text3); }
+  .ob-foot a { color: var(--gold); text-decoration: none; margin: 0 10px; }
+
+  /* ============ MOBILE (phones) ============ */
+  @media (max-width: 600px) {
+    .dash-wrap { padding: 16px 12px 40px; }
+
+    /* AI instructor full width, shorter on phone */
+    .instructor { height: 300px; margin: 0 0 18px; }
+    .d2rm-msg { font-size: 14px; }
+
+    /* main tabs: single horizontal scroll row instead of wrapping */
+    .main-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      gap: 8px; padding-bottom: 10px; scrollbar-width: none; margin-bottom: 1.25rem; }
+    .main-tabs::-webkit-scrollbar { display: none; }
+    .main-tab { flex-shrink: 0; padding: 9px 14px; font-size: 13px; }
+    .range-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .range-tabs::-webkit-scrollbar { display: none; }
+    .range-tab { flex-shrink: 0; }
+
+    /* iOS Safari auto-zooms on focus when inputs are < 16px; prevent it */
+    .chat-form input { font-size: 16px; min-width: 0; }
+    .chat-form button { padding: 10px 14px; flex-shrink: 0; }
+    .step-body input[type=text], .step-body select { font-size: 16px; min-width: 0; }
+
+    /* Steps: reclaim the 42px left indent so content uses full phone width */
+    .step-desc, .step-body { margin-left: 0; }
+    .step-head h2 { font-size: 15px; }
+    .step-card { padding: 14px; }
+
+    .card { padding: 1rem; }
+    .stat-card { padding: 12px; }
+    .stat-value { font-size: 20px; }
+
+    /* Footer links stack nicely */
+    .ob-foot a { display: inline-block; margin: 6px 10px; }
+  }
+
+/* ---- CSP-safe utilities: moved from inline style= attributes ---- */
+.is-hidden { display: none !important; }
+.sic-blue { background: var(--dblue-bg); }
+.sic-green { background: var(--dgreen-bg); }
+.sic-gold { background: var(--mgold-bg); }
+.sic-purple { background: var(--dpurple-bg); }
+.sic-red { background: var(--dred-bg); }
+.sic-lime { background: var(--lime-bg); }
+.ob-live-note { color: var(--text2); font-size: 14px; }
+.empty-hint { color: var(--text3); font-size: 12px; text-align: center; padding: 0 8px 8px; }
+/* sharebar: inline height/margin merged into base (all 6 usages were identical) */
+.sharebar { height: 10px !important; margin: 8px 0 4px !important; }
+.sharefill { height: 100%; border-radius: 3px; width: 0%; }
+.sfgreen { background: var(--dgreen); }
+.sfpurple { background: var(--dpurple); }
+.sfgold { background: var(--mgold); }
+.sfblue { background: var(--dblue); }
+.sflime { background: var(--lime); }
+.sfred { background: var(--dred); }
+/* progress: native <progress> element, value set via JS property (CSP-safe) */
+.ob-progress > progress { display: block; width: 100%; height: 100%; appearance: none; -webkit-appearance: none; border: 0; background: transparent; }
+.ob-progress > progress::-webkit-progress-bar { background: transparent; }
+.ob-progress > progress::-webkit-progress-value { background: var(--gold); border-radius: 10px; }
+.ob-progress > progress::-moz-progress-bar { background: var(--gold); border-radius: 10px; }
+/* dynamically-created step content (was el.style.cssText in onboarding.js) */
+.ob-done { color: var(--green); font-size: 13px; margin: 0; }
+.ob-p { font-size: 13px; color: var(--text2); margin: 0 0 12px; }
+.ob-hint { font-size: 12px; color: var(--text3); margin: 0; }
+.ob-h { font-size: 13px; color: var(--text2); margin: 14px 0 8px; }
+.ob-btn-gap { margin-right: 8px; }
+.ob-linkline { font-size: 12px; margin: 8px 0 0; }
+.ob-goldlink { color: var(--gold); }

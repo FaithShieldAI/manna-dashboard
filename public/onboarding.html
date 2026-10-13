@@ -5,186 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your Dashboard — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=2">
-<style>
-  :root {
-    --lime: #a3e635;
-    --lime-bg: rgba(163, 230, 53, 0.10);
-    /* D2RM design tokens — Manna keeps gold as its accent, lime replaces amber */
-    --dbg: #0f1117;
-    --dbg2: #161b27;
-    --dbg3: #1e2535;
-    --dbg4: #252d3d;
-    --dborder: rgba(255,255,255,0.07);
-    --dborder2: rgba(255,255,255,0.13);
-    --dtext: #e8eaf0;
-    --dtext2: #8892a4;
-    --dtext3: #545f73;
-    --dgreen: #22c98a;
-    --dgreen-bg: rgba(34,201,138,0.1);
-    --dblue: #4fa3e8;
-    --dblue-bg: rgba(79,163,232,0.1);
-    --dpurple: #a78bfa;
-    --dpurple-bg: rgba(167,139,250,0.1);
-    --dred: #e85c5c;
-    --dred-bg: rgba(232,92,92,0.1);
-    --mgold: #d9a441;
-    --mgold-bg: rgba(217,164,65,0.10);
-    color-scheme: dark;
-  }
-  * { box-sizing: border-box; }
-  body { display: block; padding: 0; background: var(--dbg); color: var(--dtext);
-    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size: 14px; min-height: 100vh; }
-  .dash-wrap { max-width: 1440px; margin: 0 auto; padding: 1.5rem 1.5rem 60px; }
-
-  /* 1 — Manna logo at the top */
-  .brand-top { text-align: center; margin-bottom: 18px; }
-  .brand-top .brand-logo { width: 190px; max-width: 60%; height: auto; margin: 0 auto 2px; display: block; filter: drop-shadow(0 2px 14px rgba(217,164,65,.25)); }
-  .brand-top .manna-name { font-family: var(--serif); font-size: 20px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-bright); }
-  .brand-top .tagline { color: var(--dtext2); font-size: 13px; margin-top: 6px; }
-
-  /* 2 — AI instructor chat box directly under the logo */
-  .instructor { max-width: 760px; margin: 0 auto 24px; background: var(--bg2); border: 1px solid var(--border-gold); border-radius: var(--radius); display: flex; flex-direction: column; height: 340px; box-shadow: 0 4px 24px rgba(217,164,65,.08); }
-  .instructor-head { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
-  .instructor-head .scribe-name { font-family: var(--serif); font-weight: 400; font-size: 20px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-bright); margin-left: 6px; }
-  .instructor-head .prov { font-size: 11px; color: var(--text3); font-weight: 400; margin-left: 8px; }
-  .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-  .d2rm-msg { max-width: 92%; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
-  .d2rm-msg.bot { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; }
-  .d2rm-msg.user { background: rgba(217,164,65,.14); border: 1px solid var(--gold); align-self: flex-end; }
-  .d2rm-msg.typing { color: var(--text3); font-style: italic; }
-  .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
-  .chat-form input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
-  .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
-
-  /* 3 — D2RM dashboard frame */
-  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-  .card-title { font-size: 14px; font-weight: 600; color: var(--dtext); }
-  .card-sub { font-size: 12px; color: var(--dtext2); }
-  .goals-card { border: 1px solid rgba(217,164,65,0.35); margin-bottom: 1.25rem; }
-  .top-card { border: 1px solid rgba(217,164,65,0.4); }
-
-  /* D2RM stat cards */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.25rem; }
-  .stats-grid.goals { grid-template-columns: repeat(3, 1fr); }
-  .card .stats-grid:last-child { margin-bottom: 0; }
-  @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } .stats-grid.goals { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 560px) { .stats-grid.goals { grid-template-columns: 1fr; } }
-  .stat-card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.1rem 1.25rem; transition: border-color .2s; }
-  .stat-card:hover { border-color: var(--dborder2); }
-  .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .stat-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-  .stat-label { font-size: 12px; color: var(--dtext2); }
-  .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; color: var(--dtext); }
-  .stat-value .stat-target { font-size: 13px; color: var(--dtext3); font-weight: 400; letter-spacing: 0; }
-  .stat-change { font-size: 11px; margin-top: 5px; color: var(--dtext3); }
-  .sharebar { height: 6px; border-radius: 3px; background: var(--dbg4); overflow: hidden; min-width: 80px; }
-  .sharebar > div { height: 100%; border-radius: 3px; }
-  .goal-funnel { font-size: 11px; color: var(--dtext3); margin-top: 4px; }
-  .goal-now { font-size: 11px; color: var(--dtext2); margin-top: 2px; }
-
-  /* Main navigation tabs — D2RM structure, Manna gold active (never white) */
-  .main-tabs { display: flex; gap: 10px; margin: 0 0 1.5rem; flex-wrap: wrap; border-bottom: 2px solid var(--dborder); padding-bottom: 12px; }
-  .main-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
-    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; }
-  .main-tab:hover { border-color: var(--mgold); color: var(--dtext); }
-  .main-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; }
-  .main-tab-panel { animation: fadeIn 0.2s ease-in; }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-  /* Time-range tabs */
-  .range-tabs { display: flex; align-items: center; gap: 8px; margin: 0 0 1.25rem; flex-wrap: wrap; }
-  .range-label { color: var(--dtext2); font-size: 13px; font-weight: 600; }
-  .range-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
-    padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
-  .range-tab:hover { border-color: var(--mgold); color: var(--dtext); }
-  .range-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; font-weight: 600; }
-
-  /* Badges — D2RM style + lime */
-  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; display: inline-block; text-transform: capitalize; }
-  .b-lime { background: var(--lime-bg); color: var(--lime); border: 1px solid rgba(163,230,53,0.2); }
-  .b-blue { background: var(--dblue-bg); color: var(--dblue); border: 1px solid rgba(79,163,232,0.2); }
-  .b-purple { background: var(--dpurple-bg); color: var(--dpurple); border: 1px solid rgba(167,139,250,0.2); }
-  .b-gold { background: var(--mgold-bg); color: var(--mgold); border: 1px solid rgba(217,164,65,0.3); }
-  .b-red { background: var(--dred-bg); color: var(--dred); border: 1px solid rgba(232,92,92,0.2); }
-  .b-green { background: var(--dgreen-bg); color: var(--dgreen); border: 1px solid rgba(34,201,138,0.2); }
-
-  .empty { text-align: center; color: var(--dtext3); padding: 24px; font-size: 13px; }
-
-  /* Setup checklist inside the dashboard frame */
-  .section-title { font-family: var(--serif); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright); margin: 26px 0 12px; }
-  .ob-progress { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; height: 12px; overflow: hidden; margin: 12px 0 6px; }
-  .ob-progress > div { height: 100%; background: var(--gold); width: 0%; transition: width .4s; }
-  .ob-progress-label { font-size: 12px; color: var(--text3); text-align: right; margin-bottom: 12px; }
-  .step-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-  .step-card.current { border-color: var(--gold); }
-  .step-card.done { opacity: .75; }
-  .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
-  .step-card.done .step-num { background: var(--green); border-color: var(--green); color: #0f0f1a; }
-  .step-card.current .step-num { border-color: var(--gold); color: var(--gold); }
-  .step-head h2 { font-size: 16px; margin: 0; }
-  .step-desc { color: var(--text2); font-size: 13px; margin: 0 0 12px 42px; }
-  .step-body { margin-left: 42px; }
-  .step-body .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .step-body input[type=text], .step-body select { width: auto; flex: 1; min-width: 140px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
-  .step-body button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
-  .step-body button.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-  .step-body button:disabled { opacity: .5; cursor: default; }
-  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-  .pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 12px; color: var(--text2); }
-  .pill button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 12px; margin-left: 6px; padding: 0; }
-  .tpl { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg2); }
-  .tpl label { display: flex; gap: 10px; align-items: flex-start; margin: 0; cursor: pointer; }
-  .tpl .tname { font-size: 14px; font-weight: 700; }
-  .tpl .tsub { font-size: 12px; color: var(--text3); }
-  .tpl input[type=checkbox] { margin-top: 3px; }
-  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
-  .alert.err { background: rgba(229,72,77,.12); border: 1px solid var(--red); color: #ff8a93; }
-  .alert.ok { background: rgba(61,220,151,.12); border: 1px solid var(--green); color: #7fe0a8; }
-
-  #done-banner { background: rgba(61,220,151,.10); border: 1px solid var(--green); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px; }
-  #done-banner h2 { margin: 0 0 8px; }
-  #done-banner a { display: inline-block; margin-top: 10px; background: var(--green); color: #0f0f1a; padding: 12px 26px; border-radius: 8px; font-weight: 700; text-decoration: none; }
-  .ob-foot { text-align: center; margin-top: 26px; font-size: 13px; color: var(--text3); }
-  .ob-foot a { color: var(--gold); text-decoration: none; margin: 0 10px; }
-
-  /* ============ MOBILE (phones) ============ */
-  @media (max-width: 600px) {
-    .dash-wrap { padding: 16px 12px 40px; }
-
-    /* AI instructor full width, shorter on phone */
-    .instructor { height: 300px; margin: 0 0 18px; }
-    .d2rm-msg { font-size: 14px; }
-
-    /* main tabs: single horizontal scroll row instead of wrapping */
-    .main-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-      gap: 8px; padding-bottom: 10px; scrollbar-width: none; margin-bottom: 1.25rem; }
-    .main-tabs::-webkit-scrollbar { display: none; }
-    .main-tab { flex-shrink: 0; padding: 9px 14px; font-size: 13px; }
-    .range-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-    .range-tabs::-webkit-scrollbar { display: none; }
-    .range-tab { flex-shrink: 0; }
-
-    /* iOS Safari auto-zooms on focus when inputs are < 16px; prevent it */
-    .chat-form input { font-size: 16px; min-width: 0; }
-    .chat-form button { padding: 10px 14px; flex-shrink: 0; }
-    .step-body input[type=text], .step-body select { font-size: 16px; min-width: 0; }
-
-    /* Steps: reclaim the 42px left indent so content uses full phone width */
-    .step-desc, .step-body { margin-left: 0; }
-    .step-head h2 { font-size: 15px; }
-    .step-card { padding: 14px; }
-
-    .card { padding: 1rem; }
-    .stat-card { padding: 12px; }
-    .stat-value { font-size: 20px; }
-
-    /* Footer links stack nicely */
-    .ob-foot a { display: inline-block; margin: 6px 10px; }
-  }
-</style>
+<link rel="stylesheet" href="/css/onboarding.css?v=1">
 </head>
 <body>
 <div class="dash-wrap">
@@ -205,9 +26,9 @@
     </form>
   </div>
 
-  <div id="done-banner" style="display:none">
+  <div id="done-banner" class="is-hidden">
     <h2>🎉 You're all set up!</h2>
-    <div style="color:var(--text2);font-size:14px">Your dashboard is live and collecting. Go make something.</div>
+    <div class="ob-live-note">Your dashboard is live and collecting. Go make something.</div>
     <a href="/app">Open my dashboard →</a>
   </div>
 
@@ -230,14 +51,14 @@
       <div class="card-sub">your command center at a glance</div>
     </div></div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dblue-bg)">📧</span></div><div class="stat-label">Total sent</div><div class="stat-value">—</div><div class="stat-change">no sends yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dgreen-bg)">👁️</span></div><div class="stat-label">Opens</div><div class="stat-value">—</div><div class="stat-change">open rate</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--mgold-bg)">🖱️</span></div><div class="stat-label">Clicks</div><div class="stat-value">—</div><div class="stat-change">click rate</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--mgold-bg)">🔥</span></div><div class="stat-label">Warm clickers</div><div class="stat-value">—</div><div class="stat-change">hottest retargeting leads</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dpurple-bg)">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">—</div><div class="stat-change">across all categories</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dblue-bg)">🌐</span></div><div class="stat-label">Sites tracked</div><div class="stat-value">—</div><div class="stat-change">live analytics</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--dred-bg)">🔒</span></div><div class="stat-label">IP assets</div><div class="stat-value">—</div><div class="stat-change">in the registry</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--lime-bg)">📸</span></div><div class="stat-label">Social accounts</div><div class="stat-value">—</div><div class="stat-change">connected</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-blue">📧</span></div><div class="stat-label">Total sent</div><div class="stat-value">—</div><div class="stat-change">no sends yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-green">👁️</span></div><div class="stat-label">Opens</div><div class="stat-value">—</div><div class="stat-change">open rate</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-gold">🖱️</span></div><div class="stat-label">Clicks</div><div class="stat-value">—</div><div class="stat-change">click rate</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-gold">🔥</span></div><div class="stat-label">Warm clickers</div><div class="stat-value">—</div><div class="stat-change">hottest retargeting leads</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-purple">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">—</div><div class="stat-change">across all categories</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-blue">🌐</span></div><div class="stat-label">Sites tracked</div><div class="stat-value">—</div><div class="stat-change">live analytics</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-red">🔒</span></div><div class="stat-label">IP assets</div><div class="stat-value">—</div><div class="stat-change">in the registry</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-lime">📸</span></div><div class="stat-label">Social accounts</div><div class="stat-value">—</div><div class="stat-change">connected</div></div>
     </div>
   </div>
 
@@ -248,12 +69,12 @@
       <div class="card-sub">round-number targets · live progress</div>
     </div></div>
     <div class="stats-grid goals">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📥</span></div><div class="stat-label">Email Collection</div><div class="stat-value">— <span class="stat-target">/ 10,000 emails</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dgreen)"></div></div><div class="goal-funnel">🎯 funnel: sent → opens → clicks → signups</div><div class="goal-now">📍 now: no emails collected yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">— <span class="stat-target">/ 100 affiliates</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dpurple)"></div></div><div class="goal-funnel">🎯 funnel: collected → vetted → signed up</div><div class="goal-now">📍 now: no influencers yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🧲</span></div><div class="stat-label">Leads</div><div class="stat-value">— <span class="stat-target">/ 1,000 leads</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--mgold)"></div></div><div class="goal-funnel">🎯 funnel: searched → collected → contacted</div><div class="goal-now">📍 now: no leads yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🌐</span></div><div class="stat-label">Sites</div><div class="stat-value">— <span class="stat-target">/ 2 projects</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dblue)"></div></div><div class="goal-funnel">🎯 funnel: added → tracking → converting</div><div class="goal-now">📍 now: no sites tracked yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📸</span></div><div class="stat-label">Social</div><div class="stat-value">— <span class="stat-target">/ 4 accounts</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--lime)"></div></div><div class="goal-funnel">🎯 funnel: connected → posting → growing</div><div class="goal-now">📍 now: no social accounts connected</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🔒</span></div><div class="stat-label">IP Registry</div><div class="stat-value">— <span class="stat-target">assets</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0%;background:var(--dred)"></div></div><div class="goal-funnel">🎯 funnel: created → hashed → registered</div><div class="goal-now">📍 now: no IP assets registered yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📥</span></div><div class="stat-label">Email Collection</div><div class="stat-value">— <span class="stat-target">/ 10,000 emails</span></div><div class="sharebar"><div class="sharefill sfgreen"></div></div><div class="goal-funnel">🎯 funnel: sent → opens → clicks → signups</div><div class="goal-now">📍 now: no emails collected yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">— <span class="stat-target">/ 100 affiliates</span></div><div class="sharebar"><div class="sharefill sfpurple"></div></div><div class="goal-funnel">🎯 funnel: collected → vetted → signed up</div><div class="goal-now">📍 now: no influencers yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🧲</span></div><div class="stat-label">Leads</div><div class="stat-value">— <span class="stat-target">/ 1,000 leads</span></div><div class="sharebar"><div class="sharefill sfgold"></div></div><div class="goal-funnel">🎯 funnel: searched → collected → contacted</div><div class="goal-now">📍 now: no leads yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🌐</span></div><div class="stat-label">Sites</div><div class="stat-value">— <span class="stat-target">/ 2 projects</span></div><div class="sharebar"><div class="sharefill sfblue"></div></div><div class="goal-funnel">🎯 funnel: added → tracking → converting</div><div class="goal-now">📍 now: no sites tracked yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📸</span></div><div class="stat-label">Social</div><div class="stat-value">— <span class="stat-target">/ 4 accounts</span></div><div class="sharebar"><div class="sharefill sflime"></div></div><div class="goal-funnel">🎯 funnel: connected → posting → growing</div><div class="goal-now">📍 now: no social accounts connected</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🔒</span></div><div class="stat-label">IP Registry</div><div class="stat-value">— <span class="stat-target">assets</span></div><div class="sharebar"><div class="sharefill sfred"></div></div><div class="goal-funnel">🎯 funnel: created → hashed → registered</div><div class="goal-now">📍 now: no IP assets registered yet</div></div>
     </div>
   </div>
 
@@ -269,7 +90,7 @@
   </div>
 
   <!-- ============ TAB: EMAIL ============ -->
-  <div class="main-tab-panel" id="panel-email" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-email">
     <div class="range-tabs">
       <span class="range-label">Range:</span>
       <button class="range-tab active">7d</button>
@@ -283,7 +104,7 @@
         <div class="card-sub">sends · opens · clicks</div>
       </div></div>
       <div class="empty">No campaigns yet</div>
-      <div class="empty-hint" style="color:var(--text3);font-size:12px;text-align:center;padding:0 8px 8px">Trial includes dashboard + lead collection — sending unlocks on paid plans.</div>
+      <div class="empty-hint">Trial includes dashboard + lead collection — sending unlocks on paid plans.</div>
     </div>
     <div class="card">
       <div class="card-header"><div>
@@ -295,7 +116,7 @@
   </div>
 
   <!-- ============ TAB: WARM LEADS ============ -->
-  <div class="main-tab-panel" id="panel-warm" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-warm">
     <div class="card">
       <div class="card-header"><div>
         <div class="card-title">🔥 Warm clickers</div>
@@ -306,7 +127,7 @@
   </div>
 
   <!-- ============ TAB: CONVERSIONS ============ -->
-  <div class="main-tab-panel" id="panel-conversions" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-conversions">
     <div class="card">
       <div class="card-header"><div>
         <div class="card-title">✅ Conversions</div>
@@ -317,7 +138,7 @@
   </div>
 
   <!-- ============ TAB: SITES ============ -->
-  <div class="main-tab-panel" id="panel-sites" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-sites">
     <div class="card">
       <div class="card-header"><div>
         <div class="card-title">🌐 Sites tracked</div>
@@ -328,7 +149,7 @@
   </div>
 
   <!-- ============ TAB: INFLUENCERS ============ -->
-  <div class="main-tab-panel" id="panel-influencers" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-influencers">
     <div class="card">
       <div class="card-header"><div>
         <div class="card-title">👥 Influencers</div>
@@ -339,7 +160,7 @@
   </div>
 
   <!-- ============ TAB: SOCIAL ============ -->
-  <div class="main-tab-panel" id="panel-social" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-social">
     <div class="card">
       <div class="card-header"><div>
         <div class="card-title">📸 Social accounts</div>
@@ -350,7 +171,7 @@
   </div>
 
   <!-- ============ TAB: IP REGISTRY ============ -->
-  <div class="main-tab-panel" id="panel-ipregistry" style="display:none">
+  <div class="main-tab-panel is-hidden" id="panel-ipregistry">
     <div class="card">
       <div class="card-header"><div>
         <div class="card-title">🔒 IP Registry</div>
@@ -362,7 +183,7 @@
 
   <!-- 5. The 5-step setup checklist, inside the dashboard frame -->
   <div class="section-title">✅ Setup checklist</div>
-  <div class="ob-progress"><div id="progress-bar"></div></div>
+  <div class="ob-progress"><progress id="progress-bar" max="100" value="0"></progress></div>
   <div class="ob-progress-label" id="progress-label"></div>
   <div id="steps"></div>
 
@@ -370,36 +191,11 @@
     <a href="/app">Open my dashboard →</a>
     <a href="#" id="restart-link">Restart setup</a>
     <a href="#" id="dismiss-link">Skip setup entirely</a>
+    <a href="/terms">Terms</a>
+    <a href="/privacy">Privacy</a>
   </div>
 </div>
-<script>
-// 🗂️ Main tab navigation — persists selection in localStorage
-function setMainTab(tab){
-  document.querySelectorAll('.main-tab').forEach(function(b){
-    b.classList.toggle('active', b.getAttribute('data-tab')===tab);
-  });
-  document.querySelectorAll('.main-tab-panel').forEach(function(p){
-    p.style.display = (p.id === 'panel-'+tab) ? '' : 'none';
-  });
-  try { localStorage.setItem('manna_main_tab', tab); } catch(e) {}
-}
-document.querySelectorAll('.main-tab').forEach(function(b){
-  b.addEventListener('click', function(){ setMainTab(b.getAttribute('data-tab')); });
-});
-(function(){
-  var saved = 'overview';
-  try { saved = localStorage.getItem('manna_main_tab') || 'overview'; } catch(e) {}
-  if (!document.getElementById('panel-'+saved)) saved = 'overview';
-  setMainTab(saved);
-})();
-// Range tabs (visual only — no backend wiring in onboarding)
-document.querySelectorAll('.range-tab').forEach(function(b){
-  b.addEventListener('click', function(){
-    document.querySelectorAll('.range-tab').forEach(function(x){ x.classList.remove('active'); });
-    b.classList.add('active');
-  });
-});
-</script>
+<script src="/js/onboarding-tabs.js?v=1"></script>
 <script src="/js/onboarding.js"></script>
 </body>
 </html>

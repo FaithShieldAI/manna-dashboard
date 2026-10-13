@@ -30,6 +30,31 @@ function requireAuth(req, res, next) {
   next();
 }
 
+/**
+ * requireAuthPage — page-route variant of requireAuth.
+ *
+ * Same session/tenant loading, but unauthenticated visitors are 302-redirected
+ * to /login instead of receiving a 401 JSON body (a raw JSON error is a poor
+ * experience for a full-page navigation). Use for HTML page routes; keep
+ * requireAuth for /api/* JSON endpoints.
+ */
+function requireAuthPage(req, res, next) {
+  const token = req.cookies && req.cookies[COOKIE_NAME];
+  const verified = verifySession(token);
+  if (!verified) {
+    return res.redirect('/login');
+  }
+  const tenant = unscoped.getTenantById(verified.user.tenant_id);
+  if (!tenant) {
+    return res.redirect('/login');
+  }
+  req.user = verified.user;
+  req.tenant = tenant;
+  // Lazy-require to avoid circular import (db.js doesn't import middleware).
+  req.tdb = require('../db').forTenant(tenant.id);
+  next();
+}
+
 /** Role guard factory: requireRole('owner'), requireRole('admin'), ... */
 function requireRole(...roles) {
   const rank = { viewer: 0, admin: 1, owner: 2 };
@@ -43,4 +68,4 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { requireAuth, requireRole };
+module.exports = { requireAuth, requireAuthPage, requireRole };

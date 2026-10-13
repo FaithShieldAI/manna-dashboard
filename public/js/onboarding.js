@@ -83,9 +83,9 @@
 
   function render(status) {
     var ob = status.onboarding;
-    barEl.style.width = ob.progress_pct + '%';
+    barEl.value = ob.progress_pct;
     labelEl.textContent = ob.progress_pct + '% complete';
-    bannerEl.style.display = ob.is_complete ? 'block' : 'none';
+    bannerEl.classList.toggle('is-hidden', !ob.is_complete);
     stepsEl.innerHTML = '';
     ob.steps.forEach(function (s, i) {
       var card = document.createElement('div');
@@ -110,7 +110,7 @@
   function renderStepBody(step, body, status) {
     if (step.done) {
       var p = document.createElement('p');
-      p.style.cssText = 'color:var(--green);font-size:13px;margin:0';
+      p.className = 'ob-done';
       p.textContent = '✓ Done';
       body.appendChild(p);
       return;
@@ -124,7 +124,7 @@
 
   function renderWelcome(body) {
     var p = document.createElement('p');
-    p.style.cssText = 'font-size:13px;color:var(--text2);margin:0 0 12px';
+    p.className = 'ob-p';
     p.textContent = 'This dashboard is your marketing command center: it tracks your sites, email, socials, and goals — plus it collects leads and includes an AI co-pilot. Setup takes about 10 minutes. Let\u2019s go.';
     var btn = document.createElement('button');
     btn.textContent = 'Start setup →';
@@ -159,7 +159,7 @@
     row.appendChild(sel); row.appendChild(handle); row.appendChild(token); row.appendChild(add);
     body.appendChild(row);
     var hint = document.createElement('p');
-    hint.style.cssText = 'font-size:12px;color:var(--text3);margin:0';
+    hint.className = 'ob-hint';
     hint.textContent = 'Just the handle is enough to start — a token unlocks live stats later.';
     body.appendChild(hint);
 
@@ -206,7 +206,7 @@
     body.appendChild(box);
     var installBtn = document.createElement('button');
     installBtn.textContent = 'Install selected';
-    installBtn.style.marginRight = '8px';
+    installBtn.className = 'ob-btn-gap';
     var allBtn = document.createElement('button');
     allBtn.textContent = 'Install all';
     allBtn.className = 'ghost';
@@ -221,12 +221,12 @@
       (r.json.installed.social || []).forEach(function (t) { installed['s:' + t.template_key] = 1; });
 
       var h = document.createElement('h4');
-      h.style.cssText = 'font-size:13px;color:var(--text2);margin:14px 0 8px';
+      h.className = 'ob-h';
       h.textContent = 'Email templates';
       box.appendChild(h);
       lib.email.forEach(function (t) { box.appendChild(tplRow('e:' + t.key, t.name, t.subject, installed)); });
       var h2 = document.createElement('h4');
-      h2.style.cssText = 'font-size:13px;color:var(--text2);margin:14px 0 8px';
+      h2.className = 'ob-h';
       h2.textContent = 'Social templates';
       box.appendChild(h2);
       lib.social.forEach(function (t) { box.appendChild(tplRow('s:' + t.key, t.name, t.platform, installed)); });
@@ -281,7 +281,7 @@
 
   function renderLeadJob(body) {
     var p = document.createElement('p');
-    p.style.cssText = 'font-size:13px;color:var(--text2);margin:0 0 12px';
+    p.className = 'ob-p';
     p.textContent = 'Enter 2–3 keywords for your niche — the collector finds public channels and pulls contact emails straight into your dashboard.';
     var row = document.createElement('div');
     row.className = 'row';
@@ -291,8 +291,8 @@
     go.textContent = 'Run lead search';
     row.appendChild(kw); row.appendChild(go);
     var link = document.createElement('p');
-    link.style.cssText = 'font-size:12px;margin:8px 0 0';
-    link.innerHTML = 'Or use the full <a href="/leads" style="color:var(--gold)">Leads page</a> for seed URLs and job history.';
+    link.className = 'ob-linkline';
+    link.innerHTML = 'Or use the full <a href="/leads" class="ob-goldlink">Leads page</a> for seed URLs and job history.';
     body.appendChild(p); body.appendChild(row); body.appendChild(link);
     go.addEventListener('click', function () {
       var keywords = kw.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
@@ -316,7 +316,7 @@
 
   function renderCampaign(body) {
     var p = document.createElement('p');
-    p.style.cssText = 'font-size:13px;color:var(--text2);margin:0 0 12px';
+    p.className = 'ob-p';
     p.textContent = 'Name your first campaign so every send is tracked from day one.';
     var row = document.createElement('div');
     row.className = 'row';
