@@ -1,13 +1,14 @@
 'use strict';
 (function () {
+  document.getElementById('back-dash').addEventListener('click', function () { location.href = '/app'; });
   var sourceSel = document.getElementById('source');
   var kwBlock = document.getElementById('kw-block');
   var seedBlock = document.getElementById('seed-block');
 
   sourceSel.addEventListener('change', function () {
     var isYt = sourceSel.value === 'youtube';
-    kwBlock.style.display = isYt ? '' : 'none';
-    seedBlock.style.display = isYt ? 'none' : '';
+    kwBlock.classList.toggle('is-hidden', !isYt);
+    seedBlock.classList.toggle('is-hidden', isYt);
   });
 
   document.getElementById('logout').addEventListener('click', function () {
@@ -38,9 +39,9 @@
         ? esc(j.keywords.join(', '))
         : esc(j.seeds.slice(0, 3).join(', ') + (j.seeds.length > 3 ? ' …(+' + (j.seeds.length - 3) + ' more)' : ''));
       var stats = (j.status === 'done')
-        ? '<span class="small"> · ' + j.found_count + ' emails found · <strong style="color:var(--green)">' + j.new_count + ' new</strong> added to your list</span>'
+        ? '<span class="small"> · ' + j.found_count + ' emails found · <strong class="j-new">' + j.new_count + ' new</strong> added to your list</span>'
         : '';
-      var err = (j.status === 'failed' && j.error) ? '<div class="small" style="color:#ff8a93">' + esc(j.error) + '</div>' : '';
+      var err = (j.status === 'failed' && j.error) ? '<div class="small j-err">' + esc(j.error) + '</div>' : '';
       var runBtn = (j.status === 'queued' || j.status === 'failed' || j.status === 'canceled')
         ? '<button class="ghost" data-run="' + j.id + '">Run</button>' : '';
       return '<div class="job"><div class="jh"><div><span class="jt">' + esc(j.source) + '</span> ' + badge(j.status) + stats + '</div>'
@@ -96,10 +97,10 @@
       return;
     }
     btn.disabled = true;
-    document.getElementById('run-hint').style.display = '';
+    document.getElementById('run-hint').classList.remove('is-hidden');
     D2RM.api('POST', '/api/leads/jobs', payload).then(function (r) {
       btn.disabled = false;
-      document.getElementById('run-hint').style.display = 'none';
+      document.getElementById('run-hint').classList.add('is-hidden');
       D2RM.clearAlerts();
       if (r.json && r.json.ok) {
         var res = r.json.result || {};
@@ -110,7 +111,7 @@
       loadJobs();
     }).catch(function () {
       btn.disabled = false;
-      document.getElementById('run-hint').style.display = 'none';
+      document.getElementById('run-hint').classList.add('is-hidden');
       D2RM.showError('err', 'Network error — the job may still be running. Refresh in a bit.');
       loadJobs();
     });

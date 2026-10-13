@@ -14,7 +14,7 @@ const cookieParser = require('cookie-parser');
 
 const { migrate, db } = require('./db');
 const sessions = require('./lib/sessions');
-const { requireAuth } = require('./middleware/auth');
+const { requireAuth, requireAuthPage } = require('./middleware/auth');
 const { csrfCheck } = require('./middleware/csrf');
 const { apiLimiter, beaconLimiter } = require('./middleware/rateLimit');
 
@@ -58,6 +58,24 @@ function strictCsp(req, res, next) {
 
 app.use('/css', strictCsp, express.static(path.join(PUBLIC_DIR, 'css'), { maxAge: '1h' }));
 app.use('/js', strictCsp, express.static(path.join(PUBLIC_DIR, 'js'), { maxAge: '1h' }));
+
+// Direct .html access to gated pages must go through the canonical routes
+// below, which enforce auth. express.static would otherwise serve
+// /leads.html, /onboarding.html and /dashboard-template.html raw to anyone
+// (no auth, no CSP header). Public legal pages canonicalize the same way so
+// they always carry the strict CSP header.
+const HTML_CANONICAL = {
+  '/leads.html': '/leads',
+  '/onboarding.html': '/onboarding',
+  '/dashboard-template.html': '/app',
+  '/terms.html': '/terms',
+  '/privacy.html': '/privacy',
+};
+app.use((req, res, next) => {
+  const target = req.method === 'GET' && HTML_CANONICAL[req.path];
+  if (target) return res.redirect(target);
+  next();
+});
 // Wordmark + any other root-level public assets (dashboard template refs).
 app.use(express.static(PUBLIC_DIR, { maxAge: '1h', index: false }));
 
@@ -72,8 +90,10 @@ app.get('/signup', sendPage('signup.html'));
 app.get('/forgot', sendPage('forgot.html'));
 app.get('/reset', sendPage('reset.html'));
 app.get('/verify', sendPage('verify.html'));
-app.get('/leads', sendPage('leads.html'));
+app.get('/leads', requireAuthPage, sendPage('leads.html'));
 app.get('/onboarding', requireAuth, sendPage('onboarding.html'));
+app.get('/terms', sendPage('terms.html'));
+app.get('/privacy', sendPage('privacy.html'));
 
 // /app — the dashboard, auth-gated, per-tenant data injected at serve time.
 const { serveApp } = require('./app-serve');

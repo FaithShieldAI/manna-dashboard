@@ -19,7 +19,6 @@
   .nav { min-height:60px; background:#000; border-bottom:1px solid rgba(217,164,65,.28); display:flex; align-items:center; padding:0.6rem 1.5rem; gap:12px; position:sticky; top:0; z-index:50; }
   .nav-brand { display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
   .nav-brand img { height:44px; width:auto; display:block; }
-  .nav-brand .manna-name { font-size:15px; font-weight:400; font-family:Georgia,"Times New Roman",serif; letter-spacing:.24em; text-transform:uppercase; color:#f0c876; line-height:1.2; }
   .pulse { width:9px; height:9px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(34,201,138,0.4); } 50% { box-shadow:0 0 0 5px rgba(34,201,138,0); } }
   .nav-sub { color:var(--text2); font-size:13px; font-weight:400; }
@@ -162,7 +161,7 @@
   <!-- ============ AI INSTRUCTOR (your guide — top of dashboard) ============ -->
   <div class="card instructor-card" id="instructor-card">
     <div class="card-header"><div>
-      <div class="card-title">&#129302; Your Instructor</div>
+      <div class="card-title">&#129302; Scribe</div>
       <div class="card-sub">Your personal guide to Manna &mdash; ask anything, or let me suggest where to start</div>
     </div></div>
     <div class="instructor-msgs" id="instructor-msgs"></div>
@@ -179,7 +178,7 @@
   </div>
 
 <nav class="nav">
-  <div class="nav-brand"><img src="manna-logo.webp" alt="Manna logo"><span class="manna-name">Manna</span></div>
+  <div class="nav-brand"><img src="manna-logo.webp" alt="Manna logo"></div>
   <div class="nav-right"><span class="live-badge">&#9679; LIVE</span><span id="nav-timestamp">Site data live &middot; auto-refresh 5 min</span></div>
 </nav>
 
@@ -435,7 +434,9 @@
 </div>
 
 <footer style="margin-top:1rem;color:var(--text3);font-size:12px;text-align:center">
-  Manna &middot; Big agency data, little guy money.
+  Manna &middot; Big agency data, little guy money. &middot;
+  <a href="/terms" style="color:var(--text3)">Terms</a> &middot;
+  <a href="/privacy" style="color:var(--text3)">Privacy</a>
 </footer>
 <script>
 var API_BASE = 'https://muse4.pythonanywhere.com';

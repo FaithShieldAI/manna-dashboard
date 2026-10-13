@@ -5,20 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lead Collection — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=2">
-<style>
-  body { display: block; align-items: normal; }
-  .wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
-  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
-  .topbar .brandmark { display: flex; align-items: center; gap: 14px; }
-  .topbar .brandmark img { width: 120px; height: auto; }
-  .topbar .ltitle { font-family: Georgia, serif; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright); }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
-  .job { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 12px; background: var(--bg2); }
-  .job .jh { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .job .jt { font-weight: 700; }
-  .job .jm { color: var(--text3); font-size: 13px; margin-top: 6px; }
-</style>
+<link rel="stylesheet" href="/css/leads.css?v=1">
 </head>
 <body>
 <div class="wrap">
@@ -31,7 +18,7 @@
       </div>
     </div>
     <div class="row">
-      <button class="ghost" onclick="location.href='/app'">← Dashboard</button>
+      <button class="ghost" id="back-dash">← Dashboard</button>
       <button class="ghost" id="logout">Log out</button>
     </div>
   </div>
@@ -39,9 +26,9 @@
   <div class="error" id="err"></div>
   <div class="success" id="ok"></div>
 
-  <div class="card wide" style="max-width:none">
+  <div class="card wide fullw">
     <div class="kicker">New job</div>
-    <h2 style="margin-top:0">Collection job</h2>
+    <h2 class="mt0">Collection job</h2>
     <div class="grid2">
       <div>
         <label for="source">Source</label>
@@ -65,17 +52,18 @@
       <textarea id="keywords" placeholder="fitness coach&#10;sourdough baking&#10;indie game dev"></textarea>
       <p class="hint">We search public YouTube channels matching each keyword and pull business emails from their about pages + linked sites. No login needed.</p>
     </div>
-    <div id="seed-block" style="display:none">
+    <div id="seed-block" class="is-hidden">
       <label for="seeds">Seed URLs — one per line</label>
       <textarea id="seeds" placeholder="https://example-creator.com&#10;https://directory.example/niche"></textarea>
       <p class="hint">We fetch each page and extract public contact emails. Paste homepages, link-in-bio pages, or directories.</p>
     </div>
-    <button class="primary" id="run-job" style="max-width:320px">Create &amp; run job</button>
-    <p class="hint" id="run-hint" style="display:none">Running — this can take a minute or two. Please wait…</p>
+    <button class="primary mw320" id="run-job">Create &amp; run job</button>
+    <p class="hint is-hidden" id="run-hint">Running — this can take a minute or two. Please wait…</p>
   </div>
 
-  <h2 style="margin-top:28px">Your jobs</h2>
+  <h2 class="mt28">Your jobs</h2>
   <div id="jobs"><p class="small">Loading…</p></div>
+<div class="legal-footer"><a href="/terms">Terms</a><span aria-hidden="true">·</span><a href="/privacy">Privacy</a></div>
 </div>
 <script src="/js/auth.js"></script>
 <script src="/js/leads.js"></script>
