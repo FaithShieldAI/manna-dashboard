@@ -3,48 +3,99 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign up — D2RM Dashboard</title>
+<title>Sign up — Manna</title>
 <link rel="stylesheet" href="/css/auth.css">
+<link rel="stylesheet" href="/css/demo.css">
 </head>
-<body>
-<div class="card wide">
-  <div class="brand"><div class="logo"><span class="d2">D2</span><span class="rm">RM</span></div></div>
-  <div class="tagline">Big agency data, little guy money.</div>
-  <h1>Create your account</h1>
-  <p class="sub">14-day free trial. No credit card required.</p>
-  <div class="error" id="err"></div>
-  <div class="success" id="ok"></div>
-  <form id="signup-form" autocomplete="on">
-    <label>Choose your plan</label>
-    <div class="plan-grid">
-      <label class="plan selected" id="plan-starter">
-        <input type="radio" name="plan" value="starter" checked>
-        <div class="pname">Starter</div>
-        <div class="pprice">$50/mo</div>
-        <div class="pdesc">2 projects · 5,000 emails/mo<br>Email + social dashboards, goal tracking, lead collection.</div>
-      </label>
-      <label class="plan" id="plan-pro">
-        <input type="radio" name="plan" value="pro">
-        <div class="pname">Pro</div>
-        <div class="pprice">$100/mo</div>
-        <div class="pdesc">10 projects · 20,000 emails/mo<br>Everything in Starter, plus ROI tracking &amp; priority insights.</div>
-      </label>
+<body class="split">
+<div class="signup-split">
+
+  <!-- ============ FORM ============ -->
+  <div class="signup-form-col">
+    <div class="card">
+      <div class="brand"><img src="/manna-logo.webp" alt="Manna" class="brand-logo"></div>
+      <div class="tagline">Big agency data, little guy money.</div>
+      <div class="kicker">Start your free trial</div>
+      <h1>Create your account</h1>
+      <p class="sub">14-day free trial. No credit card required.</p>
+      <div class="error" id="err"></div>
+      <div class="success" id="ok"></div>
+      <form id="signup-form" autocomplete="on">
+        <label>Choose your plan</label>
+        <div class="plan-grid">
+          <label class="plan selected" id="plan-starter">
+            <input type="radio" name="plan" value="starter" checked>
+            <span class="pcheck">✓</span>
+            <div class="pname">Starter</div>
+            <div class="pprice">$50/mo</div>
+            <div class="pdesc">2 projects · 5,000 emails/mo<br>Email + social dashboards, goal tracking, lead collection.</div>
+          </label>
+          <label class="plan" id="plan-pro">
+            <input type="radio" name="plan" value="pro">
+            <span class="pcheck">✓</span>
+            <div class="pname">Pro</div>
+            <div class="pprice">$100/mo</div>
+            <div class="pdesc">10 projects · 20,000 emails/mo<br>Everything in Starter, plus ROI tracking &amp; priority insights.</div>
+          </label>
+        </div>
+        <p class="hint">Need more? <a href="mailto:hello@d2rm.com">Talk to us</a> about a custom plan.</p>
+        <label for="company">Company / project name</label>
+        <input type="text" id="company" name="company" required maxlength="120" autocomplete="organization">
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" maxlength="80" autocomplete="name">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="username">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="new-password" minlength="12">
+        <p class="hint">At least 12 characters.</p>
+        <button class="primary" type="submit" id="submit">Start my free trial</button>
+      </form>
+      <div class="links"><a href="/login">Already have an account? Log in</a></div>
     </div>
-    <p class="hint">Need more? <a href="mailto:hello@d2rm.com" style="color:var(--gold)">Talk to us</a> about a custom plan.</p>
-    <label for="company">Company / project name</label>
-    <input type="text" id="company" name="company" required maxlength="120" autocomplete="organization">
-    <label for="name">Your name</label>
-    <input type="text" id="name" name="name" maxlength="80" autocomplete="name">
-    <label for="email">Email</label>
-    <input type="email" id="email" name="email" required autocomplete="username">
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" required autocomplete="new-password" minlength="12">
-    <p class="hint">At least 12 characters.</p>
-    <button class="primary" type="submit" id="submit">Start my free trial</button>
-  </form>
-  <div class="links"><a href="/login">Already have an account? Log in</a></div>
+  </div>
+
+  <!-- ============ LIVE DEMO ============ -->
+  <aside class="demo-side">
+    <div class="demo-kicker"><span class="demo-dot"></span> Live preview — this could be you</div>
+    <h2 class="demo-title">See what <em>Manna</em> sees</h2>
+    <p class="demo-sub">While you set up, take a look inside. Real dashboards, real depth — this is a live preview of the command center waiting for your data.</p>
+
+    <div class="demo-dash">
+      <div class="demo-dash-head">
+        <div class="t">📊 Command Center</div>
+        <span class="demo-live"><span class="demo-dot"></span> Live demo</span>
+      </div>
+      <div class="demo-stats">
+        <div class="demo-stat"><div class="v" data-count="12480">0</div><div class="l">Emails sent</div><div class="d">▲ 18% this week</div></div>
+        <div class="demo-stat"><div class="v" data-count="24.6" data-dec="1">0</div><div class="l">Open rate</div><div class="d">▲ 3.1 pts</div></div>
+        <div class="demo-stat"><div class="v" data-count="1284">0</div><div class="l">Leads collected</div><div class="d">▲ 96 today</div></div>
+        <div class="demo-stat"><div class="v" data-count="312" data-dec="1">0</div><div class="l">ROI</div><div class="d">▲ 41 pts</div></div>
+      </div>
+      <div class="demo-charts">
+        <div class="demo-chart"><div class="ct">Email sends · 30 days</div><canvas id="demo-line"></canvas></div>
+        <div class="demo-chart"><div class="ct">Leads · per week</div><canvas id="demo-bars"></canvas></div>
+      </div>
+      <div class="demo-feed">
+        <div class="ft">Happening now</div>
+        <div id="demo-feed-list"></div>
+      </div>
+    </div>
+
+    <div class="feat-kicker">Why Manna</div>
+    <div class="feat-stage" id="feat-stage"></div>
+    <div class="feat-nav">
+      <div class="feat-dots" id="feat-dots"></div>
+      <div class="feat-count" id="feat-count">1 / 6</div>
+      <div class="feat-arrow">
+        <button id="feat-prev" aria-label="Previous feature">‹</button>
+        <button id="feat-next" aria-label="Next feature">›</button>
+      </div>
+    </div>
+  </aside>
+
 </div>
 <script src="/js/auth.js"></script>
 <script src="/js/signup.js"></script>
+<script src="/js/demo-preview.js"></script>
 </body>
 </html>
