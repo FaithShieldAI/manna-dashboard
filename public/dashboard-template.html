@@ -9,15 +9,17 @@
     --text:#f4efe4; --text2:#a9a294; --text3:#6e6860;
     --green:#22c98a; --green-bg:rgba(34,201,138,0.1);
     --blue:#4fa3e8; --blue-bg:rgba(79,163,232,0.1);
-    --amber:#f5a623; --amber-bg:rgba(245,166,35,0.1);
+    --amber:#f0c876; --amber-bg:rgba(240,200,118,0.1);
     --red:#e85c5c; --red-bg:rgba(232,92,92,0.1);
     --purple:#a78bfa; --purple-bg:rgba(167,139,250,0.1);
     --gold:#d9a441; --gold-bg:rgba(217,164,65,0.10);
     --radius:10px; --radius-sm:6px; }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); font-size:14px; min-height:100vh; }
-  .nav { height:60px; background:#000; border-bottom:1px solid rgba(217,164,65,.28); display:flex; align-items:center; padding:0 1.5rem; gap:12px; position:sticky; top:0; z-index:50; }
-  .nav-brand { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:400; font-family:Georgia,serif; letter-spacing:.24em; text-transform:uppercase; color:#f0c876; }
+  .nav { min-height:60px; background:#000; border-bottom:1px solid rgba(217,164,65,.28); display:flex; align-items:center; padding:0.6rem 1.5rem; gap:12px; position:sticky; top:0; z-index:50; }
+  .nav-brand { display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+  .nav-brand img { height:44px; width:auto; display:block; }
+  .nav-brand .manna-name { font-size:15px; font-weight:400; font-family:Georgia,"Times New Roman",serif; letter-spacing:.24em; text-transform:uppercase; color:#f0c876; line-height:1.2; }
   .pulse { width:9px; height:9px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(34,201,138,0.4); } 50% { box-shadow:0 0 0 5px rgba(34,201,138,0); } }
   .nav-sub { color:var(--text2); font-size:13px; font-weight:400; }
@@ -53,17 +55,17 @@
   td.subj { max-width:230px; }
   .badge { font-size:11px; padding:2px 9px; border-radius:99px; font-weight:500; display:inline-block; text-transform:capitalize; }
   .b-green { background:var(--green-bg); color:var(--green); border:1px solid rgba(34,201,138,0.2); }
-  .b-amber { background:var(--amber-bg); color:var(--amber); border:1px solid rgba(245,166,35,0.2); }
+  .b-amber { background:var(--amber-bg); color:var(--amber); border:1px solid rgba(240,200,118,0.2); }
   .b-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(79,163,232,0.2); }
   .b-gold { background:var(--gold-bg); color:var(--gold); border:1px solid rgba(217,164,65,0.35); }
   .b-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.2); }
   .b-red { background:var(--red-bg); color:var(--red); border:1px solid rgba(232,92,92,0.2); }
   .empty { text-align:center; color:var(--text3); padding:24px; }
-  .note { background:var(--amber-bg); border:1px solid rgba(245,166,35,0.25); border-radius:8px; padding:10px 16px; font-size:13px; margin-bottom:1rem; color:var(--amber); }
+  .note { background:var(--amber-bg); border:1px solid rgba(240,200,118,0.25); border-radius:8px; padding:10px 16px; font-size:13px; margin-bottom:1rem; color:var(--amber); }
   .note.blue { background:var(--blue-bg); border-color:rgba(79,163,232,0.25); color:var(--blue); }
   .map-wrap { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px; }
   .legend { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text2); margin-top:10px; }
-  .legend-bar { flex:1; max-width:220px; height:8px; border-radius:4px; background:linear-gradient(90deg,#22c98a,#f5a623,#e85c5c); }
+  .legend-bar { flex:1; max-width:220px; height:8px; border-radius:4px; background:linear-gradient(90deg,#22c98a,#f0c876,#a78bfa); }
   .sharebar { height:6px; border-radius:3px; background:var(--bg4); overflow:hidden; min-width:80px; }
   .sharebar > div { height:100%; border-radius:3px; }
   .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--text); font-size:13px; text-decoration:none; }
@@ -104,375 +106,195 @@
   a { color:#d9a441; }
   ::selection { background:rgba(217,164,65,.35); }
   .card { box-shadow:0 14px 44px rgba(0,0,0,.55); }
+
+  /* AI Instructor — prominent top-of-dashboard guide */
+  .instructor-card { border:1px solid rgba(217,164,65,.45); box-shadow:0 0 44px rgba(217,164,65,.09), 0 14px 44px rgba(0,0,0,.55); }
+  .instructor-msgs { display:flex; flex-direction:column; gap:10px; max-height:340px; overflow-y:auto; padding:6px 2px 10px; }
+  .inst-msg { max-width:94%; padding:10px 14px; border-radius:10px; font-size:14px; line-height:1.55; white-space:pre-wrap; }
+  .inst-msg.bot { align-self:flex-start; background:var(--bg3); border:1px solid rgba(217,164,65,.28); }
+  .inst-msg.user { align-self:flex-end; background:rgba(217,164,65,.14); border:1px solid rgba(217,164,65,.38); }
+  .inst-msg.typing { color:var(--text3); font-style:italic; }
+  .instructor-chips { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px; }
+  .chip { background:var(--bg3); border:1px solid rgba(217,164,65,.38); color:#f0c876; border-radius:999px; padding:8px 16px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .chip:hover { background:rgba(217,164,65,.16); border-color:var(--gold); }
+  .instructor-form { display:flex; gap:8px; margin-top:10px; }
+  .instructor-form input { flex:1; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:12px 14px; font-size:14px; font-family:inherit; }
+  .instructor-form input:focus { outline:none; border-color:var(--gold); }
+  .btn.gold { background:linear-gradient(180deg,#f0c876,#9a7433); color:#1a1206; font-weight:700; border:none; cursor:pointer; }
+  .btn.gold:hover { filter:brightness(1.07); }
+  .suggest-card { background:var(--bg3); border:1px solid rgba(217,164,65,.32); border-radius:10px; padding:14px 16px; align-self:flex-start; max-width:94%; }
+  .suggest-step { display:flex; gap:12px; align-items:flex-start; margin:12px 0; }
+  .suggest-num { flex:none; width:26px; height:26px; border-radius:50%; background:rgba(217,164,65,.18); border:1px solid var(--gold); color:#f0c876; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .suggest-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+
+  /* Empty states — headings present, data blank */
+  .empty-state { text-align:center; padding:34px 20px; color:var(--text3); }
+  .empty-icon { font-size:34px; margin-bottom:10px; }
+  .empty-title { font-size:15px; font-weight:600; color:var(--text2); margin-bottom:6px; }
+  .empty-text { font-size:13px; max-width:440px; margin:0 auto; line-height:1.6; }
+  .empty-cta { margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+  /* Getting-started checklist */
+  .check-list { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .check-item { display:flex; gap:12px; align-items:flex-start; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+  .check-box { flex:none; width:22px; height:22px; border-radius:6px; border:1px solid rgba(217,164,65,.5); display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--gold); margin-top:1px; }
+  .check-box.done { background:rgba(217,164,65,.2); }
+
+  /* Funnel bars (generic) */
+  .funnel-bar { margin:8px 0; }
+  .funnel-bar-top { display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; }
+  .funnel-track { background:var(--bg4); border-radius:6px; height:14px; overflow:hidden; }
+  .funnel-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#9a7433,#f0c876); }
+
 </style>
+
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-brand"><span class="pulse"></span> MANNA <span class="nav-sub">/ Marketing Command Center</span></div>
-  <div class="nav-right"><span class="live-badge">● LIVE</span><span>Site data live · Email data as of Oct 12, 2026 10:05 PM PT · auto-refresh 5 min</span></div>
+  <div class="nav-brand"><img src="manna-logo.webp" alt="Manna logo"><span class="manna-name">Manna</span></div>
+  <div class="nav-right"><span class="live-badge">&#9679; LIVE</span><span id="nav-timestamp">Site data live &middot; auto-refresh 5 min</span></div>
 </nav>
 <div class="wrap">
+
+  <!-- ============ AI INSTRUCTOR (your guide — top of dashboard) ============ -->
+  <div class="card instructor-card" id="instructor-card">
+    <div class="card-header"><div>
+      <div class="card-title">&#129302; Your Instructor</div>
+      <div class="card-sub">Your personal guide to Manna &mdash; ask anything, or let me suggest where to start</div>
+    </div></div>
+    <div class="instructor-msgs" id="instructor-msgs"></div>
+    <div class="instructor-chips" id="instructor-chips">
+      <button class="chip" data-suggest="1">&#10024; Suggest a start</button>
+      <button class="chip" data-q="How do I collect leads?">&#128229; Collect leads</button>
+      <button class="chip" data-q="How do I add my site?">&#127760; Add my site</button>
+      <button class="chip" data-q="What should I do next?">&#127919; What&rsquo;s next?</button>
+    </div>
+    <form class="instructor-form" id="instructor-form">
+      <input id="instructor-input" type="text" placeholder="Ask your instructor anything&hellip;" maxlength="2000" autocomplete="off">
+      <button type="submit" class="btn gold">Send</button>
+    </form>
+  </div>
+
   <div class="page-header" style="text-align:center">
     <img src="manna-logo.webp" alt="Manna" style="max-width:300px;width:60%;height:auto;display:block;margin:0 auto 6px">
-    <h1 style="margin:2px 0 8px">Marketing Command Center</h1>
-    <p>All site analytics (live) · Email collection · Outgoing mail performance · Instagram</p>
-    <p>📅 Tracking since: <strong>October 7, 2026</strong> · email data as of Oct 12, 2026 10:05 PM PT</p>
-    <p>⏱️ Dashboard live for: <strong id="elapsed-clock">…</strong></p>
+    <h1 style="margin:2px 0 8px;font-size:26px;letter-spacing:.3em">Manna</h1>
+    <p style="font-size:13px;color:var(--text2);margin-top:3px;letter-spacing:.12em;text-transform:uppercase">Marketing Command Center</p>
+    <p style="margin-top:6px">Big agency data, little guy money.</p>
+    <p>&#9201;&#65039; Dashboard live for: <strong id="elapsed-clock">&hellip;</strong></p>
   </div>
 
   <!-- ============ GOALS ============ -->
   <div class="card" style="border:1px solid rgba(217,164,65,0.35);margin-bottom:1.25rem">
     <div class="card-header"><div>
-      <div class="card-title">🎯 Goals</div>
-      <div class="card-sub">round-number targets · live progress</div>
+      <div class="card-title">&#127919; Goals</div>
+      <div class="card-sub">round-number targets &middot; live progress</div>
     </div></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)"><div class="stat-card" style="text-align:left"><div class="stat-top"><span class="stat-icon">📥</span></div><div class="stat-label">Email Collection</div><div class="stat-value">1,578 <span style="font-size:13px;color:var(--text3)">/ 11,500 emails</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:13.7%;background:var(--green)"></div></div><div style="font-size:11px;color:var(--text3);margin-top:4px">🎯 funnel: 10,000 + 15% buffer → 11,500</div><div style="font-size:11px;color:var(--text2);margin-top:2px">📍 now: 1,578 collected across Kit + MailerLite + dossier</div></div><div class="stat-card" style="text-align:left"><div class="stat-top"><span class="stat-icon">🛡️</span></div><div class="stat-label">Armor Bearer</div><div class="stat-value">3 <span style="font-size:13px;color:var(--text3)">/ 100 affiliates</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:3.0%;background:var(--purple)"></div></div><div style="font-size:11px;color:var(--text3);margin-top:4px">🎯 funnel: 43,700 sent → 8,200 opens → 826 clicks → 100 affiliates</div><div style="font-size:11px;color:var(--text2);margin-top:2px">📍 now: 3 affiliate signups in DB</div></div><div class="stat-card" style="text-align:left"><div class="stat-top"><span class="stat-icon">🙏</span></div><div class="stat-label">FaithShield</div><div class="stat-value">0 <span style="font-size:13px;color:var(--text3)">/ 100 paying users</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0.0%;background:var(--gold)"></div></div><div style="font-size:11px;color:var(--text3);margin-top:4px">🎯 funnel: 38,000 sent → 8,200 opens → 826 clicks → 100 paying users</div><div style="font-size:11px;color:var(--text2);margin-top:2px">📍 now: pastor campaign: 696 sent · 148 opened · 2 clicked</div><div style="font-size:11px;color:var(--gold);margin-top:2px">paying-user attribution not yet wired</div></div><div class="stat-card" style="text-align:left"><div class="stat-top"><span class="stat-icon">⚖️</span></div><div class="stat-label">Sustained</div><div class="stat-value">0 <span style="font-size:13px;color:var(--text3)">/ 100 users</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0.0%;background:var(--red)"></div></div><div style="font-size:11px;color:var(--text3);margin-top:4px">🎯 funnel: 38,000 sent → 8,200 opens → 826 clicks → 100 users</div><div style="font-size:11px;color:var(--text2);margin-top:2px">📍 now: attorney send blocked — EIN + Stripe pending</div></div><div class="stat-card" style="text-align:left"><div class="stat-top"><span class="stat-icon">🎸</span></div><div class="stat-label">K-Punk</div><div class="stat-value">1 <span style="font-size:13px;color:var(--text3)">/ 5,000 notify-me signups</span></div><div class="sharebar" style="height:10px;margin:8px 0 4px"><div style="width:0.0%;background:var(--blue)"></div></div><div style="font-size:11px;color:var(--text3);margin-top:4px">🎯 funnel: 120,000 visitors → 15,000 dossier → 5,000 Kickstarter notify-me</div><div style="font-size:11px;color:var(--text2);margin-top:2px">📍 now: 24 visitors (30d) · 3 dossier signups</div><div style="font-size:11px;color:var(--gold);margin-top:2px">Kickstarter click is a proxy until notify-me tracking is wired</div></div></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)"><div class="stat-card"><div class="stat-label">Loading goals&hellip;</div></div></div>
   </div>
 
   <nav class="main-tabs" id="main-tabs">
-    <button class="main-tab active" data-tab="overview">📊 Overview</button>
-    <button class="main-tab" data-tab="email">📧 Email</button>
-    <button class="main-tab" data-tab="warm">🔥 Warm Leads</button>
-    <button class="main-tab" data-tab="conversions">✅ Conversions</button>
-    <button class="main-tab" data-tab="sites">🌐 Sites</button>
-    <button class="main-tab" data-tab="influencers">👥 Influencers</button>
-    <button class="main-tab" data-tab="social">📸 Social</button>
-    <button class="main-tab" data-tab="ipregistry">🔒 IP Registry</button>
+    <button class="main-tab active" data-tab="overview">&#128202; Overview</button>
+    <button class="main-tab" data-tab="email">&#128231; Email</button>
+    <button class="main-tab" data-tab="warm">&#128293; Warm Leads</button>
+    <button class="main-tab" data-tab="conversions">&#9989; Conversions</button>
+    <button class="main-tab" data-tab="sites">&#127760; Sites</button>
+    <button class="main-tab" data-tab="influencers">&#128101; Influencers</button>
+    <button class="main-tab" data-tab="social">&#128248; Social</button>
+    <button class="main-tab" data-tab="ipregistry">&#128274; IP Registry</button>
   </nav>
 
-  <!-- ============ TAB: OVERVIEW ============ -->
   <div class="main-tab-panel" id="panel-overview">
-
-  <!-- ============ OVERVIEW: TOP PERFORMER ============ -->
-  <div class="card" style="border:1px solid rgba(243,179,49,0.4)">
-    <div class="card-header"><div>
-      <div class="card-title">⭐ Top Performer of the Day</div>
-      <div class="card-sub">Best campaign from the most recent send day · top clicked link</div>
-    </div></div>
-    <div class="cols" style="margin-top:0.5rem"><div><div class="stat-label">🏆 Best campaign — Oct 12, 2026</div><div style="font-size:16px;font-weight:700;margin:6px 0"><a href="https://app.kit.com/broadcasts/26360587" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">A better affiliate program for Christian creators</a></div><div style="font-size:13px;color:var(--text2)">Kit · 83 sent · 2 clicks · <strong style="color:var(--green)">2.4% click rate</strong> · 10.8% open rate</div></div><div><div class="stat-label">🔗 Top clicked link (all time)</div><div style="font-size:16px;font-weight:700;margin:6px 0"><a href="https://muse4.pythonanywhere.com/armorbearer/signup" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="color:var(--blue)">muse4.pythonanywhere.com/armorbearer/signup</code></a></div><div style="font-size:13px;color:var(--text2)"><strong style="color:var(--gold)">7 clicks</strong></div></div></div>
-  </div>
 
   <!-- ============ OVERVIEW: KEY NUMBERS ============ -->
   <div class="card">
     <div class="card-header"><div>
-      <div class="card-title">📊 Key Numbers</div>
-      <div class="card-sub">Everything at a glance · email data as of Oct 12, 2026 10:05 PM PT</div>
+      <div class="card-title">&#128202; Key Numbers</div>
+      <div class="card-sub">Everything at a glance</div>
     </div></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">📧</span></div><div class="stat-label">Total sent</div><div class="stat-value">1,768</div><div class="stat-change">Kit 1,519 · ML 249</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">👁️</span></div><div class="stat-label">Opens</div><div class="stat-value" style="color:var(--green)">399</div><div class="stat-change">22.6% open rate</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">🖱️</span></div><div class="stat-label">Clicks</div><div class="stat-value" style="color:var(--gold)">35</div><div class="stat-change">2.0% click rate</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--red-bg)">🚪</span></div><div class="stat-label">Opt-out rate</div><div class="stat-value">0.17%</div><div class="stat-change">3 opt-outs</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">🔥</span></div><div class="stat-label">Warm clickers</div><div class="stat-value" style="color:var(--gold)">19</div><div class="stat-change">all time · retargeting leads</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">👥</span></div><div class="stat-label">Vetted influencers</div><div class="stat-value">206</div><div class="stat-change">🌱 95 nano · 🌿 76 micro</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">🌐</span></div><div class="stat-label">Site visitors (30d)</div><div class="stat-value" id="ov-visitors">…</div><div class="stat-change">live from tracker</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">⚡</span></div><div class="stat-label">Active right now</div><div class="stat-value" id="ov-active" style="color:var(--green)">…</div><div class="stat-change">across all sites</div></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)" id="ov-grid">
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">&#128231;</span></div><div class="stat-label">Total sent</div><div class="stat-value" id="ov-sent">&mdash;</div><div class="stat-change" id="ov-sent-sub">no sends yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">&#128065;</span></div><div class="stat-label">Opens</div><div class="stat-value" id="ov-opens" style="color:var(--green)">&mdash;</div><div class="stat-change" id="ov-open-rate">open rate</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">&#128241;</span></div><div class="stat-label">Clicks</div><div class="stat-value" id="ov-clicks" style="color:var(--gold)">&mdash;</div><div class="stat-change" id="ov-click-rate">click rate</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">&#128293;</span></div><div class="stat-label">Warm clickers</div><div class="stat-value" id="ov-warm" style="color:var(--gold)">&mdash;</div><div class="stat-change">hottest retargeting leads</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">&#128101;</span></div><div class="stat-label">Influencers</div><div class="stat-value" id="ov-influencers">&mdash;</div><div class="stat-change" id="ov-inf-sub">across all categories</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">&#127760;</span></div><div class="stat-label">Sites tracked</div><div class="stat-value" id="ov-sites">&mdash;</div><div class="stat-change">live analytics</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">&#128274;</span></div><div class="stat-label">IP assets</div><div class="stat-value" id="ov-ip">&mdash;</div><div class="stat-change">in the registry</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">&#128248;</span></div><div class="stat-label">Social accounts</div><div class="stat-value" id="ov-social">&mdash;</div><div class="stat-change">connected</div></div>
     </div>
   </div>
 
-  <!-- ============ SECTION 0: PAGES & PLATFORMS (STABLE LINKS) ============ -->
-  <div class="card">
+  <!-- ============ OVERVIEW: GETTING STARTED ============ -->
+  <div class="card" style="border:1px solid rgba(217,164,65,.35)">
     <div class="card-header"><div>
-      <div class="card-title">🔗 Pages & Platforms</div>
-      <div class="card-sub">Stable links to every D2RM page and platform · labels stay fixed — destinations get updated if a page moves</div>
+      <div class="card-title">&#128075; Getting Started</div>
+      <div class="card-sub">Your first wins in Manna &mdash; ask your instructor above to walk you through any step</div>
     </div></div>
-    <div class="cols" style="margin-top:0.5rem">
-      <div>
-        <div class="card-title" style="margin-bottom:0.5rem">🛡️ FaithShield</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a class="btn" href="https://faithshieldai.netlify.app" target="_blank" rel="noopener">Main site (US) →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/brand-assets/faithshield-qr-stores.png" target="_blank" rel="noopener">Mobile — App Store + Google Play (QR) →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/spanish" target="_blank" rel="noopener">Español →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/french" target="_blank" rel="noopener">Français →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/german" target="_blank" rel="noopener">Deutsch →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/portuguese" target="_blank" rel="noopener">Português →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/tagalog" target="_blank" rel="noopener">Tagalog →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/romanian" target="_blank" rel="noopener">Română →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/indonesian" target="_blank" rel="noopener">Bahasa Indonesia →</a>
-          <a class="btn" href="https://faithshieldai.netlify.app/org" target="_blank" rel="noopener">Youth-org page →</a>
-        </div>
-      </div>
-      <div>
-        <div class="card-title" style="margin-bottom:0.5rem">🎸 K-Punk</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a class="btn" href="https://k-poppeter118.netlify.app" target="_blank" rel="noopener">Dossier signup →</a>
-          <a class="btn" href="https://k-poppeter118.netlify.app/analytics/" target="_blank" rel="noopener">Analytics →</a>
-        </div>
-        <div class="card-title" style="margin:1rem 0 0.5rem">🏟️ Armor Bearer</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a class="btn" href="https://muse4.pythonanywhere.com/armorbearer/" target="_blank" rel="noopener">Affiliate platform (live app) →</a>
-          <a class="btn" href="https://armor-bearer.netlify.app" target="_blank" rel="noopener">Landing page →</a>
-          <a class="btn" href="https://armor-bearer.netlify.app/analytics/" target="_blank" rel="noopener">Analytics →</a>
-        </div>
-        <div class="card-title" style="margin:1rem 0 0.5rem">⚖️ Sustained</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a class="btn" href="https://muse4.pythonanywhere.com/sustained/" target="_blank" rel="noopener">Legal research (live app) →</a>
-        </div>
-        <div class="card-title" style="margin:1rem 0 0.5rem">📊 D2RM</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a class="btn" href="./">Master dashboard (this page) →</a>
-        </div>
-      </div>
+    <div class="check-list" id="getting-started-list">
+      <div class="check-item"><div class="check-box" id="gs-site">&#9675;</div><div><div style="font-weight:600">Add your first project / site</div><div style="font-size:13px;color:var(--text2)">Connect a site to start tracking visitors in real time. Go to the <a href="#" data-goto-tab="sites">Sites tab</a>.</div></div></div>
+      <div class="check-item"><div class="check-box" id="gs-leads">&#9675;</div><div><div style="font-weight:600">Collect your first leads</div><div style="font-size:13px;color:var(--text2)">Build your list &mdash; trial includes dashboard + lead collection. Open the <a href="/leads">Leads page</a>.</div></div></div>
+      <div class="check-item"><div class="check-box" id="gs-email">&#9675;</div><div><div style="font-weight:600">Log your first email send</div><div style="font-size:13px;color:var(--text2)">Sending unlocks on paid plans &mdash; log sends to track performance from day one.</div></div></div>
+      <div class="check-item"><div class="check-box" id="gs-goal">&#9675;</div><div><div style="font-weight:600">Set a goal</div><div style="font-size:13px;color:var(--text2)">Pick a round number to chase &mdash; your instructor will track your pace.</div></div></div>
     </div>
   </div>
 
   </div><!-- /panel-overview -->
 
-  <!-- ============ TAB: SITES ============ -->
-  <div class="main-tab-panel" id="panel-sites" style="display:none">
-
-  <!-- ============ SECTION 1: SITE ANALYTICS (LIVE) ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">🌍 All Sites — live analytics</div>
-      <div class="card-sub">K-Punk · FaithShield AI · Armor Bearer · Sustained · fetched live from D2RM tracker API · <span id="refresh-note">refreshing…</span></div>
-    </div><span class="live-badge" id="live-badge">● LIVE</span></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(6,1fr)" id="combined-grid">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">👥</span></div><div class="stat-label">Total visitors (30d)</div><div class="stat-value" id="c-visitors">…</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">📬</span></div><div class="stat-label">Total opens</div><div class="stat-value" style="color:var(--green)">399</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">👁️</span></div><div class="stat-label">Total pageviews (30d)</div><div class="stat-value" id="c-views">…</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--amber-bg)">⚡</span></div><div class="stat-label">Active right now</div><div class="stat-value" id="c-active" style="color:var(--green)">…</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">🎯</span></div><div class="stat-label">Total conversions</div><div class="stat-value" id="c-conv">…</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">🔖</span></div><div class="stat-label">UTM-tagged visitors</div><div class="stat-value" id="c-utm">…</div></div>
-    </div>
-    <div id="site-cards" style="margin-top:1rem"></div>
-  </div>
-
-  <!-- ============ SECTION 1B: TRENDS (from history DB) ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">📈 Trends — last 7 days</div>
-      <div class="card-sub">From hourly snapshots · Oct 12, 2026 10:05 PM PT</div>
-    </div></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-label">Email opens trend</div><div class="stat-value" style="color:var(--green)">399</div></div>
-      <div class="stat-card"><div class="stat-label">K-Punk visitors</div><div class="stat-value">0</div></div>
-      <div class="stat-card"><div class="stat-label">FaithShield visitors</div><div class="stat-value">0</div></div>
-      <div class="stat-card"><div class="stat-label">Subscribers trend</div><div class="stat-value">1,578</div></div>
-    </div>
-  </div>
-
-  </div><!-- /panel-sites -->
-
   <!-- ============ TAB: EMAIL ============ -->
   <div class="main-tab-panel" id="panel-email" style="display:none">
 
-  <div class="range-tabs" id="range-tabs">
-    <span class="range-label">📧 Email time range:</span>
-    <button class="range-tab" data-range="24h">24 Hours</button>
-    <button class="range-tab active" data-range="7d">7 Days</button>
-    <button class="range-tab" data-range="30d">30 Days</button>
-    <button class="range-tab" data-range="all">All Time</button>
+  <div class="range-tabs">
+    <span class="range-label">Range:</span>
+    <button class="range-tab" data-range="24h">24 hours</button>
+    <button class="range-tab active" data-range="7d">7 days</button>
+    <button class="range-tab" data-range="30d">30 days</button>
+    <button class="range-tab" data-range="all">All time</button>
   </div>
 
-  <!-- ============ SECTION 2: EMAIL COLLECTION ============ -->
+  <!-- ============ EMAIL: COLLECTION STATS ============ -->
   <div class="card">
     <div class="card-header"><div>
-      <div class="card-title">📥 Email Collection</div>
-      <div class="card-sub">How many emails we've collected · list growth · as of Oct 12, 2026 10:05 PM PT</div>
+      <div class="card-title">&#128231; Email Performance</div>
+      <div class="card-sub" id="w-range-sub">sends &middot; opens &middot; clicks</div>
     </div></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">📥</span></div><div class="stat-label">Total emails collected</div><div class="stat-value">1,578</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">🎯</span></div><div class="stat-label">Kit subscribers (influencers)</div><div class="stat-value">1,332</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">🌍</span></div><div class="stat-label">MailerLite subscribers (intl)</div><div class="stat-value">243</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">🎸</span></div><div class="stat-label">K-Punk dossier signups</div><div class="stat-value">3</div></div>
+      <div class="stat-card"><div class="stat-label">Sent</div><div class="stat-value" id="w-sent">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Opens</div><div class="stat-value" id="w-opens" style="color:var(--green)">&mdash;</div><div class="stat-change" id="w-open-rate"></div></div>
+      <div class="stat-card"><div class="stat-label">Clicks</div><div class="stat-value" id="w-clicks" style="color:var(--gold)">&mdash;</div><div class="stat-change" id="w-click-rate"></div></div>
+      <div class="stat-card"><div class="stat-label">Opt-out rate</div><div class="stat-value" id="w-optout-rate">&mdash;</div><div class="stat-change" id="w-optout-detail"></div></div>
     </div>
-    <div class="cols" style="margin-top:1rem">
-      <div><div class="card-header"><div class="card-title">List segments</div><div class="card-sub">subscribers · clicks · top campaign driving clicks</div></div>
-        <div class="table-wrap"><table><tr><th>Segment</th><th>Region</th><th class="n">Subscribers</th><th class="n">Clicks</th><th>Top campaign</th></tr><tr><td class="subj">French</td><td>France</td><td class="n">14</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">German</td><td>Germany</td><td class="n">27</td><td class="n" style="color:var(--purple)">1</td><td class="subj" style="font-size:12px">Intl Pastors 2026-10-10 - German v2</td></tr>
-<tr><td class="subj">Portuguese</td><td>Brazil</td><td class="n">14</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">Romanian</td><td>Romania</td><td class="n">11</td><td class="n" style="color:var(--purple)">1</td><td class="subj" style="font-size:12px">Intl Pastors 2026-10-10 - Romanian v2</td></tr>
-<tr><td class="subj">Spanish</td><td>Latin America (Spanish)</td><td class="n">10</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">Tagalog</td><td>Philippines</td><td class="n">13</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">French</td><td>France</td><td class="n">64</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">German</td><td>Germany</td><td class="n">18</td><td class="n" style="color:var(--purple)">1</td><td class="subj" style="font-size:12px">Intl Pastors 2026-10-10 - German v2</td></tr>
-<tr><td class="subj">Portuguese</td><td>Brazil</td><td class="n">18</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">Tagalog</td><td>Philippines</td><td class="n">54</td><td class="n" style="color:var(--purple)">0</td><td class="subj" style="font-size:12px">—</td></tr>
-<tr><td class="subj">English</td><td>United States (influencer list, US-led global)</td><td class="n">1,332</td><td class="n" style="color:var(--purple)">33</td><td class="subj" style="font-size:12px">Founding influencer invite — Armor Bearer goes liv</td></tr></table></div></div>
-      <div><div class="card-header"><div class="card-title">Collection funnel</div><div class="card-sub">site → email capture</div></div>
-        <div class="table-wrap"><table>
-          <tr><th>Step</th><th class="n">Count</th></tr>
-          <tr><td class="subj">K-Punk dossier signups</td><td class="n">3</td></tr>
-          <tr><td class="subj">Kickstarter pre-launch clicks</td><td class="n">1</td></tr>
-          <tr><td class="subj">Armor Bearer affiliate signups</td><td class="n">4</td></tr>
-        </table></div>
-        <div style="font-size:12px;color:var(--text3);margin-top:8px">Dossier + Kickstarter from tracker conversion events (live). Armor Bearer from manual test records.</div>
-      </div>
+    <div class="empty-state" id="w-empty" style="display:none">
+      <div class="empty-icon">&#128231;</div>
+      <div class="empty-title">No email data yet</div>
+      <div class="empty-text">Log your first send and this tab comes alive with opens, clicks, and opt-out tracking.</div>
     </div>
   </div>
 
-  <!-- ============ SECTION 3: OUTGOING MAIL ============ -->
+  <!-- ============ EMAIL: CAMPAIGNS ============ -->
   <div class="card">
     <div class="card-header"><div>
-      <div class="card-title">📤 Outgoing Mail</div>
-      <div class="card-sub">Emails sent · opens · clicks · bounces · as of Oct 12, 2026 10:05 PM PT</div>
+      <div class="card-title">&#128195; Campaigns</div>
+      <div class="card-sub">every campaign you run, tracked in one place</div>
     </div></div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">✉️</span></div><div class="stat-label">Total sent</div><div class="stat-value" id="w-sent">1,768</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">📬</span></div><div class="stat-label">Opens</div><div class="stat-value" style="color:var(--green)" id="w-opens">399</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">📈</span></div><div class="stat-label">Open rate</div><div class="stat-value" id="w-open-rate">22.6%</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">🖱️</span></div><div class="stat-label">Clicks</div><div class="stat-value" id="w-clicks">35</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">👆</span></div><div class="stat-label">Click rate</div><div class="stat-value" id="w-click-rate">2.0%</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--red-bg)">🚫</span></div><div class="stat-label">Bounces</div><div class="stat-value" id="w-bounces">47</div></div>
-    </div>
-
-    <!-- Opt-out rate (prominent — selling point for self-hosted sending) -->
-    <div class="card" style="border:1px solid rgba(34,201,138,0.30);margin-bottom:1rem">
-      <div class="card-header"><div>
-        <div class="card-title">🚪 Total Opt-out Rate</div>
-        <div class="card-sub">Unsubscribes ÷ total sent · industry average 0.1–0.5% · lower is better</div>
-      </div><span id="w-optout-badge"><span class="badge b-green">within industry range ✓</span></span></div>
-      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:0">
-        <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">🚪</span></div><div class="stat-label">Total opt-out rate</div><div class="stat-value" style="color:var(--green)" id="w-optout-rate">0.17%</div><div class="stat-change" id="w-optout-detail">3 opt-outs of 1,768 sent</div></div>
-        <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">🎯</span></div><div class="stat-label">Kit (influencers)</div><div class="stat-value" id="w-kit-optout">0.13%</div><div class="stat-change" id="w-kit-optout-detail">2 of 1,519 sent</div></div>
-        <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">🌍</span></div><div class="stat-label">MailerLite (intl)</div><div class="stat-value" id="w-ml-optout">0.40%</div><div class="stat-change" id="w-ml-optout-detail">1 of 249 sent</div></div>
-        <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">📊</span></div><div class="stat-label">Industry context</div><div class="stat-value" style="font-size:20px">0.1–0.5%</div><div class="stat-change">typical opt-out range · we're at the low end</div></div>
-      </div>
-    </div>
-
-    <div class="cols" style="margin-top:1rem">
-      <div><div class="card-header"><div class="card-title">Opens by project</div><div class="card-sub">sent · opened · open rate</div></div>
-        <div class="table-wrap"><table><tr><th>Project</th><th class="n">Sent</th><th class="n">Opened</th><th class="n">Rate</th></tr><tr><td>🎯 Influencer outreach</td><td class="n">1,519</td><td class="n" style="color:var(--green);font-weight:600">326</td><td class="n">21.5%</td></tr>
-<tr><td>🌍 Portuguese pastors</td><td class="n">60</td><td class="n" style="color:var(--green);font-weight:600">7</td><td class="n">11.7%</td></tr>
-<tr><td>🌍 French pastors</td><td class="n">15</td><td class="n" style="color:var(--green);font-weight:600">0</td><td class="n">0.0%</td></tr>
-<tr><td>🌍 German pastors</td><td class="n">28</td><td class="n" style="color:var(--green);font-weight:600">8</td><td class="n">28.6%</td></tr>
-<tr><td>🌍 Spanish pastors</td><td class="n">18</td><td class="n" style="color:var(--green);font-weight:600">0</td><td class="n">0.0%</td></tr>
-<tr><td>🌍 Tagalog pastors</td><td class="n">117</td><td class="n" style="color:var(--green);font-weight:600">55</td><td class="n">47.0%</td></tr>
-<tr><td>🌍 Romanian pastors</td><td class="n">11</td><td class="n" style="color:var(--green);font-weight:600">3</td><td class="n">27.3%</td></tr></table></div></div>
-      <div><div class="card-header"><div><div class="card-title">Kit (ConvertKit)</div><div class="card-sub">influencer broadcasts</div></div></div>
-        <div class="table-wrap"><table><tr><th>Subject</th><th class="n">Sent</th><th class="n">Opens</th><th class="n">Clicks</th><th class="n">Unsub</th></tr><tr><td class="subj">Un mejor programa de afiliados para creadores cristianos</td><td class="n">39</td><td class="n">15</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Sentimos muito</td><td class="n">43</td><td class="n">32</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Um melhor programa de afiliados para criadores cristãos</td><td class="n">45</td><td class="n">0</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Um programa de afiliados melhor pra criadores cristãos</td><td class="n">57</td><td class="n">1</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Um programa de afiliados melhor pra criadores cristãos</td><td class="n">57</td><td class="n">1</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Um programa de afiliados melhor pra criadores cristãos</td><td class="n">57</td><td class="n">1</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Um programa de afiliados melhor pra criadores cristãos</td><td class="n">57</td><td class="n">1</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">A better affiliate program for Christian creators</td><td class="n">83</td><td class="n">9</td><td class="n">2</td><td class="n">0</td></tr>
-<tr><td class="subj">Un program de afiliere mai bun pentru creatorii creștini</td><td class="n">4</td><td class="n">1</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Program afiliasi yang lebih baik untuk kreator Kristen</td><td class="n">6</td><td class="n">1</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Mas mahusay na affiliate program para sa mga Christian creator</td><td class="n">4</td><td class="n">2</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Um programa de afiliados melhor pra criadores cristãos</td><td class="n">20</td><td class="n">4</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Un meilleur programme d&#x27;affiliation pour les créateurs chrétiens</td><td class="n">24</td><td class="n">14</td><td class="n">1</td><td class="n">0</td></tr>
-<tr><td class="subj">Un mejor programa de afiliados para creadores cristianos</td><td class="n">24</td><td class="n">13</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Ein besseres Affiliate-Programm für christliche Creator</td><td class="n">14</td><td class="n">8</td><td class="n">2</td><td class="n">0</td></tr></table></div></div>
-      <div><div class="card-header"><div><div class="card-title">MailerLite</div><div class="card-sub">international campaigns</div></div></div>
-        <div class="table-wrap"><table><tr><th>Subject</th><th class="n">Sent</th><th class="n">Opens</th><th class="n">Clicks</th><th class="n">Bounce</th></tr><tr><td class="subj">Intl Pastors 2026-10-10 - Romanian v2</td><td class="n">11</td><td class="n">3</td><td class="n">1</td><td class="n">0</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - Tagalog v2</td><td class="n">13</td><td class="n">3</td><td class="n">0</td><td class="n">0</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - Portuguese v2</td><td class="n">14</td><td class="n">1</td><td class="n">0</td><td class="n">7</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - French v2</td><td class="n">15</td><td class="n">0</td><td class="n">0</td><td class="n">2</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - French v2</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - Spanish v2</td><td class="n">18</td><td class="n">0</td><td class="n">0</td><td class="n">17</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - German v2</td><td class="n">28</td><td class="n">8</td><td class="n">1</td><td class="n">1</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - Portuguese</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0</td></tr>
-<tr><td class="subj">Intl Pastors 2026-10-10 - Portuguese</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0</td></tr>
-<tr><td class="subj">Pastor Trial Invite - Tagalog</td><td class="n">104</td><td class="n">52</td><td class="n">0</td><td class="n">10</td></tr>
-<tr><td class="subj">Pastor Trial Invite - Portuguese</td><td class="n">46</td><td class="n">6</td><td class="n">0</td><td class="n">10</td></tr>
-<tr><td class="subj">Pastor Trial Invite - French</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0</td></tr>
-<tr><td class="subj">Pastor Trial Invite - German</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0</td></tr>
-<tr><td class="subj">Org Leader Invite - Armor Bearer Batch 1</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0</td></tr></table></div></div>
-    </div>
-
-    <!-- Send history: exact timestamp of every send, most recent first -->
-    <div style="margin-top:1rem"><div class="card-header"><div>
-      <div class="card-title">📤 Send History</div>
-      <div class="card-sub">exact send time (PDT) · platform · language · most recent first</div>
-    </div></div>
-      <div class="table-wrap"><table><tr><th>Sent at (PDT)</th><th>Platform</th><th>Campaign</th><th class="n">Sent</th><th class="n">Language</th></tr><tr><td class="subj" style="white-space:nowrap">Oct 12, 2026 4:11 AM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26365108" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Un mejor programa de afiliados para creadores cristianos</a></td><td class="n">39</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 12, 2026 2:22 AM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26363622" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Sentimos muito</a></td><td class="n">43</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 11, 2026 10:30 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26360819" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Um melhor programa de afiliados para criadores cristãos</a></td><td class="n">45</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 11, 2026 9:35 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26360614" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Um programa de afiliados melhor pra criadores cristãos</a></td><td class="n">57</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 11, 2026 9:35 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26360601" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Um programa de afiliados melhor pra criadores cristãos</a></td><td class="n">57</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 11, 2026 9:35 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26360595" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Um programa de afiliados melhor pra criadores cristãos</a></td><td class="n">57</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 11, 2026 9:35 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26360591" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">Um programa de afiliados melhor pra criadores cristãos</a></td><td class="n">57</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 11, 2026 9:35 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26360587" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">A better affiliate program for Christian creators</a></td><td class="n">83</td><td class="n">English</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:23 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343712" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — Indonesian Armor Bearer pitch</a></td><td class="n">6</td><td class="n">Indonesian</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:23 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343714" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — Romanian Armor Bearer pitch</a></td><td class="n">4</td><td class="n">Romanian</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:05 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343710" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — Tagalog Armor Bearer pitch</a></td><td class="n">4</td><td class="n">Tagalog</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:05 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343709" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — Portuguese Armor Bearer pitch</a></td><td class="n">20</td><td class="n">Portuguese</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:05 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343708" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — French Armor Bearer pitch</a></td><td class="n">24</td><td class="n">French</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:05 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343707" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — Spanish Armor Bearer pitch</a></td><td class="n">24</td><td class="n">Spanish</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 12:05 PM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26343706" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">International wave — German Armor Bearer pitch</a></td><td class="n">14</td><td class="n">German</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:45 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - Romanian v2</td><td class="n">11</td><td class="n">Romanian</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:44 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - Tagalog v2</td><td class="n">13</td><td class="n">Tagalog</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:43 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - Portuguese v2</td><td class="n">14</td><td class="n">Portuguese</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:43 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - French v2</td><td class="n">15</td><td class="n">French</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:43 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - French v2</td><td class="n">—</td><td class="n">French</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:42 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - Spanish v2</td><td class="n">18</td><td class="n">Spanish</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:41 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - German v2</td><td class="n">28</td><td class="n">German</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:34 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - Portuguese</td><td class="n">—</td><td class="n">Portuguese</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 10, 2026 11:34 AM PDT</td><td><span class="badge b-purple">MailerLite</span></td><td class="subj">Intl Pastors 2026-10-10 - Portuguese</td><td class="n">—</td><td class="n">Portuguese</td></tr>
-<tr><td class="subj" style="white-space:nowrap">Oct 9, 2026 11:18 AM PDT</td><td><span class="badge b-blue">Kit</span></td><td class="subj"><a href="https://app.kit.com/broadcasts/26330891" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open broadcast in Kit (login required)">English “Earn 10% for life” broadcast — most warm clickers came from this wave</a></td><td class="n">208</td><td class="n">English</td></tr></table></div>
-    </div>
+    <div class="table-wrap"><table>
+      <tr><th>Campaign</th><th>Provider</th><th class="n">Sent</th><th class="n">Opens</th><th class="n">Clicks</th></tr>
+      <tbody id="campaign-rows"><tr><td colspan="5" class="empty">No campaigns yet</td></tr></tbody>
+    </table></div>
   </div>
 
   </div><!-- /panel-email -->
 
-  <!-- ============ TAB: INFLUENCERS ============ -->
-  <div class="main-tab-panel" id="panel-influencers" style="display:none">
-
-  <!-- ============ SECTION 3B: INFLUENCER TIERS ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">🎯 Influencer Tiers</div>
-      <div class="card-sub">Nano (1K–10K) · Micro (10K–100K) · Macro (100K+) · vetted pool vs email performance · as of Oct 12, 2026 10:05 PM PT</div>
-    </div></div>
-    <div class="table-wrap"><table>
-      <tr><th>Tier</th><th class="n">Vetted (ready to send)</th><th class="n">Emailed</th><th class="n">Open rate</th><th class="n">Click rate</th><th class="n">→ Affiliate signups</th></tr>
-      <tr><td class="subj">🌱 Nano (1K–10K)</td><td class="n" style="color:var(--blue);font-weight:600">95</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n" style="color:var(--text3)">tracking pending</td></tr>
-<tr><td class="subj">🌿 Micro (10K–100K)</td><td class="n" style="color:var(--blue);font-weight:600">76</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n" style="color:var(--text3)">tracking pending</td></tr>
-<tr><td class="subj">🌳 Macro (100K+)</td><td class="n" style="color:var(--blue);font-weight:600">1</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n" style="color:var(--text3)">tracking pending</td></tr>
-<tr><td class="subj">❓ Unknown</td><td class="n" style="color:var(--blue);font-weight:600">34</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n" style="color:var(--text3)">tracking pending</td></tr>
-<tr style="border-top:2px solid var(--border)"><td class="subj"><strong>Total vetted</strong></td><td class="n"><strong>206</strong></td><td class="n"><strong>1,519</strong></td><td class="n"><strong>21.5%</strong></td><td class="n"><strong>2.2%</strong></td><td class="n" style="color:var(--text3)">tracking pending</td></tr>
-    </table></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Vetted counts from the nano/micro influencer list. Emailed/open/click totals are Kit influencer broadcasts overall —
-      Kit's API doesn't break performance down by tier. Per-tier attribution needs tier tagging at send time.
-      Affiliate signup attribution by tier is pending production Armor Bearer data access.
-    </div>
-  </div>
-
-  </div><!-- /panel-influencers -->
-
   <!-- ============ TAB: WARM LEADS ============ -->
   <div class="main-tab-panel" id="panel-warm" style="display:none">
 
-  <!-- ============ SECTION 3C: WARM CLICKERS ============ -->
-  <div class="card" style="border:1px solid rgba(243,179,49,0.35)">
+  <div class="card" style="border:1px solid rgba(217,164,65,.35)">
     <div class="card-header"><div>
-      <div class="card-title">🔥 Warm Clickers</div>
-      <div class="card-sub" id="w-warm-sub">Subscribers who actually clicked a link — hottest retargeting leads · last 7 days · tagged in Kit as warm-clickers</div>
+      <div class="card-title">&#128293; Warm Clickers</div>
+      <div class="card-sub" id="w-warm-sub">Subscribers who actually clicked a link &mdash; your hottest retargeting leads</div>
     </div></div>
     <div class="table-wrap"><table>
-      <tr><th>Language</th><th class="n">Clickers</th><th class="n">Share</th></tr>
-      <tbody id="w-warm-rows"><tr><td class="subj">🇺🇸 English</td><td class="n" style="color:var(--gold);font-weight:700">17</td><td class="n">89.5%</td></tr>
-<tr><td class="subj">🇫🇷 French</td><td class="n" style="color:var(--gold);font-weight:700">1</td><td class="n">5.3%</td></tr>
-<tr><td class="subj">🇩🇪 German</td><td class="n" style="color:var(--gold);font-weight:700">1</td><td class="n">5.3%</td></tr>
-<tr style="border-top:2px solid var(--border)"><td class="subj"><strong>Total warm clickers</strong></td><td class="n"><strong>19</strong></td><td class="n"><strong>100%</strong></td></tr></tbody>
+      <tr><th>Segment</th><th class="n">Clickers</th><th class="n">Share</th></tr>
+      <tbody id="w-warm-rows"><tr><td colspan="3" class="empty">No warm clickers yet &mdash; they appear once subscribers start clicking your links.</td></tr></tbody>
     </table></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Per-subscriber click data from Kit (excludes bot/proxy clicks). Lists live in files/warm/ — use them for retargeting broadcasts.
-    </div>
-  </div>
-
-  <!-- ============ SECTION 3D: TOP CLICKED LINKS ============ -->
-  <div class="card" style="border:1px solid rgba(243,179,49,0.35)">
-    <div class="card-header"><div>
-      <div class="card-title">🔗 Top Clicked Links</div>
-      <div class="card-sub">Which links subscribers actually clicked — Kit broadcast link aggregates · all time</div>
-    </div></div>
-    <div class="table-wrap"><table>
-      <tr><th>Link</th><th class="n">Clicks</th><th class="n">Share</th></tr>
-      <tr><td class="subj"><a href="https://muse4.pythonanywhere.com/armorbearer/signup" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="font-size:12px;color:var(--blue)">muse4.pythonanywhere.com/armorbearer/signup</code></a><div style="font-size:11px;color:var(--text3)">Earn 10% for life promoting Christian apps</div></td><td class="n" style="color:var(--gold);font-weight:700">7</td><td class="n">22.6%</td></tr>
-<tr><td class="subj"><a href="https://refereeplatform.netlify.app/?utm_source=kit&amp;utm_medium=email&amp;utm_campaign=referee-wave1" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="font-size:12px;color:var(--blue)">refereeplatform.netlify.app/ [campaign=referee-wave1]</code></a><div style="font-size:11px;color:var(--text3)">Founding influencer invite — Referee goes live December 1</div></td><td class="n" style="color:var(--gold);font-weight:700">5</td><td class="n">16.1%</td></tr>
-<tr><td class="subj"><a href="https://refereeplatform.netlify.app/?utm_source=kit&amp;utm_medium=email&amp;utm_campaign=referee-wave2" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="font-size:12px;color:var(--blue)">refereeplatform.netlify.app/ [campaign=referee-wave2]</code></a><div style="font-size:11px;color:var(--text3)">Founding influencer invite — Referee goes live December 1</div></td><td class="n" style="color:var(--gold);font-weight:700">3</td><td class="n">9.7%</td></tr>
-<tr><td class="subj"><a href="https://refereeplatform.netlify.app/?utm_source=kit&amp;utm_medium=email&amp;utm_campaign=referee-followup" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="font-size:12px;color:var(--blue)">refereeplatform.netlify.app/ [campaign=referee-followup]</code></a><div style="font-size:11px;color:var(--text3)">Earn 10% recurring for every subscriber you refer</div></td><td class="n" style="color:var(--gold);font-weight:700">2</td><td class="n">6.5%</td></tr>
-<tr><td class="subj"><a href="https://armor-bearer.netlify.app/?utm_source=kit&amp;utm_medium=email&amp;utm_campaign=intl-influencer-fr" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="font-size:12px;color:var(--blue)">armor-bearer.netlify.app/ [campaign=intl-influencer-fr]</code></a><div style="font-size:11px;color:var(--text3)">Un meilleur programme d&#x27;affiliation pour les créateurs chrétiens</div></td><td class="n" style="color:var(--gold);font-weight:700">1</td><td class="n">3.2%</td></tr>
-<tr><td class="subj"><a href="https://armor-bearer.netlify.app/?utm_source=kit&amp;utm_medium=email&amp;utm_campaign=intl-influencer-de" target="_blank" rel="noopener" style="text-decoration:none" title="Open the linked page"><code style="font-size:12px;color:var(--blue)">armor-bearer.netlify.app/ [campaign=intl-influencer-de]</code></a><div style="font-size:11px;color:var(--text3)">Ein besseres Affiliate-Programm für christliche Creator</div></td><td class="n" style="color:var(--gold);font-weight:700">1</td><td class="n">3.2%</td></tr>
-    </table></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Unique clicks per link across all Kit broadcasts. Kit's API doesn't expose per-subscriber link clicks or per-window breakdowns — for future sends, distinct UTMs per link (e.g. utm_content=cta-button) give exact attribution.
-    </div>
   </div>
 
   </div><!-- /panel-warm -->
@@ -480,264 +302,300 @@
   <!-- ============ TAB: CONVERSIONS ============ -->
   <div class="main-tab-panel" id="panel-conversions" style="display:none">
 
-  <!-- ============ CONVERSIONS: SUMMARY ============ -->
-  <div class="card" style="border:1px solid rgba(34,201,138,0.35)">
+  <div class="card" style="border:1px solid rgba(34,201,138,.35)">
     <div class="card-header"><div>
-      <div class="card-title">✅ Conversions</div>
-      <div class="card-sub">Every conversion type, every product — email → signup, visit → signup, visit → click</div>
+      <div class="card-title">&#9989; Conversion Funnels</div>
+      <div class="card-sub">Every funnel, every stage &mdash; see exactly where prospects drop off</div>
     </div></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-label">Affiliate signups</div><div class="stat-value" style="color:var(--green)">4</div><div style="font-size:11px;color:var(--text3)">confirmed, manual attribution</div></div>
-      <div class="stat-card"><div class="stat-label">Live tracker signups</div><div class="stat-value" style="color:var(--blue)" id="conv-live-signups">…</div><div style="font-size:11px;color:var(--text3)">armor_bearer_signup events</div></div>
-      <div class="stat-card"><div class="stat-label">Dossier signups</div><div class="stat-value" style="color:var(--gold)">3</div><div style="font-size:11px;color:var(--text3)">K-Punk site</div></div>
-      <div class="stat-card"><div class="stat-label">Kickstarter clicks</div><div class="stat-value" style="color:var(--purple)">1</div><div style="font-size:11px;color:var(--text3)">K-Punk site</div></div>
-    </div>
-  </div>
-
-  <!-- ============ CONVERSIONS: ARMOR BEARER FUNNEL ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">🏟️ Armor Bearer — email → affiliate</div>
-      <div class="card-sub">Kit influencer broadcasts (Armor Bearer pitch) · sent → opened → clicked → signed up</div>
+    <div id="funnel-list"><div class="empty-state">
+      <div class="empty-icon">&#9989;</div>
+      <div class="empty-title">No funnels yet</div>
+      <div class="empty-text">Create your first funnel to track visitors &rarr; leads &rarr; customers, stage by stage. Ask your instructor to help you design one.</div>
     </div></div>
-    <div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Emails sent</span><span style="font-weight:700">1,519</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:100.0%;background:var(--blue);border-radius:6px;height:14px"></div></div></div>
-<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Opened</span><span style="font-weight:700">326</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:21.5%;background:var(--purple);border-radius:6px;height:14px"></div></div></div>
-<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Clicked</span><span style="font-weight:700">33</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:2.2%;background:var(--gold);border-radius:6px;height:14px"></div></div></div>
-<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Affiliate signups</span><span style="font-weight:700">4</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:0.3%;background:var(--green);border-radius:6px;height:14px"></div></div></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Click → signup rate: 12.1% · overall: 0.26%. Signup counts are manually attributed for now — the live tracker count above updates automatically once conversion tracking is deployed.
-    </div>
-  </div>
-
-  <!-- ============ CONVERSIONS: WARM CLICKER MATCHING ============ -->
-  <div class="card" style="border:1px solid rgba(243,179,49,0.35)">
-    <div class="card-header"><div>
-      <div class="card-title">🎯 Warm clickers → affiliates</div>
-      <div class="card-sub" id="conv-match-sub">0 of 19 warm clickers converted (0.0%)</div>
-    </div></div>
-    <div class="table-wrap"><table>
-      <tr><th>Email</th><th class="n">Clicked</th><th class="n">Signed up</th><th>Status</th></tr>
-      <tbody id="conv-rows"><tr data-conv-email="info@lifechannel.ch" data-converted="0"><td class="subj">info@lifechannel.ch<div style="font-size:11px;color:var(--text3)">still.leben - Podcast für christliche Meditation</div></td><td class="n">Oct 10, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="podcast@topchretien.com" data-converted="0"><td class="subj">podcast@topchretien.com<div style="font-size:11px;color:var(--text3)">Chrétien pas crétin</div></td><td class="n">Oct 10, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="tour@rice.edu" data-converted="0"><td class="subj">tour@rice.edu<div style="font-size:11px;color:var(--text3)">The</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="media@kingdomrock.org" data-converted="0"><td class="subj">media@kingdomrock.org<div style="font-size:11px;color:var(--text3)">The UnCommon Christian Podcast</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="tw.social@omfmail.com" data-converted="0"><td class="subj">tw.social@omfmail.com<div style="font-size:11px;color:var(--text3)">Serve Asia Bible Study Podcast</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="support@rikawhelan.com" data-converted="0"><td class="subj">support@rikawhelan.com<div style="font-size:11px;color:var(--text3)">Women of Faith in Leadership | Leading w</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="media@tabernaclebaptist.org" data-converted="0"><td class="subj">media@tabernaclebaptist.org<div style="font-size:11px;color:var(--text3)">Christian</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="podcast@lakepointe.church" data-converted="0"><td class="subj">podcast@lakepointe.church<div style="font-size:11px;color:var(--text3)">Lakepointe</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="communications@efca.org" data-converted="0"><td class="subj">communications@efca.org<div style="font-size:11px;color:var(--text3)">EFCA</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="questions@truthunedited.com" data-converted="0"><td class="subj">questions@truthunedited.com<div style="font-size:11px;color:var(--text3)">Truthunedited</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="info@saftapologetics.com" data-converted="0"><td class="subj">info@saftapologetics.com<div style="font-size:11px;color:var(--text3)">SAFT</div></td><td class="n">Oct 09, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="conference@liveoriginal.com" data-converted="0"><td class="subj">conference@liveoriginal.com<div style="font-size:11px;color:var(--text3)">Sadie</div></td><td class="n">Oct 08, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="letters@truthforlife.org" data-converted="0"><td class="subj">letters@truthforlife.org<div style="font-size:11px;color:var(--text3)">Alistair</div></td><td class="n">Oct 08, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="whm@wholeheart.org" data-converted="0"><td class="subj">whm@wholeheart.org<div style="font-size:11px;color:var(--text3)">Sally</div></td><td class="n">Oct 08, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="david@25ent.com" data-converted="0"><td class="subj">david@25ent.com<div style="font-size:11px;color:var(--text3)">Andrew</div></td><td class="n">Oct 08, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="hello@crossexamined.org" data-converted="0"><td class="subj">hello@crossexamined.org<div style="font-size:11px;color:var(--text3)">Frank</div></td><td class="n">Oct 07, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="george@divisionmedia.co" data-converted="0"><td class="subj">george@divisionmedia.co<div style="font-size:11px;color:var(--text3)">George</div></td><td class="n">Oct 07, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="support@stefaniegass.com" data-converted="0"><td class="subj">support@stefaniegass.com<div style="font-size:11px;color:var(--text3)">Stefanie</div></td><td class="n">Oct 07, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr>
-<tr data-conv-email="mail@reformedforum.org" data-converted="0"><td class="subj">mail@reformedforum.org<div style="font-size:11px;color:var(--text3)">Reformed</div></td><td class="n">Oct 07, 2026</td><td class="n">—</td><td><span class="badge b-purple">Clicked only</span></td></tr></tbody>
-    </table></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Matched by email against the Armor Bearer user database. Local data is dev-only — production check pending; this table fills in automatically once the production database is reachable.
-    </div>
-  </div>
-
-  <!-- ============ CONVERSIONS: K-PUNK FUNNEL ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">🎸 K-Punk — visit → signup → Kickstarter</div>
-      <div class="card-sub">Site funnel, last 30 days · tracker conversion events</div>
-    </div></div>
-    <div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Site visitors</span><span style="font-weight:700">24</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:100.0%;background:var(--blue);border-radius:6px;height:14px"></div></div></div>
-<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Dossier signups</span><span style="font-weight:700">3</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:12.5%;background:var(--gold);border-radius:6px;height:14px"></div></div></div>
-<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Kickstarter clicks</span><span style="font-weight:700">1</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:4.2%;background:var(--purple);border-radius:6px;height:14px"></div></div></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Visitor → dossier rate: 12.5% · dossier → Kickstarter: 33%.
-    </div>
-  </div>
-
-  <!-- ============ CONVERSIONS: FAITHSHIELD ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">🛡️ FaithShield — visit → app signup</div>
-      <div class="card-sub">Site funnel, last 30 days</div>
-    </div></div>
-    <div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Site visitors</span><span style="font-weight:700">20</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:100.0%;background:var(--blue);border-radius:6px;height:14px"></div></div></div>
-<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>App signups</span><span style="font-weight:700">0</span></div><div style="background:var(--border);border-radius:6px;height:14px"><div style="width:0.0%;background:var(--green);border-radius:6px;height:14px"></div></div></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      App signup/download tracking is not wired up yet — the visit count is live, but conversions from the FaithShield site can't be measured until a signup event is added.
-    </div>
   </div>
 
   </div><!-- /panel-conversions -->
 
+  <!-- ============ TAB: SITES ============ -->
+  <div class="main-tab-panel" id="panel-sites" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#127760; All Sites &mdash; live analytics</div>
+      <div class="card-sub">visitors &middot; pageviews &middot; bounce &middot; conversions &middot; <span id="refresh-note"></span></div>
+    </div></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+      <div class="stat-card"><div class="stat-label">Visitors (30d)</div><div class="stat-value" id="c-visitors">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Pageviews (30d)</div><div class="stat-value" id="c-views">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Active now</div><div class="stat-value" id="c-active" style="color:var(--green)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Conversions (30d)</div><div class="stat-value" id="c-conv">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">UTM visits (30d)</div><div class="stat-value" id="c-utm">&mdash;</div></div>
+    </div>
+    <div id="site-cards"><div class="empty-state">
+      <div class="empty-icon">&#127760;</div>
+      <div class="empty-title">No sites connected yet</div>
+      <div class="empty-text">Add your first project to start tracking visitors, referrers, devices, and conversions in real time.</div>
+      <div class="empty-cta"><button class="btn gold" id="add-site-btn">&#43; Add your first site</button></div>
+    </div></div>
+  </div>
+
+  </div><!-- /panel-sites -->
+
+  <!-- ============ TAB: INFLUENCERS ============ -->
+  <div class="main-tab-panel" id="panel-influencers" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#128101; Influencers &amp; Creators</div>
+      <div class="card-sub">your outreach pipeline &mdash; nano to macro, vetted and tracked</div>
+    </div></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)" id="inf-grid">
+      <div class="stat-card"><div class="stat-label">&#127793; Nano (1K&ndash;10K)</div><div class="stat-value" id="inf-nano">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#127807; Micro (10K&ndash;100K)</div><div class="stat-value" id="inf-micro">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#127795; Macro (100K+)</div><div class="stat-value" id="inf-macro">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#127908; Podcasts</div><div class="stat-value" id="inf-podcast">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="inf-total" style="color:var(--gold)">&mdash;</div></div>
+    </div>
+    <div class="table-wrap" style="margin-top:1rem"><table>
+      <tr><th>Creator</th><th>Category</th><th>Status</th><th class="n">Followers</th></tr>
+      <tbody id="inf-rows"><tr><td colspan="4" class="empty">No influencers yet &mdash; add creators to build your outreach pipeline.</td></tr></tbody>
+    </table></div>
+  </div>
+
+  </div><!-- /panel-influencers -->
+
+  <!-- ============ TAB: SOCIAL ============ -->
+  <div class="main-tab-panel" id="panel-social" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#128248; Social Accounts</div>
+      <div class="card-sub">every connected account, follower counts in one view</div>
+    </div></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)" id="social-grid">
+      <div class="stat-card"><div class="stat-label">Connected accounts</div><div class="stat-value" id="soc-count">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Combined followers</div><div class="stat-value" id="soc-followers" style="color:var(--gold)">&mdash;</div></div>
+    </div>
+    <div class="table-wrap" style="margin-top:1rem"><table>
+      <tr><th>Platform</th><th>Handle</th><th class="n">Followers</th></tr>
+      <tbody id="social-rows"><tr><td colspan="3" class="empty">No social accounts connected yet &mdash; connect Instagram, TikTok, or YouTube on the Setup page.</td></tr></tbody>
+    </table></div>
+  </div>
+
+  </div><!-- /panel-social -->
+
   <!-- ============ TAB: IP REGISTRY ============ -->
   <div class="main-tab-panel" id="panel-ipregistry" style="display:none">
 
-  <!-- ============ IP: SUMMARY ============ -->
   <div class="card">
     <div class="card-header"><div>
-      <div class="card-title">🔒 IP Registry</div>
-      <div class="card-sub">Chain-of-custody log — every D2RM asset, timestamped and hash-fingerprinted · 22 assets logged</div>
+      <div class="card-title">&#128274; IP Registry</div>
+      <div class="card-sub">chain-of-custody log &mdash; your assets, timestamped and hash-fingerprinted</div>
     </div></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-label">Total assets</div><div class="stat-value">22</div><div style="font-size:11px;color:var(--text3)">in the registry</div></div>
-      <div class="stat-card"><div class="stat-label">Trademarks</div><div class="stat-value" style="color:var(--blue)">5</div><div style="font-size:11px;color:var(--text3)">brand names</div></div>
-      <div class="stat-card"><div class="stat-label">Copyrights</div><div class="stat-value" style="color:var(--purple)">14</div><div style="font-size:11px;color:var(--text3)">creative + code assets</div></div>
-      <div class="stat-card"><div class="stat-label">Unprotected</div><div class="stat-value" style="color:var(--red)">5</div><div style="font-size:11px;color:var(--text3)">no filing on record</div></div>
+      <div class="stat-card"><div class="stat-label">Total assets</div><div class="stat-value" id="ip-total">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Trademarks</div><div class="stat-value" id="ip-tm" style="color:var(--blue)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Copyrights</div><div class="stat-value" id="ip-cr" style="color:var(--purple)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Registered</div><div class="stat-value" id="ip-reg" style="color:var(--green)">&mdash;</div></div>
     </div>
-  </div>
-
-  <!-- ============ IP: FULL TABLE ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">📋 All Assets</div>
-      <div class="card-sub">22 entries · click a hash to copy the full SHA-256 fingerprint</div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center">
+    <div style="display:flex;gap:10px;align-items:center;margin-top:1rem;flex-wrap:wrap">
       <label style="font-size:12px;color:var(--text3)">Type:
         <select id="ip-type-filter" class="filter-select" style="margin-left:4px">
           <option value="">All types</option>
-          <option value="trademark">™ Trademark</option>
-          <option value="copyright">© Copyright</option>
-          <option value="domain">🌐 Domain</option>
-          <option value="trade-secret">🤫 Trade secret</option>
+          <option value="trademark">&#8482; Trademark</option>
+          <option value="copyright">&copy; Copyright</option>
+          <option value="patent">Patent</option>
+          <option value="trade_secret">&#129296; Trade secret</option>
+          <option value="domain">&#127760; Domain</option>
+          <option value="other">Other</option>
         </select>
       </label>
       <label style="font-size:12px;color:var(--text3)">Status:
         <select id="ip-status-filter" class="filter-select" style="margin-left:4px">
           <option value="">All statuses</option>
-          <option value="unprotected">🔴 Unprotected</option>
-          <option value="created-unregistered">🟡 Created — unregistered</option>
-          <option value="owned">🟢 Owned</option>
-          <option value="superseded">🟣 Superseded</option>
+          <option value="idea">&#128161; Idea</option>
+          <option value="created-unregistered">&#128993; Created &mdash; unregistered</option>
+          <option value="filed-pending">&#128993; Filed &mdash; pending</option>
+          <option value="registered">&#128994; Registered</option>
+          <option value="licensed">&#128196; Licensed</option>
         </select>
       </label>
       <span id="ip-count" style="font-size:12px;color:var(--text3);margin-left:auto"></span>
-    </div></div>
-    <div class="table-wrap"><table>
-      <tr><th>Asset</th><th>Type</th><th class="n">Created</th><th>Owner</th><th>Status</th><th>SHA-256</th></tr>
-      <tbody id="ip-rows"><tr data-ip-type="trademark" data-ip-status="unprotected"><td class="subj">K-Punk Angel Warriors<div style="font-size:11px;color:var(--text3)">Animated series name — committed 2026-10-05, &#x27;Working Title&#x27; dropped. 8-episode spiritual-warfare series for ages 2-13, built arou</div></td><td><span class="badge b-blue">™ Trademark</span></td><td class="n">2026-10-05<div style="font-size:11px;color:var(--text3)">memory: name decision date</div></td><td>D2RM</td><td><span class="badge b-red">🔴 Unprotected</span></td><td><button class="hash-btn" data-full="63ec48ba1b178a451158a92524a0a46284f735db5c38129eefec5564d2da372a" title="Click to copy full hash"><code>63ec48ba1b17…</code> 📋</button></td></tr>
-<tr data-ip-type="trademark" data-ip-status="unprotected"><td class="subj">Sustained<div style="font-size:11px;color:var(--text3)">Legal-AI product name — renamed from &#x27;Precedent AI&#x27; 2026-10-09 after conflict with Indian legal-AI startup theprecedent.ai. &#x27;</div></td><td><span class="badge b-blue">™ Trademark</span></td><td class="n">2026-10-09<div style="font-size:11px;color:var(--text3)">memory: rename decision date</div></td><td>D2RM (AVlink USA operating entity)</td><td><span class="badge b-red">🔴 Unprotected</span></td><td><button class="hash-btn" data-full="f2169077c7a63658693e510a9430b81223cba91c025b3f54676ab3b9b2c1194f" title="Click to copy full hash"><code>f2169077c7a6…</code> 📋</button></td></tr>
-<tr data-ip-type="trademark" data-ip-status="unprotected"><td class="subj">Armor Bearer<div style="font-size:11px;color:var(--text3)">Influencer/affiliate referral platform name — renamed from &#x27;Referee&#x27; 2026-10-08 (&#x27;one name, one brand&#x27;). 10% recurring a</div></td><td><span class="badge b-blue">™ Trademark</span></td><td class="n">2026-10-08<div style="font-size:11px;color:var(--text3)">memory: rename decision date</div></td><td>D2RM</td><td><span class="badge b-red">🔴 Unprotected</span></td><td><button class="hash-btn" data-full="c9b9ecd39131980051fd34534ae55e1e450329e710317e12c08a219d03bfda47" title="Click to copy full hash"><code>c9b9ecd39131…</code> 📋</button></td></tr>
-<tr data-ip-type="trademark" data-ip-status="unprotected"><td class="subj">FaithShield AI<div style="font-size:11px;color:var(--text3)">Flagship app name — AI Bible companion, ages 13+. Live in Apple App Store and Google Play.</div></td><td><span class="badge b-blue">™ Trademark</span></td><td class="n">2026-10-01<div style="font-size:11px;color:var(--text3)">estimated: app live before 2026-10-06 per memory</div></td><td>FaithShield (Michael 40% / Leon 40% / Hunter Raines 10%)</td><td><span class="badge b-red">🔴 Unprotected</span></td><td><button class="hash-btn" data-full="df327def889a5b8805f6392d50203e82de40e8e9b62320fc8ed314cb64788724" title="Click to copy full hash"><code>df327def889a…</code> 📋</button></td></tr>
-<tr data-ip-type="trademark" data-ip-status="unprotected"><td class="subj">D2RM<div style="font-size:11px;color:var(--text3)">Holding company brand — the FLAGSHIP per Michael 2026-10-08. Portfolio: FaithShield AI, Armor Bearer, Sustained, Angel Warriors.</div></td><td><span class="badge b-blue">™ Trademark</span></td><td class="n">2026-10-08<div style="font-size:11px;color:var(--text3)">memory: D2RM positioning date</div></td><td>D2RM (Michael 37.5% / Leon 37.5% / Hunter Raines 25%)</td><td><span class="badge b-red">🔴 Unprotected</span></td><td><button class="hash-btn" data-full="68764b14d3df0ffe8aca02031213fb531b48db202253d07a96d211343f8592f8" title="Click to copy full hash"><code>68764b14d3df…</code> 📋</button></td></tr>
-<tr data-ip-type="domain" data-ip-status="owned"><td class="subj">D2RM.com<div style="font-size:11px;color:var(--text3)">Holding-company domain, owned. Planned: @d2rm.com email for holding company / D2RM Media PR arm.</div></td><td><span class="badge b-green">🌐 Domain</span></td><td class="n">2026-10-08<div style="font-size:11px;color:var(--text3)">memory: ownership noted 2026-10-08</div></td><td>D2RM</td><td><span class="badge b-green">🟢 Owned</span></td><td>—</td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">K-Punk Angel Warriors series story/bible<div style="font-size:11px;color:var(--text3)">Kickstarter story FINAL text — series concept, 8-episode structure, reward tiers incl. $25k Immortalized Experience offer.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-06<div style="font-size:11px;color:var(--text3)">file mtime</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="63ec48ba1b178a451158a92524a0a46284f735db5c38129eefec5564d2da372a" title="Click to copy full hash"><code>63ec48ba1b17…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">K-Punk Angel Warriors character designs<div style="font-size:11px;color:var(--text3)">Consistent detailed comic-illustration character art: Janine (lead singer), Pete, Bruno, Jacob, Isaac. Janine artwork is stylized likeness o</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-05<div style="font-size:11px;color:var(--text3)">estimated: art dir active early Oct 2026</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="57a73f63ea234c4f95a53b1aca0de3343a155b68621cb64d3f36a3b4991242f1" title="Click to copy full hash"><code>57a73f63ea23…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">K-Punk restyled music (&#x27;Need You More&#x27; + catalog)<div style="font-size:11px;color:var(--text3)">Peter 118 songs human-composed/recorded in studio before AI K-Punk restyling. &#x27;Need You More&#x27; re-releases as first K-Punk single.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-04<div style="font-size:11px;color:var(--text3)">file mtime</div></td><td>Music: Peter 118 / Madison Line Records; K-Punk restylings: D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="41a46609e61d4dbca8cbbd65efd7e7aa4f2a651cb6b5f78c2d279402f0d59ea4" title="Click to copy full hash"><code>41a46609e61d…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">K-Punk full-band performance video (V-final)<div style="font-size:11px;color:var(--text3)">AI-generated performance video (music is human-recorded; AI made the video, not the music). Multiple version iterations V2-V17.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-10<div style="font-size:11px;color:var(--text3)">estimated: V10 lip-sync final 2026-10-10</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="3fe0f72812cab3a90e33c0431474f08d4307c227c09be66b372a1fe2a06cc66c" title="Click to copy full hash"><code>3fe0f72812ca…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">K-Punk Angel Warriors dossier PDF<div style="font-size:11px;color:var(--text3)">Downloadable dossier delivered via k-poppeter118.netlify.app email signup.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-08<div style="font-size:11px;color:var(--text3)">estimated: site rebuilt 2026-10-08</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="6c6a1346b72fe7fba89d9600d9bbe8897b23a448c42232c799aa6e830a38fa07" title="Click to copy full hash"><code>6c6a1346b72f…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">Armor Bearer localized landing pages (8 languages)<div style="font-size:11px;color:var(--text3)">Conversion landing pages: English, Spanish, Portuguese, French, German, Romanian, Tagalog, Indonesian. Dark theme, US-only disclosure on int</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-10<div style="font-size:11px;color:var(--text3)">memory: 7 locales deployed 2026-10-10; fee fix redeployed 2026-10-11</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="6f9b1027e4b68c17c85168c5ad354b1d886bef64b5015b04a82e37a744ffe53c" title="Click to copy full hash"><code>6f9b1027e4b6…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">Armor Bearer platform codebase (Flask)<div style="font-size:11px;color:var(--text3)">Affiliate platform Phase 1: signup, referral tracking, dashboard, real auth. Production: muse4.pythonanywhere.com.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-09<div style="font-size:11px;color:var(--text3)">memory: Phase 1 built/tested 2026-10-09</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="c9b9ecd39131980051fd34534ae55e1e450329e710317e12c08a219d03bfda47" title="Click to copy full hash"><code>c9b9ecd39131…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">Referee/Armor Bearer Node backend (legacy)<div style="font-size:11px;color:var(--text3)">Legacy Node backend from &#x27;Referee&#x27; era, pre-rename. Superseded by Flask platform but retained.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-08<div style="font-size:11px;color:var(--text3)">estimated: pre-rename codebase</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="448bfc04bde87e9fd6353c5ea0151caa41456c61f410910606f60c4fec0d3b0a" title="Click to copy full hash"><code>448bfc04bde8…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">FaithShield funnel website<div style="font-size:11px;color:var(--text3)">Localized conversion funnel site (8 languages) driving app installs.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-07<div style="font-size:11px;color:var(--text3)">estimated: funnel active early Oct</div></td><td>FaithShield</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="df327def889a5b8805f6392d50203e82de40e8e9b62320fc8ed314cb64788724" title="Click to copy full hash"><code>df327def889a…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">Armor Bearer nano outreach email templates (5 languages)<div style="font-size:11px;color:var(--text3)">Bulletproof HTML email templates: English, Portuguese, Spanish, French, German. Dark theme, table-based, mobile-first. Include Michael&#x27;</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-11<div style="font-size:11px;color:var(--text3)">memory: built 2026-10-11, copy added same day</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="6e5a12605b2be943880abc0dcbacd7b71a962f756bc6250c85a22b476e192271" title="Click to copy full hash"><code>6e5a12605b2b…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">D2RM live analytics dashboard builder<div style="font-size:11px;color:var(--text3)">Python builder generating d2rm-live-dashboard.html — 7 tabs (Overview, Email, Warm Leads, Sites, Influencers, Social, Conversions), dark the</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-11<div style="font-size:11px;color:var(--text3)">file mtime</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="4024f673479c895320ced471284f31a32b70b8a9ae41a806c991862a84d99900" title="Click to copy full hash"><code>4024f673479c…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">D2RM media/PR page<div style="font-size:11px;color:var(--text3)">D2RM Media PR arm page.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-09<div style="font-size:11px;color:var(--text3)">estimated</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="68764b14d3df0ffe8aca02031213fb531b48db202253d07a96d211343f8592f8" title="Click to copy full hash"><code>68764b14d3df…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="created-unregistered"><td class="subj">Sustained v2 application codebase<div style="font-size:11px;color:var(--text3)">Retrieval-only legal AI: Black&#x27;s Law (2nd ed), UCC, Constitution, CourtListener case law, US Code, CFR, state statutes. 26/26 tests gre</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-09<div style="font-size:11px;color:var(--text3)">memory: rebrand build 2026-10-09</div></td><td>D2RM (AVlink USA operating entity)</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="f2169077c7a63658693e510a9430b81223cba91c025b3f54676ab3b9b2c1194f" title="Click to copy full hash"><code>f2169077c7a6…</code> 📋</button></td></tr>
-<tr data-ip-type="copyright" data-ip-status="superseded"><td class="subj">Precedent AI product brief (superseded)<div style="font-size:11px;color:var(--text3)">Original product brief under the abandoned &#x27;Precedent AI&#x27; name. Retained as prior-art evidence of the rename.</div></td><td><span class="badge b-purple">© Copyright</span></td><td class="n">2026-10-08<div style="font-size:11px;color:var(--text3)">file mtime</div></td><td>D2RM</td><td><span class="badge b-purple">🟣 Superseded</span></td><td><button class="hash-btn" data-full="95f9785e0ca4ddb06818f8f65e479aa69e1d2f661b2022fa7ddf1f31bb9097bb" title="Click to copy full hash"><code>95f9785e0ca4…</code> 📋</button></td></tr>
-<tr data-ip-type="trade-secret" data-ip-status="created-unregistered"><td class="subj">K-Punk Angel Warriors IP clearance brief<div style="font-size:11px;color:var(--text3)">Client-prepared trademark intake brief for IP counsel (2026-10-05): marks to clear, suggested classes IC 009/016/025/041, knockout results, </div></td><td><span class="badge b-gold">🤫 Trade secret</span></td><td class="n">2026-10-05<div style="font-size:11px;color:var(--text3)">file content date</div></td><td>D2RM (prepared for counsel)</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="37565317a60ddb502d74d761a4ee8699535c4d11201f92d58043eec3419fff21" title="Click to copy full hash"><code>37565317a60d…</code> 📋</button></td></tr>
-<tr data-ip-type="trade-secret" data-ip-status="created-unregistered"><td class="subj">Armor Bearer rebrand package (Referee→Armor Bearer)<div style="font-size:11px;color:var(--text3)">Deploy archive capturing the 2026-10-08 rename from Referee to Armor Bearer — chain-of-custody for the brand transition.</div></td><td><span class="badge b-gold">🤫 Trade secret</span></td><td class="n">2026-10-09<div style="font-size:11px;color:var(--text3)">file mtime</div></td><td>D2RM</td><td><span class="badge b-gold">🟡 Created — unregistered</span></td><td><button class="hash-btn" data-full="f5ebc2ebc66c42d4dc0923f15b249eb542fede8d821aeb64078faf8c9bd14e17" title="Click to copy full hash"><code>f5ebc2ebc66c…</code> 📋</button></td></tr></tbody>
+    </div>
+    <div class="table-wrap" style="margin-top:0.75rem"><table>
+      <tr><th>Asset</th><th>Type</th><th class="n">Created</th><th>Status</th></tr>
+      <tbody id="ip-rows"><tr><td colspan="4" class="empty">No IP assets logged yet &mdash; register your brand names, content, and domains here for timestamped proof of ownership.</td></tr></tbody>
     </table></div>
     <div style="font-size:12px;color:var(--text3);margin-top:8px">
-      Chain-of-custody log — not legal advice. No entry implies a filing unless stated.
+      Chain-of-custody log &mdash; not legal advice. No entry implies a filing unless stated.
     </div>
   </div>
 
   </div><!-- /panel-ipregistry -->
-
-  <!-- ============ TAB: SOCIAL ============ -->
-  <div class="main-tab-panel" id="panel-social" style="display:none">
-
-  <!-- ============ SECTION 4: INSTAGRAM ============ -->
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">📸 Instagram</div>
-      <div class="card-sub">Follower growth · post performance · as of Oct 12, 2026 10:05 PM PT</div>
-    </div></div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">📸</span></div><div class="stat-label">@faithshield.ai followers</div><div class="stat-value">1</div><div class="stat-change">3 posts</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">📸</span></div><div class="stat-label">@holospike1 followers</div><div class="stat-value">71</div><div class="stat-change">1 posts</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--purple-bg)">📸</span></div><div class="stat-label">@faithshieldai1 followers</div><div class="stat-value">6</div><div class="stat-change">3 posts</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--blue-bg)">👥</span></div><div class="stat-label">Total IG followers</div><div class="stat-value">78</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon" style="background:var(--green-bg)">👁️</span></div><div class="stat-label">Accounts reached (7d)</div><div class="stat-value">9</div><div class="stat-change">@holospike1 · 21 profile visits</div></div>
-    </div>
-    <div class="cols" style="margin-top:1rem">
-      <div><div class="card-header"><div class="card-title">Recent posts</div><div class="card-sub">latest across all accounts</div></div>
-        <div class="table-wrap"><table><tr><th>Post</th><th class="n">Likes</th><th class="n">Comments</th><th></th></tr><tr><td class="subj">K-Punk Angel Warriors is coming. The faith-based answer for kids. Link…<div style="font-size:11px;color:var(--text3)">@faithshield.ai · 2026-10-12 · video</div></td><td class="n">1</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/DeZjiuEDt12/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr>
-<tr><td class="subj">The Sustained math: $19.90/month per referral. 100 referrals = $1,990/…<div style="font-size:11px;color:var(--text3)">@faithshield.ai · 2026-10-10 · video</div></td><td class="n">2</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/DeVWUERCYZg/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr>
-<tr><td class="subj">Be a part of the story with Peter 118&#x27;s K-Pop Angel Warriors and help …<div style="font-size:11px;color:var(--text3)">@faithshield.ai · 2026-09-27 · video</div></td><td class="n">0</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/DdzdAynKgH2/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr>
-<tr><td class="subj">Charting UK band Peter118 goes K-Pop Punk and is the music behind K-Po…<div style="font-size:11px;color:var(--text3)">@holospike1 · 2026-09-29 · video</div></td><td class="n">0</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/Dd4ojYVSqxj/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr>
-<tr><td class="subj">Become an Armor Bearer and earn more than any other app promotion. 10%…<div style="font-size:11px;color:var(--text3)">@faithshieldai1 · 2026-10-10 · video</div></td><td class="n">0</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/DeVxqpWCcaP/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr>
-<tr><td class="subj">Most apps pay influencers once. We pay 10% every month, for life — plu…<div style="font-size:11px;color:var(--text3)">@faithshieldai1 · 2026-10-10 · video</div></td><td class="n">0</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/DeVxlapCeTs/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr>
-<tr><td class="subj">The Sustained math: $19.90/month per referral. 100 referrals = $1,990/…<div style="font-size:11px;color:var(--text3)">@faithshieldai1 · 2026-10-10 · video</div></td><td class="n">0</td><td class="n">0</td><td><a class="btn" href="https://www.instagram.com/reel/DeVxduaiVU2/" target="_blank" rel="noopener" style="padding:4px 10px;font-size:12px">View →</a></td></tr></table></div></div>
-      <div><div class="card-header"><div class="card-title">Account links</div><div class="card-sub">open profiles</div></div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a class="btn" href="https://www.instagram.com/_u/faithshield.ai" target="_blank" rel="noopener">@faithshield.ai →</a>
-          <a class="btn" href="https://www.instagram.com/_u/holospike1" target="_blank" rel="noopener">@holospike1 →</a>
-          <a class="btn" href="https://www.instagram.com/_u/faithshieldai1" target="_blank" rel="noopener">@faithshieldai1 →</a>
-        </div>
-        <div style="font-size:12px;color:var(--text3);margin-top:8px">Note: @faithshield.ai is a personal account — Instagram only returns insights for professional accounts, so reach data covers @holospike1.</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><div>
-      <div class="card-title">📎 How to tag your links — all sites</div>
-      <div class="card-sub">Facebook/TikTok strip the referrer down to just the domain, so UTM tags on your links are the only way to tell which post sent the visitors.</div>
-    </div></div>
-    <div class="table-wrap"><table>
-      <tr><th>Site</th><th>Example tagged link</th></tr>
-      <tr><td>🎸 K-Punk</td><td><code style="color:var(--blue)">https://k-poppeter118.netlify.app/?utm_source=facebook&amp;utm_campaign=lyric_video_oct9</code></td></tr>
-      <tr><td>🛡️ FaithShield</td><td><code style="color:var(--blue)">https://faithshieldai.netlify.app/?utm_source=tiktok&amp;utm_campaign=short1</code></td></tr>
-      <tr><td>🏟️ Armor Bearer</td><td><code style="color:var(--blue)">https://armor-bearer.netlify.app/?utm_source=youtube&amp;utm_campaign=affiliate_pitch</code></td></tr>
-    </table></div>
-  </div>
-  </div><!-- /panel-social -->
 </div>
 
+<footer style="margin-top:1rem;color:var(--text3);font-size:12px;text-align:center">
+  Manna &middot; Big agency data, little guy money.
+</footer>
 <script>
 var API_BASE = 'https://muse4.pythonanywhere.com';
-var SITES = [
-  {key:'kpunk', emoji:'🎸', name:'K-Punk Angel Warriors', url:'https://k-poppeter118.netlify.app/analytics/'},
-  {key:'faithshield', emoji:'🛡️', name:'FaithShield AI', url:'https://faithshieldai.netlify.app/analytics/'},
-  {key:'referee', emoji:'🏟️', name:'Armor Bearer', url:'https://armor-bearer.netlify.app/analytics/'},
-  {key:'sustained', emoji:'⚖️', name:'Sustained', url:'https://muse4.pythonanywhere.com/sustained/'}
-];
-// Email opens per site (baked in at build time). All current email outreach is
-// FaithShield-related, so FaithShield shows total opens; K-Punk and Armor Bearer
-// show — until they have dedicated email campaigns.
-var SITE_OPENS = {"kpunk": null, "faithshield": 399, "referee": null, "sustained": null};
-var TOTAL_OPENS = 399;
-var OPENS_CHG_HTML = ``;
-function num(v){ return (v===null||v===undefined) ? '—' : Number(v).toLocaleString(); }
+var SITES = [];
+var EMAIL_WINDOWS = {};
+
+/* ---------- helpers ---------- */
+function num(v){ return (v===null||v===undefined) ? '\u2014' : Number(v).toLocaleString(); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function apiH(){ return { 'X-Requested-With': 'XMLHttpRequest' }; }
 function chg(p){
   if (p===null||p===undefined||isNaN(p)) return '';
   var cls = p > 0 ? 'chg-up' : (p < 0 ? 'chg-down' : 'chg-flat');
-  var arrow = p > 0 ? '▲' : (p < 0 ? '▼' : '●');
-  return '<div class="stat-change '+cls+'">'+arrow+' '+Math.abs(p).toFixed(1)+'% vs prior 30d</div>';
+  var arrow = p > 0 ? '\u25B2' : (p < 0 ? '\u25BC' : '\u25CF');
+  return '<div class="stat-change '+cls+'">'+arrow+' '+Math.abs(p).toFixed(1)+'% vs prior period</div>';
 }
 function topRows(items, n){
   n = n || 6;
-  var rows = '';
-  var count = 0;
+  var rows = '', count = 0;
   (items||[]).forEach(function(it){
     if (count >= n) return;
-    var label = it.label || '—';
-    if (!label.trim()) return;
-    rows += '<tr><td class="subj">'+label.replace(/</g,'&lt;')+'</td><td class="n">'+num(it.count)+'</td></tr>';
+    var label = it.label || it.name || '\u2014';
+    if (!String(label).trim()) return;
+    rows += '<tr><td class="subj">'+esc(label)+'</td><td class="n">'+num(it.count != null ? it.count : it.value)+'</td></tr>';
     count++;
   });
   return rows || '<tr><td colspan="2" class="empty">No data yet</td></tr>';
 }
+
+/* ---------- main tab navigation ---------- */
+function setMainTab(tab){
+  document.querySelectorAll('.main-tab').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-tab')===tab);
+  });
+  document.querySelectorAll('.main-tab-panel').forEach(function(p){
+    p.style.display = (p.id === 'panel-'+tab) ? '' : 'none';
+  });
+  try { localStorage.setItem('manna_main_tab', tab); } catch(e) {}
+}
+document.querySelectorAll('.main-tab').forEach(function(b){
+  b.addEventListener('click', function(){ setMainTab(b.getAttribute('data-tab')); });
+});
+document.querySelectorAll('[data-goto-tab]').forEach(function(el){
+  el.addEventListener('click', function(e){ e.preventDefault(); setMainTab(el.getAttribute('data-goto-tab')); window.scrollTo({top:0, behavior:'smooth'}); });
+});
+(function(){
+  var saved = 'overview';
+  try { saved = localStorage.getItem('manna_main_tab') || 'overview'; } catch(e) {}
+  if (!document.getElementById('panel-'+saved)) saved = 'overview';
+  setMainTab(saved);
+})();
+
+/* ---------- AI Instructor ---------- */
+(function(){
+  var msgs = document.getElementById('instructor-msgs');
+  var form = document.getElementById('instructor-form');
+  var input = document.getElementById('instructor-input');
+  var history = [];
+  function addMsg(text, cls){
+    var d = document.createElement('div');
+    d.className = 'inst-msg ' + cls;
+    d.textContent = text;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+  function renderSuggestCard(){
+    var card = document.createElement('div');
+    card.className = 'suggest-card';
+    card.innerHTML =
+      '<div style="font-weight:700;color:#f0c876;margin-bottom:2px">\u2728 Here\u2019s your starting plan:</div>'
+      + '<div class="suggest-step"><div class="suggest-num">1</div><div><strong>Add your first project / site</strong><div style="font-size:13px;color:var(--text2)">Connect a site to start tracking visitors in real time.</div></div></div>'
+      + '<div class="suggest-step"><div class="suggest-num">2</div><div><strong>Set up lead collection</strong><div style="font-size:13px;color:var(--text2)">Build your list \u2014 your trial includes dashboard + collection.</div></div></div>'
+      + '<div class="suggest-step"><div class="suggest-num">3</div><div><strong>I\u2019ll guide each step</strong><div style="font-size:13px;color:var(--text2)">Ask me anything as you go \u2014 I\u2019m your instructor.</div></div></div>'
+      + '<div class="suggest-actions">'
+      + '<button class="btn gold" data-goto-tab="sites">\u{1F310} Add my site \u2014 start step 1</button>'
+      + '<a class="btn" href="/leads">\u{1F4E5} Collect leads \u2014 step 2</a>'
+      + '</div>';
+    msgs.appendChild(card);
+    msgs.scrollTop = msgs.scrollHeight;
+    card.querySelectorAll('[data-goto-tab]').forEach(function(b){
+      b.addEventListener('click', function(){ setMainTab(b.getAttribute('data-goto-tab')); window.scrollTo({top:0, behavior:'smooth'}); });
+    });
+  }
+  function send(text){
+    text = (text||'').trim();
+    if (!text) return;
+    addMsg(text, 'user');
+    var typing = addMsg('thinking\u2026', 'bot typing');
+    fetch('/api/assistant/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ message: text, history: history.slice(-10) })
+    }).then(function(r){ return r.json(); }).then(function(j){
+      typing.remove();
+      if (j && j.ok) {
+        addMsg(j.reply, 'bot');
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: j.reply });
+      } else {
+        addMsg('Sorry \u2014 I hit an error. Try again in a moment.', 'bot');
+      }
+    }).catch(function(){
+      typing.remove();
+      addMsg('Network error. Check your connection and try again.', 'bot');
+    });
+  }
+  document.querySelectorAll('#instructor-chips .chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      if (chip.hasAttribute('data-suggest')) {
+        addMsg('\u2728 Suggest a start', 'user');
+        renderSuggestCard();
+        history.push({ role: 'user', content: 'Suggest a start' });
+        history.push({ role: 'assistant', content: 'Provided the 3-step starting plan.' });
+      } else {
+        send(chip.getAttribute('data-q'));
+      }
+    });
+  });
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var t = input.value;
+    input.value = '';
+    send(t);
+  });
+  /* Opening message — Michael's words */
+  addMsg('What do you want to do first, or do you want me to suggest?', 'bot');
+})();
+
+/* ---------- overview (key numbers) ---------- */
+(function(){
+  function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+  fetch('/api/overview', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    if (!j || !j.ok) return;
+    var e = j.email || {}, c = j.counts || {};
+    set('ov-sent', num(e.sent)); set('ov-sent-sub', e.sent ? 'emails tracked' : 'no sends yet');
+    set('ov-opens', num(e.opens)); set('ov-open-rate', e.openRate != null ? e.openRate + '% open rate' : 'open rate');
+    set('ov-clicks', num(e.clicks)); set('ov-click-rate', e.clickRate != null ? e.clickRate + '% click rate' : 'click rate');
+    set('ov-warm', num(e.warmTotal));
+    set('ov-influencers', num(c.influencers));
+    set('ov-sites', num(c.sites));
+    set('ov-ip', num(c.ipAssets));
+    set('ov-social', num(c.socialAccounts));
+    /* getting-started checklist */
+    if ((c.sites||0) > 0) document.getElementById('gs-site').innerHTML = '&#10003;';
+    if ((j.leadsCount||0) > 0) document.getElementById('gs-leads').innerHTML = '&#10003;';
+    if ((e.sent||0) > 0) document.getElementById('gs-email').innerHTML = '&#10003;';
+    if ((j.goals||[]).length > 0) document.getElementById('gs-goal').innerHTML = '&#10003;';
+  }).catch(function(){});
+})();
+
+/* ---------- sites (live analytics) ---------- */
 function loadSites(){
+  var cardsEl = document.getElementById('site-cards');
+  if (!SITES.length) return; /* empty state already in HTML */
   var promises = SITES.map(function(s){
     return Promise.all([
-      fetch(API_BASE + '/api/stats?site='+s.key+'&days=30').then(function(r){return r.json();}).catch(function(){return null;}),
-      fetch(API_BASE + '/api/realtime?site='+s.key).then(function(r){return r.json();}).catch(function(){return null;}),
-      fetch(API_BASE + '/api/breakdown?site='+s.key+'&days=30').then(function(r){return r.json();}).catch(function(){return null;})
+      fetch(API_BASE + '/api/sites/' + s.key + '/stats?days=30', { headers: apiH() }).then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch(API_BASE + '/api/sites/' + s.key + '/realtime', { headers: apiH() }).then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch(API_BASE + '/api/sites/' + s.key + '/breakdown?days=30', { headers: apiH() }).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){ return {cfg:s, stats:res[0], rt:res[1], bd:res[2]}; });
   });
   Promise.all(promises).then(function(results){
@@ -753,66 +611,44 @@ function loadSites(){
       var utm = ((r.bd && r.bd.utm_sources)||[]).reduce(function(a,e){return a+(e.count||0);},0);
       tv+=v; tp+=vw; ta+=active; tc+=conv; tu+=utm;
       var br = (st.bounce_rate||{}).value, av = (st.avg_duration_s||{}).value;
-      var dur = av ? Math.floor(av/60)+'m '+Math.floor(av%60)+'s' : '—';
-      var live = active ? '<span class="badge b-green">● '+active+' active now</span>' : '<span class="badge b-purple">no one online</span>';
+      var dur = av ? Math.floor(av/60)+'m '+Math.floor(av%60)+'s' : '\u2014';
+      var live = active ? '<span class="badge b-green">\u25CF '+active+' active now</span>' : '<span class="badge b-purple">no one online</span>';
       var bd = r.bd || {};
-      var opens = SITE_OPENS[s.key];
-      var opensCard = '<div class="stat-card"><div class="stat-label">📬 Opens</div><div class="stat-value" style="color:var(--green)">'+num(opens)+'</div>'+(opens!==null&&opens!==undefined?OPENS_CHG_HTML:'')+'</div>';
       cardsHtml += '<div class="card" style="margin-top:1rem"><div class="card-header"><div>'
-        + '<div class="card-title">'+s.emoji+' '+s.name+'</div>'
-        + '<div class="card-sub">last 30 days · live from D2RM tracker API</div></div>'
-        + '<div style="display:flex;gap:8px;align-items:center">'+live
-        + '<a class="btn" href="'+s.url+'" target="_blank" rel="noopener">Full analytics →</a></div></div>'
-        + '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr)">'
+        + '<div class="card-title">'+esc(s.emoji||'\u{1F310}')+' '+esc(s.name)+'</div>'
+        + '<div class="card-sub">last 30 days \u00B7 live from tracker</div></div>'
+        + '<div style="display:flex;gap:8px;align-items:center">'+live + '</div></div>'
+        + '<div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">'
         + '<div class="stat-card"><div class="stat-label">Visitors</div><div class="stat-value">'+num(v)+'</div>'+chg((st.visitors||{}).change_pct)+'</div>'
-        + opensCard
         + '<div class="stat-card"><div class="stat-label">Pageviews</div><div class="stat-value">'+num(vw)+'</div>'+chg((st.views||{}).change_pct)+'</div>'
-        + '<div class="stat-card"><div class="stat-label">Bounce rate</div><div class="stat-value">'+(br===null||br===undefined?'—':br+'%')+'</div>'+chg((st.bounce_rate||{}).change_pct)+'</div>'
-        + '<div class="stat-card"><div class="stat-label">Avg. duration</div><div class="stat-value">'+dur+'</div>'+chg((st.avg_duration_s||{}).change_pct)+'</div>'
+        + '<div class="stat-card"><div class="stat-label">Bounce rate</div><div class="stat-value">'+(br===null||br===undefined?'\u2014':br+'%')+'</div></div>'
+        + '<div class="stat-card"><div class="stat-label">Avg. duration</div><div class="stat-value">'+dur+'</div></div>'
         + '<div class="stat-card"><div class="stat-label">Conversions</div><div class="stat-value">'+num(conv)+'</div></div>'
         + '</div><div class="cols" style="margin-top:1rem">'
         + '<div><div class="card-header"><div class="card-title">Countries</div></div><div class="table-wrap"><table><tr><th>Country</th><th class="n">Visitors</th></tr>'+topRows(bd.countries)+'</table></div></div>'
         + '<div><div class="card-header"><div class="card-title">Referrers</div></div><div class="table-wrap"><table><tr><th>Referrer</th><th class="n">Count</th></tr>'+topRows(bd.referrers)+'</table></div></div>'
-        + '</div><div class="cols" style="margin-top:1rem">'
-        + '<div><div class="card-header"><div class="card-title">🔖 UTM sources</div></div><div class="table-wrap"><table><tr><th>Source</th><th class="n">Visitors</th></tr>'+topRows(bd.utm_sources)+'</table></div></div>'
-        + '<div><div class="card-header"><div class="card-title">🏷️ UTM campaigns</div></div><div class="table-wrap"><table><tr><th>Campaign</th><th class="n">Visitors</th></tr>'+topRows(bd.utm_campaigns)+'</table></div></div>'
-        + '</div><div class="cols" style="margin-top:1rem">'
-        + '<div><div class="card-header"><div class="card-title">Devices</div></div><div class="table-wrap"><table><tr><th>Device</th><th class="n">Count</th></tr>'+topRows(bd.devices)+'</table></div></div>'
-        + '<div><div class="card-header"><div class="card-title">Conversion events</div></div><div class="table-wrap"><table><tr><th>Event</th><th class="n">Count</th></tr>'+topRows(bd.events)+'</table></div></div>'
         + '</div></div>';
     });
-    document.getElementById('c-visitors').textContent = num(tv);
-    document.getElementById('c-views').textContent = num(tp);
-    document.getElementById('c-active').textContent = num(ta);
-    document.getElementById('c-conv').textContent = num(tc);
-    document.getElementById('c-utm').textContent = num(tu);
-    // Overview tab live stats
-    var _ov = function(id, v){ var el = document.getElementById(id); if (el) el.textContent = num(v); };
-    _ov('ov-visitors', tv);
-    _ov('ov-active', ta);
-    document.getElementById('site-cards').innerHTML = cardsHtml;
+    var set = function(id, v){ var el = document.getElementById(id); if (el) el.textContent = num(v); };
+    set('c-visitors', tv); set('c-views', tp); set('c-active', ta); set('c-conv', tc); set('c-utm', tu);
+    cardsEl.innerHTML = cardsHtml;
     var now = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
-    document.getElementById('refresh-note').textContent = 'last refreshed ' + now + ' PT';
+    var rn = document.getElementById('refresh-note');
+    if (rn) rn.textContent = 'last refreshed ' + now + ' PT';
   });
 }
-var EMAIL_WINDOWS = {"24h": {"kit_sent": 127, "kit_opens": 47, "kit_clicks": 0, "kit_unsub": 0, "ml_sent": 0, "ml_opens": 0, "ml_clicks": 0, "ml_unsub": 0, "ml_bounce": 0, "sent": 127, "opens": 47, "clicks": 0, "unsub": 0, "open_rate": 37.0, "click_rate": 0.0, "optout_rate": 0.0, "kit_optout_rate": 0.0, "ml_optout_rate": 0, "warm": {"total": 0, "by_lang": {}}, "label": "24 hours"}, "7d": {"kit_sent": 1519, "kit_opens": 326, "kit_clicks": 33, "kit_unsub": 2, "ml_sent": 249, "ml_opens": 73, "ml_clicks": 2, "ml_unsub": 1, "ml_bounce": 47, "sent": 1768, "opens": 399, "clicks": 35, "unsub": 3, "open_rate": 22.6, "click_rate": 2.0, "optout_rate": 0.17, "kit_optout_rate": 0.13, "ml_optout_rate": 0.4, "warm": {"total": 19, "by_lang": {"english": 17, "french": 1, "german": 1}}, "label": "7 days"}, "30d": {"kit_sent": 1519, "kit_opens": 326, "kit_clicks": 33, "kit_unsub": 2, "ml_sent": 249, "ml_opens": 73, "ml_clicks": 2, "ml_unsub": 1, "ml_bounce": 47, "sent": 1768, "opens": 399, "clicks": 35, "unsub": 3, "open_rate": 22.6, "click_rate": 2.0, "optout_rate": 0.17, "kit_optout_rate": 0.13, "ml_optout_rate": 0.4, "warm": {"total": 19, "by_lang": {"english": 17, "french": 1, "german": 1}}, "label": "30 days"}, "all": {"kit_sent": 1519, "kit_opens": 326, "kit_clicks": 33, "kit_unsub": 2, "ml_sent": 249, "ml_opens": 73, "ml_clicks": 2, "ml_unsub": 1, "ml_bounce": 47, "sent": 1768, "opens": 399, "clicks": 35, "unsub": 3, "open_rate": 22.6, "click_rate": 2.0, "optout_rate": 0.17, "kit_optout_rate": 0.13, "ml_optout_rate": 0.4, "warm": {"total": 19, "by_lang": {"english": 17, "french": 1, "german": 1}}, "label": "all time"}};
-var WARM_LANG_FLAGS = {"english":"🇺🇸 English","portuguese":"🇧🇷 Portuguese","spanish":"🇪🇸 Spanish","french":"🇫🇷 French","german":"🇩🇪 German","tagalog":"🇵🇭 Tagalog","unknown":"❓ Unknown"};
-function wEscHtml(s){ return String(s==null?"":s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function wFmtInt(v){ return (v===null||v===undefined) ? '—' : Number(v).toLocaleString('en-US'); }
-function wOptoutBadge(rate){
-  if (rate < 0.1) return '<span class="badge b-green">exceptionally low</span>';
-  if (rate <= 0.5) return '<span class="badge b-green">within industry range ✓</span>';
-  return '<span class="badge b-red">above industry average</span>';
-}
+
+/* ---------- email windows ---------- */
+function wFmtInt(v){ return (v===null||v===undefined) ? '\u2014' : Number(v).toLocaleString('en-US'); }
 function wWarmRowsHtml(warm){
+  warm = warm || {};
   var total = warm.total || 0, byLang = warm.by_lang || {};
-  if (!total) return '<tr><td class="subj" style="color:var(--text3)">No warm clickers in this window</td><td class="n">—</td><td class="n">—</td></tr>';
+  if (!total) return '<tr><td colspan="3" class="empty">No warm clickers yet \u2014 they appear once subscribers start clicking your links.</td></tr>';
   var langs = Object.keys(byLang).sort(function(a,b){ return byLang[b]-byLang[a]; });
   var rows = '';
   langs.forEach(function(lang){
     var c = byLang[lang];
-    var label = WARM_LANG_FLAGS[lang.toLowerCase()] || wEscHtml(lang.charAt(0).toUpperCase()+lang.slice(1));
-    rows += '<tr><td class="subj">'+label+'</td>'
+    rows += '<tr><td class="subj">'+esc(lang)+'</td>'
       + '<td class="n" style="color:var(--gold);font-weight:700">'+wFmtInt(c)+'</td>'
       + '<td class="n">'+(c/total*100).toFixed(1)+'%</td></tr>';
   });
@@ -830,113 +666,159 @@ function setRange(r){
   set('w-open-rate', Number(w.open_rate).toFixed(1)+'%');
   set('w-clicks', wFmtInt(w.clicks));
   set('w-click-rate', Number(w.click_rate).toFixed(1)+'%');
-  set('w-bounces', wFmtInt(w.ml_bounce));
   set('w-optout-rate', Number(w.optout_rate).toFixed(2)+'%');
   set('w-optout-detail', wFmtInt(w.unsub)+' opt-outs of '+wFmtInt(w.sent)+' sent');
-  set('w-kit-optout', Number(w.kit_optout_rate).toFixed(2)+'%');
-  set('w-kit-optout-detail', wFmtInt(w.kit_unsub)+' of '+wFmtInt(w.kit_sent)+' sent');
-  set('w-ml-optout', Number(w.ml_optout_rate).toFixed(2)+'%');
-  set('w-ml-optout-detail', wFmtInt(w.ml_unsub)+' of '+wFmtInt(w.ml_sent)+' sent');
-  var badge = document.getElementById('w-optout-badge');
-  if (badge) badge.innerHTML = wOptoutBadge(Number(w.optout_rate));
+  set('w-range-sub', 'sends \u00B7 opens \u00B7 clicks \u00B7 last ' + (w.label || r));
+  var empty = document.getElementById('w-empty');
+  if (empty) empty.style.display = (!w.sent) ? '' : 'none';
   var wr = document.getElementById('w-warm-rows');
   if (wr) wr.innerHTML = wWarmRowsHtml(w.warm || {});
-  set('w-warm-sub', 'Subscribers who actually clicked a link — hottest retargeting leads · last '+w.label+' · tagged in Kit as warm-clickers');
+  set('w-warm-sub', 'Subscribers who actually clicked a link \u2014 your hottest retargeting leads \u00B7 last '+(w.label||r));
 }
 document.querySelectorAll('.range-tab').forEach(function(b){
   b.addEventListener('click', function(){ setRange(b.getAttribute('data-range')); });
 });
-// 🗂️ Main tab navigation — persists selection in localStorage
-function setMainTab(tab){
-  document.querySelectorAll('.main-tab').forEach(function(b){
-    b.classList.toggle('active', b.getAttribute('data-tab')===tab);
-  });
-  document.querySelectorAll('.main-tab-panel').forEach(function(p){
-    p.style.display = (p.id === 'panel-'+tab) ? '' : 'none';
-  });
-  try { localStorage.setItem('d2rm_main_tab', tab); } catch(e) {}
-}
-document.querySelectorAll('.main-tab').forEach(function(b){
-  b.addEventListener('click', function(){ setMainTab(b.getAttribute('data-tab')); });
-});
-// Restore last-selected tab on load (default: overview)
+
+/* ---------- campaigns ---------- */
 (function(){
-  var saved = 'overview';
-  try { saved = localStorage.getItem('d2rm_main_tab') || 'overview'; } catch(e) {}
-  if (!document.getElementById('panel-'+saved)) saved = 'overview';
-  setMainTab(saved);
+  fetch('/api/email/campaigns?limit=50', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var rows = (j && j.ok && j.campaigns) || [];
+    var tb = document.getElementById('campaign-rows');
+    if (!tb) return;
+    if (!rows.length) return; /* empty state already in HTML */
+    tb.innerHTML = rows.map(function(c){
+      return '<tr><td class="subj">'+esc(c.name)+'</td><td>'+esc(c.provider||'\u2014')+'</td>'
+        + '<td class="n">'+num(c.sent)+'</td><td class="n">'+num(c.opens)+'</td><td class="n">'+num(c.clicks)+'</td></tr>';
+    }).join('');
+  }).catch(function(){});
 })();
-// ✅ Conversions tab: live armor_bearer_signup count from the tracker (best-effort).
-// Fills the "Live tracker signups" card once the /api/visits endpoint is deployed.
+
+/* ---------- funnels ---------- */
 (function(){
-  var el = document.getElementById('conv-live-signups');
-  if (!el) return;
-  try {
-    var base = (typeof API_BASE !== 'undefined' && API_BASE) || 'https://muse4.pythonanywhere.com';
-    var ctl = new AbortController();
-    var to = setTimeout(function(){ try { ctl.abort(); } catch(e) {} }, 7000);
-    fetch(base + '/api/visits?site=referee&limit=500&days=90', {signal: ctl.signal})
-      .then(function(r){ clearTimeout(to); return r.json(); })
-      .then(function(j){
-        if (!j || !j.ok || !j.visits) { el.textContent = '0'; return; }
-        var n = 0, seen = {};
-        j.visits.forEach(function(v){
-          if ((v.events || []).indexOf('armor_bearer_signup') >= 0 && !seen[v.sid]) {
-            seen[v.sid] = 1; n++;
-          }
-        });
-        el.textContent = n;
-      })
-      .catch(function(){ el.textContent = '0'; });
-  } catch(e) { el.textContent = '0'; }
+  fetch('/api/funnels', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var funnels = (j && j.ok && j.funnels) || [];
+    var el = document.getElementById('funnel-list');
+    if (!el || !funnels.length) return;
+    el.innerHTML = funnels.map(function(f){
+      var stages = (f.stages||[]).map(function(s){
+        var pct = s.goal > 0 ? Math.min(100, 100*s.current/s.goal) : 0;
+        return '<div class="funnel-bar"><div class="funnel-bar-top"><span>'+esc(s.label)+'</span><span><strong>'+num(s.current)+'</strong> / '+num(s.goal)+'</span></div>'
+          + '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct.toFixed(1)+'%"></div></div></div>';
+      }).join('');
+      return '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div>'
+        + '<div class="card-title">'+esc(f.emoji||'\u{1F4CA}')+' '+esc(f.name)+'</div>'
+        + (f.subtitle ? '<div class="card-sub">'+esc(f.subtitle)+'</div>' : '')
+        + '</div></div>' + stages + '</div>';
+    }).join('');
+  }).catch(function(){});
 })();
-// 🔒 IP Registry tab: type/status filters + hash copy-to-clipboard
+
+/* ---------- influencers ---------- */
 (function(){
+  function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+  fetch('/api/influencers/counts', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var counts = (j && j.ok && j.counts) || [];
+    var byCat = {}, total = 0;
+    counts.forEach(function(c){ byCat[c.category] = (byCat[c.category]||0) + c.n; total += c.n; });
+    set('inf-total', num(total));
+    set('inf-podcast', num(byCat.podcast||0));
+    /* tier split isn't tracked per-tier in counts; show totals by status instead */
+    return fetch('/api/influencers?limit=100', { headers: apiH() });
+  }).then(function(r){ return r ? r.json() : null; }).then(function(j){
+    var rows = (j && j.ok && j.influencers) || [];
+    var tb = document.getElementById('inf-rows');
+    if (!tb) return;
+    if (!rows.length) return;
+    tb.innerHTML = rows.slice(0,25).map(function(i){
+      return '<tr><td class="subj">'+esc(i.name||i.handle||'\u2014')+'</td><td>'+esc(i.category||'')+'</td>'
+        + '<td><span class="badge b-gold">'+esc(i.status||'')+'</span></td>'
+        + '<td class="n">'+num(i.followers)+'</td></tr>';
+    }).join('');
+    /* nano/micro/macro from follower counts */
+    var nano=0, micro=0, macro=0;
+    rows.forEach(function(i){
+      var f = Number(i.followers)||0;
+      if (f >= 100000) macro++; else if (f >= 10000) micro++; else if (f > 0) nano++;
+    });
+    set('inf-nano', num(nano)); set('inf-micro', num(micro)); set('inf-macro', num(macro));
+  }).catch(function(){});
+})();
+
+/* ---------- social ---------- */
+(function(){
+  function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+  fetch('/api/social', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var accs = (j && j.ok && j.accounts) || [];
+    set('soc-count', num(accs.length));
+    var tot = accs.reduce(function(a,s){ return a + (Number(s.followers)||0); }, 0);
+    set('soc-followers', num(tot));
+    var tb = document.getElementById('social-rows');
+    if (!tb) return;
+    if (!accs.length) return;
+    tb.innerHTML = accs.map(function(a){
+      return '<tr><td class="subj">'+esc(a.platform||'')+'</td><td>'+esc(a.handle||'')+'</td>'
+        + '<td class="n">'+num(a.followers)+'</td></tr>';
+    }).join('');
+  }).catch(function(){});
+})();
+
+/* ---------- ip registry ---------- */
+(function(){
+  function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
   var typeF = document.getElementById('ip-type-filter');
   var statusF = document.getElementById('ip-status-filter');
   var countEl = document.getElementById('ip-count');
-  if (!typeF || !statusF) return;
   function applyIpFilters(){
     var t = typeF.value, s = statusF.value, n = 0, shown = 0;
     document.querySelectorAll('#ip-rows tr').forEach(function(row){
+      if (!row.hasAttribute('data-ip-type')) return;
       n++;
       var ok = (!t || row.getAttribute('data-ip-type') === t) &&
                (!s || row.getAttribute('data-ip-status') === s);
       row.style.display = ok ? '' : 'none';
       if (ok) shown++;
     });
-    if (countEl) countEl.textContent = shown + ' of ' + n + ' shown';
+    if (countEl) countEl.textContent = n ? (shown + ' of ' + n + ' shown') : '';
   }
-  typeF.addEventListener('change', applyIpFilters);
-  statusF.addEventListener('change', applyIpFilters);
-  applyIpFilters();
-  document.querySelectorAll('.hash-btn').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var full = btn.getAttribute('data-full') || '';
-      function done(){
-        var orig = btn.innerHTML;
-        btn.innerHTML = '<code>copied ✓</code>';
-        setTimeout(function(){ btn.innerHTML = orig; }, 1200);
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(full).then(done).catch(done);
-      } else {
-        var ta = document.createElement('textarea');
-        ta.value = full; document.body.appendChild(ta); ta.select();
-        try { document.execCommand('copy'); } catch(e) {}
-        document.body.removeChild(ta); done();
-      }
-    });
-  });
+  function typeBadge(t){
+    var map = { trademark:['b-blue','\u2122 Trademark'], copyright:['b-purple','\u00A9 Copyright'], patent:['b-gold','Patent'], trade_secret:['b-gold','\u{1F92B} Trade secret'], domain:['b-green','\u{1F310} Domain'], other:['b-blue','Other'] };
+    var m = map[t] || map.other;
+    return '<span class="badge '+m[0]+'">'+m[1]+'</span>';
+  }
+  function statusBadge(s){
+    var map = { idea:['b-blue','\u{1F4A1} Idea'], 'created-unregistered':['b-gold','\u{1F7E1} Created \u2014 unregistered'], 'filed-pending':['b-gold','\u{1F7E1} Filed \u2014 pending'], registered:['b-green','\u{1F7E2} Registered'], licensed:['b-purple','\u{1F4C4} Licensed'] };
+    var m = map[s] || ['b-blue', esc(s||'')];
+    return '<span class="badge '+m[0]+'">'+m[1]+'</span>';
+  }
+  fetch('/api/ip-registry', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var assets = (j && j.ok && j.assets) || [];
+    set('ip-total', num(assets.length));
+    set('ip-tm', num(assets.filter(function(a){return a.asset_type==='trademark';}).length));
+    set('ip-cr', num(assets.filter(function(a){return a.asset_type==='copyright';}).length));
+    set('ip-reg', num(assets.filter(function(a){return a.status==='registered';}).length));
+    var tb = document.getElementById('ip-rows');
+    if (!tb) return;
+    if (!assets.length) return;
+    tb.innerHTML = assets.map(function(a){
+      return '<tr data-ip-type="'+esc(a.asset_type||'')+'" data-ip-status="'+esc(a.status||'')+'">'
+        + '<td class="subj">'+esc(a.name||a.title||'\u2014')+'</td>'
+        + '<td>'+typeBadge(a.asset_type)+'</td>'
+        + '<td class="n">'+esc(a.created_at||'')+'</td>'
+        + '<td>'+statusBadge(a.status)+'</td></tr>';
+    }).join('');
+    applyIpFilters();
+  }).catch(function(){});
+  if (typeF) typeF.addEventListener('change', applyIpFilters);
+  if (statusF) statusF.addEventListener('change', applyIpFilters);
 })();
-// ⏱️ Elapsed-time clock: counts from when the dashboard's own tracking began.
+
+/* ---------- elapsed clock ---------- */
 var DASH_START = new Date("2026-10-09T12:00:00-07:00");
 function _plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
 function updateElapsedClock(){
   var el = document.getElementById('elapsed-clock');
   if (!el) return;
-  var now = new Date();
-  var start = DASH_START;
+  var now = new Date(), start = DASH_START;
   if (now < start) { el.textContent = 'just now'; return; }
   var months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
   var anchor = new Date(start);
@@ -950,8 +832,18 @@ function updateElapsedClock(){
 }
 updateElapsedClock();
 setInterval(updateElapsedClock, 30000);
+
+/* ---------- boot ---------- */
 loadSites();
 setInterval(loadSites, 5*60*1000);
+setRange('7d');
+var _nt = document.getElementById('nav-timestamp');
+if (_nt) {
+  var _now = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+  _nt.innerHTML = 'Site data live \u00B7 ' + _now + ' PT \u00B7 auto-refresh 5 min';
+}
+var _addSite = document.getElementById('add-site-btn');
+if (_addSite) _addSite.addEventListener('click', function(){ setMainTab('sites'); });
 </script>
 </body>
 </html>
