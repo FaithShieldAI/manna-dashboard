@@ -5,3 +5,5 @@ data/*.db-wal
 .env
 *.log
 .DS_Store
+data/seed/influencers.csv
+data/seed/*.csv
