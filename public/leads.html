@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lead Collection — D2RM Dashboard</title>
+<title>Lead Collection — Manna</title>
 <link rel="stylesheet" href="/css/auth.css">
 <style>
   body { display: block; align-items: normal; }
   .wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
-  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .topbar .logo { font-size: 22px; font-weight: 800; }
-  .topbar .logo .d2 { color: #fff; } .topbar .logo .rm { color: var(--red); }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+  .topbar .brandmark { display: flex; align-items: center; gap: 14px; }
+  .topbar .brandmark img { width: 120px; height: auto; }
+  .topbar .ltitle { font-family: Georgia, serif; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
   .job { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 12px; background: var(--bg2); }
@@ -22,9 +23,12 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div>
-      <div class="logo"><span class="d2">D2</span><span class="rm">RM</span> <span style="font-size:14px;color:var(--text3);font-weight:400">Lead Collection</span></div>
-      <div class="small">Turnkey lead gen — keywords in, emails out, straight into your list.</div>
+    <div class="brandmark">
+      <img src="/manna-logo.webp" alt="Manna">
+      <div>
+        <div class="ltitle">Lead Collection</div>
+        <div class="small">Turnkey lead gen — keywords in, emails out, straight into your list.</div>
+      </div>
     </div>
     <div class="row">
       <button class="ghost" onclick="location.href='/app'">← Dashboard</button>
@@ -36,7 +40,8 @@
   <div class="success" id="ok"></div>
 
   <div class="card wide" style="max-width:none">
-    <h1 style="margin-top:0">New collection job</h1>
+    <div class="kicker">New job</div>
+    <h2 style="margin-top:0">Collection job</h2>
     <div class="grid2">
       <div>
         <label for="source">Source</label>
