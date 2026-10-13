@@ -11,7 +11,8 @@
  *   4. Goals grid gets id="d2rm-goals-grid"; an injected boot script
  *      re-renders it from /api/goals (generic per-tenant cards)
  *   5. Nav gets a tenant chip + links (Leads, Log out)
- *   6. Assistant chat widget injected before </body>
+ *   6. Boot script: goals re-render from /api/goals + logout handler.
+ *      (The AI instructor panel lives in the template itself.)
  *
  * Source file: DASHBOARD_HTML_PATH or ~/workspace/your_files/d2rm-live-dashboard.html
  */
@@ -114,7 +115,9 @@ function serveApp(req, res) {
     + '<a href="#" id="d2rm-logout" style="color:var(--text2);text-decoration:none;font-size:13px">Log out</a>';
   html = html.replace('<div class="nav-right">', '<div class="nav-right">' + chip);
 
-  // 6. Boot script: goals re-render + logout + assistant widget.
+  // 6. Boot script: goals re-render + logout.
+  // (The AI instructor panel is built into the template itself; the old
+  // floating widget was removed in favor of the prominent top-of-page panel.)
   const boot = `
 <script>
 (function(){
@@ -137,14 +140,6 @@ function serveApp(req, res) {
   if(lo){lo.addEventListener('click',function(e){e.preventDefault();fetch('/api/auth/logout',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(){location.href='/login';});});}
 })();
 </script>
-<link rel="stylesheet" href="/css/auth.css">
-<button id="d2rm-assistant-fab" title="Ask the marketing co-pilot">💬</button>
-<div id="d2rm-assistant-panel" role="dialog" aria-label="Marketing co-pilot">
-  <div id="d2rm-assistant-head"><span>🤖 Marketing co-pilot</span><span class="prov" id="d2rm-assistant-prov"></span></div>
-  <div id="d2rm-assistant-msgs"></div>
-  <form id="d2rm-assistant-form"><input id="d2rm-assistant-input" type="text" placeholder="Ask about your data, or &quot;what should I do next?&quot;" maxlength="2000" autocomplete="off"><button type="submit">Send</button></form>
-</div>
-<script src="/js/assistant-widget.js"></script>
 </body>`;
   html = html.replace('</body>', boot);
 
