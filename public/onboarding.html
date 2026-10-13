@@ -3,99 +3,176 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Setup — Manna</title>
+<title>Your Dashboard — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=2">
 <style>
   body { display: block; padding: 0; }
-  .ob-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
-  .ob-head { text-align: center; margin-bottom: 24px; }
-  .ob-head .brand-logo { width: 150px; margin-bottom: 4px; }
-  .ob-head h1 { margin: 12px 0 4px; font-size: 24px; }
-  .ob-head .sub { color: var(--text2); font-size: 14px; }
-  .ob-progress { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; height: 12px; overflow: hidden; margin: 18px 0 6px; }
+  .dash-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  /* 1 — Logo at the top */
+  .brand-top { text-align: center; margin-bottom: 18px; }
+  .brand-top .brand-logo { width: 190px; max-width: 60%; height: auto; margin: 0 auto 2px; display: block; filter: drop-shadow(0 2px 14px rgba(217,164,65,.25)); }
+  .brand-top .manna-name { font-family: var(--serif); font-size: 20px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-bright); }
+  .brand-top .tagline { color: var(--text2); font-size: 13px; margin-top: 6px; }
+
+  /* 2 — AI instructor chat box directly under the logo */
+  .instructor { max-width: 760px; margin: 0 auto 24px; background: var(--bg2); border: 1px solid var(--border-gold); border-radius: var(--radius); display: flex; flex-direction: column; height: 340px; box-shadow: 0 4px 24px rgba(217,164,65,.08); }
+  .instructor-head { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .instructor-head .prov { font-size: 11px; color: var(--text3); font-weight: 400; margin-left: 8px; }
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .d2rm-msg { max-width: 92%; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+  .d2rm-msg.bot { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; }
+  .d2rm-msg.user { background: rgba(217,164,65,.14); border: 1px solid var(--gold); align-self: flex-end; }
+  .d2rm-msg.typing { color: var(--text3); font-style: italic; }
+  .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+  .chat-form input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
+  .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+
+  /* 3 — Dashboard modules */
+  .section-title { font-family: var(--serif); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright); margin: 26px 0 12px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 700; color: var(--text3); }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .mod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .mod-grid { grid-template-columns: 1fr; } }
+  .mod-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; min-height: 120px; }
+  .mod-card h3 { font-size: 14px; margin: 0 0 8px; }
+  .mod-card .empty { color: var(--text3); font-size: 13px; text-align: center; padding: 18px 8px; }
+  .mod-card .empty-hint { color: var(--text3); font-size: 12px; text-align: center; padding: 0 8px 8px; }
+
+  /* Setup checklist lives inside the dashboard frame */
+  .ob-progress { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; height: 12px; overflow: hidden; margin: 12px 0 6px; }
   .ob-progress > div { height: 100%; background: var(--gold); width: 0%; transition: width .4s; }
-  .ob-progress-label { font-size: 12px; color: var(--text3); text-align: right; margin-bottom: 18px; }
-  .ob-cols { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
-  @media (max-width: 900px) { .ob-cols { grid-template-columns: 1fr; } }
-  .step-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+  .ob-progress-label { font-size: 12px; color: var(--text3); text-align: right; margin-bottom: 12px; }
+  .step-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
   .step-card.current { border-color: var(--gold); }
   .step-card.done { opacity: .75; }
   .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
   .step-card.done .step-num { background: var(--green); border-color: var(--green); color: #0f0f1a; }
   .step-card.current .step-num { border-color: var(--gold); color: var(--gold); }
-  .step-head h2 { font-size: 17px; margin: 0; }
+  .step-head h2 { font-size: 16px; margin: 0; }
   .step-desc { color: var(--text2); font-size: 13px; margin: 0 0 12px 42px; }
   .step-body { margin-left: 42px; }
   .step-body .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .step-body input[type=text], .step-body select { width: auto; flex: 1; min-width: 140px; }
+  .step-body input[type=text], .step-body select { width: auto; flex: 1; min-width: 140px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; }
   .step-body button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
   .step-body button.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
   .step-body button:disabled { opacity: .5; cursor: default; }
   .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-  .pill { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 12px; color: var(--text2); }
+  .pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 12px; color: var(--text2); }
   .pill button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 12px; margin-left: 6px; padding: 0; }
-  .tpl { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg); }
+  .tpl { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg2); }
   .tpl label { display: flex; gap: 10px; align-items: flex-start; margin: 0; cursor: pointer; }
   .tpl .tname { font-size: 14px; font-weight: 700; }
   .tpl .tsub { font-size: 12px; color: var(--text3); }
   .tpl input[type=checkbox] { margin-top: 3px; }
-  .chat-col { position: sticky; top: 20px; }
-  .chat-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; height: 560px; }
-  .chat-head { padding: 14px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
-  .chat-head .prov { font-size: 11px; color: var(--text3); font-weight: 400; margin-left: 8px; }
-  .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-  .d2rm-msg { max-width: 92%; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
-  .d2rm-msg.bot { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; }
-  .d2rm-msg.user { background: rgba(201,162,39,.15); border: 1px solid var(--gold); align-self: flex-end; }
-  .d2rm-msg.typing { color: var(--text3); font-style: italic; }
-  .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
-  .chat-form input { flex: 1; }
-  .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+  .alert.err { background: rgba(229,72,77,.12); border: 1px solid var(--red); color: #ff8a93; }
+  .alert.ok { background: rgba(61,220,151,.12); border: 1px solid var(--green); color: #7fe0a8; }
+
+  #done-banner { background: rgba(61,220,151,.10); border: 1px solid var(--green); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px; }
+  #done-banner h2 { margin: 0 0 8px; }
+  #done-banner a { display: inline-block; margin-top: 10px; background: var(--green); color: #0f0f1a; padding: 12px 26px; border-radius: 8px; font-weight: 700; text-decoration: none; }
   .ob-foot { text-align: center; margin-top: 26px; font-size: 13px; color: var(--text3); }
   .ob-foot a { color: var(--gold); text-decoration: none; margin: 0 10px; }
-  .ob-done-banner { background: rgba(46,204,113,.12); border: 1px solid var(--green); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px; }
-  .ob-done-banner h2 { margin: 0 0 8px; }
-  .ob-done-banner a { display: inline-block; margin-top: 10px; background: var(--green); color: #0f0f1a; padding: 12px 26px; border-radius: 8px; font-weight: 700; text-decoration: none; }
-  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
-  .alert.err { background: rgba(230,57,70,.12); border: 1px solid var(--red); color: #ff8a93; }
-  .alert.ok { background: rgba(46,204,113,.12); border: 1px solid var(--green); color: #7fe0a8; }
 </style>
 </head>
 <body>
-<div class="ob-wrap">
-  <div class="ob-head">
+<div class="dash-wrap">
+
+  <!-- 1. Manna logo at the top -->
+  <div class="brand-top">
     <img src="/manna-logo.webp" alt="Manna" class="brand-logo">
-    <div class="kicker">White-glove setup</div>
-    <h1>Get set up in 10 minutes</h1>
-    <div class="sub">Big agency data, little guy money. Your co-pilot walks you through every step.</div>
+    <div class="manna-name">Manna</div>
+    <div class="tagline">Big agency data, little guy money.</div>
   </div>
 
-  <div id="done-banner" class="ob-done-banner" style="display:none">
+  <!-- 2. AI instructor chat box directly under the logo -->
+  <div class="instructor">
+    <div class="instructor-head">🤖 Your instructor<span class="prov" id="chat-prov"></span></div>
+    <div class="chat-msgs" id="chat-msgs"></div>
+    <form class="chat-form" id="chat-form">
+      <input id="chat-input" type="text" placeholder="Ask your instructor anything…" maxlength="2000" autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <div id="done-banner" style="display:none">
     <h2>🎉 You're all set up!</h2>
     <div style="color:var(--text2);font-size:14px">Your dashboard is live and collecting. Go make something.</div>
     <a href="/app">Open my dashboard →</a>
   </div>
 
-  <div class="ob-progress"><div id="progress-bar"></div></div>
-  <div class="ob-progress-label" id="progress-label"></div>
+  <!-- 3. Dashboard modules with empty states -->
+  <div class="section-title">📊 Key Numbers</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total sent</div><div class="stat-value">—</div><div class="stat-sub">no sends yet</div></div>
+    <div class="stat-card"><div class="stat-label">Opens</div><div class="stat-value">—</div><div class="stat-sub">open rate</div></div>
+    <div class="stat-card"><div class="stat-label">Clicks</div><div class="stat-value">—</div><div class="stat-sub">click rate</div></div>
+    <div class="stat-card"><div class="stat-label">Warm clickers</div><div class="stat-value">—</div><div class="stat-sub">hottest retargeting leads</div></div>
+    <div class="stat-card"><div class="stat-label">Influencers</div><div class="stat-value">—</div><div class="stat-sub">across all categories</div></div>
+    <div class="stat-card"><div class="stat-label">Sites tracked</div><div class="stat-value">—</div><div class="stat-sub">live analytics</div></div>
+    <div class="stat-card"><div class="stat-label">IP assets</div><div class="stat-value">—</div><div class="stat-sub">in the registry</div></div>
+    <div class="stat-card"><div class="stat-label">Social accounts</div><div class="stat-value">—</div><div class="stat-sub">connected</div></div>
+  </div>
 
-  <div class="ob-cols">
-    <div id="steps"></div>
-    <div class="chat-col">
-      <div class="chat-box">
-        <div class="chat-head">🤖 Setup co-pilot<span class="prov" id="chat-prov"></span></div>
-        <div class="chat-msgs" id="chat-msgs"></div>
-        <form class="chat-form" id="chat-form">
-          <input id="chat-input" type="text" placeholder="Ask me anything about setup…" maxlength="2000" autocomplete="off">
-          <button type="submit">Send</button>
-        </form>
-      </div>
+  <div class="section-title">📧 Email</div>
+  <div class="mod-grid">
+    <div class="mod-card">
+      <h3>Campaigns</h3>
+      <div class="empty">No campaigns yet</div>
+      <div class="empty-hint">Trial includes dashboard + lead collection — sending unlocks on paid plans.</div>
+    </div>
+    <div class="mod-card">
+      <h3>🔥 Warm clickers</h3>
+      <div class="empty">No warm clickers yet — they appear once subscribers start clicking your links.</div>
     </div>
   </div>
 
+  <div class="section-title">🌐 Sites &amp; 📸 Social</div>
+  <div class="mod-grid">
+    <div class="mod-card">
+      <h3>Sites tracked</h3>
+      <div class="empty">No sites tracked yet — add your first site below in the setup checklist.</div>
+    </div>
+    <div class="mod-card">
+      <h3>Social accounts</h3>
+      <div class="empty">No social accounts connected — connect one below in the setup checklist.</div>
+    </div>
+  </div>
+
+  <div class="section-title">👥 Influencers &amp; 🧲 Leads</div>
+  <div class="mod-grid">
+    <div class="mod-card">
+      <h3>Influencers</h3>
+      <div class="empty">No influencers yet — run your first lead search below to start collecting.</div>
+    </div>
+    <div class="mod-card">
+      <h3>Leads</h3>
+      <div class="empty">No leads yet — your first lead search will populate this list.</div>
+    </div>
+  </div>
+
+  <div class="section-title">🔒 IP Registry</div>
+  <div class="mod-grid">
+    <div class="mod-card">
+      <h3>Proof-of-ownership assets</h3>
+      <div class="empty">No IP assets registered yet.</div>
+    </div>
+  </div>
+
+  <!-- 4. The 5-step setup checklist, inside the dashboard frame -->
+  <div class="section-title">✅ Setup checklist</div>
+  <div class="ob-progress"><div id="progress-bar"></div></div>
+  <div class="ob-progress-label" id="progress-label"></div>
+  <div id="steps"></div>
+
   <div class="ob-foot">
-    <a href="/app">Skip to dashboard →</a>
+    <a href="/app">Open my dashboard →</a>
     <a href="#" id="restart-link">Restart setup</a>
     <a href="#" id="dismiss-link">Skip setup entirely</a>
   </div>
