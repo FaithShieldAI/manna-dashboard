@@ -20,7 +20,7 @@ const path = require('path');
 const os = require('os');
 
 const DASHBOARD_PATH = process.env.DASHBOARD_HTML_PATH
-  || path.join(os.homedir(), 'workspace', 'your_files', 'd2rm-live-dashboard.html');
+  || path.join(__dirname, '..', 'public', 'dashboard-template.html');
 
 let cachedHtml = null;
 let cachedMtime = 0;
