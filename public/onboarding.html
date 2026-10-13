@@ -136,6 +136,43 @@
   #done-banner a { display: inline-block; margin-top: 10px; background: var(--green); color: #0f0f1a; padding: 12px 26px; border-radius: 8px; font-weight: 700; text-decoration: none; }
   .ob-foot { text-align: center; margin-top: 26px; font-size: 13px; color: var(--text3); }
   .ob-foot a { color: var(--gold); text-decoration: none; margin: 0 10px; }
+
+  /* ============ MOBILE (phones) ============ */
+  @media (max-width: 600px) {
+    .dash-wrap { padding: 16px 12px 40px; }
+
+    /* 4 — AI instructor full width, shorter on phone */
+    .instructor { height: 300px; margin: 0 0 18px; }
+    .d2rm-msg { font-size: 14px; }
+
+    /* 2 — main tabs: single horizontal scroll row instead of wrapping */
+    .main-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      gap: 8px; padding-bottom: 10px; scrollbar-width: none; }
+    .main-tabs::-webkit-scrollbar { display: none; }
+    .main-tab { flex-shrink: 0; padding: 9px 14px; font-size: 13px; }
+    .range-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .range-tabs::-webkit-scrollbar { display: none; }
+    .range-tab { flex-shrink: 0; }
+
+    /* 5 — iOS Safari auto-zooms on focus when inputs are < 16px; prevent it */
+    .chat-form input { font-size: 16px; min-width: 0; }
+    .chat-form button { padding: 10px 14px; flex-shrink: 0; }
+    .step-body input[type=text], .step-body select { font-size: 16px; min-width: 0; }
+
+    /* Steps: reclaim the 42px left indent so content uses full phone width */
+    .step-desc, .step-body { margin-left: 0; }
+    .step-head h2 { font-size: 15px; }
+    .step-card { padding: 14px; }
+
+    /* 1 & 3 — goals stack (also handled at 560px), key numbers 2-col */
+    .card { padding: 1rem; }
+    .goal-value { font-size: 20px; }
+    .stat-card { padding: 12px; }
+    .stat-value { font-size: 20px; }
+
+    /* Footer links stack nicely */
+    .ob-foot a { display: inline-block; margin: 6px 10px; }
+  }
 </style>
 </head>
 <body>
