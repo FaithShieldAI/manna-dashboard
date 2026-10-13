@@ -212,7 +212,9 @@ migrate();
 // Seed Michael's real contacts on startup (if not already present)
 try {
   const { seedInfluencers } = require('../scripts/seed-contacts');
-  seedInfluencers();
+  Promise.resolve(seedInfluencers()).catch(e => {
+    console.error('[seed] Startup seed failed:', e.message);
+  });
 } catch (e) {
   console.error('[seed] Startup seed failed:', e.message);
 }
