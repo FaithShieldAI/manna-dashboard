@@ -803,23 +803,163 @@ document.querySelectorAll('.range-tab').forEach(function(b){
 })();
 
 /* ---------- funnels ---------- */
-(function(){
-  fetch('/api/funnels', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
-    var funnels = (j && j.ok && j.funnels) || [];
-    var el = document.getElementById('funnel-list');
-    if (!el || !funnels.length) return;
-    el.innerHTML = funnels.map(function(f){
-      var stages = (f.stages||[]).map(function(s){
-        var pct = s.goal > 0 ? Math.min(100, 100*s.current/s.goal) : 0;
-        return '<div class="funnel-bar"><div class="funnel-bar-top"><span>'+esc(s.label)+'</span><span><strong>'+num(s.current)+'</strong> / '+num(s.goal)+'</span></div>'
-          + '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct.toFixed(1)+'%"></div></div></div>';
-      }).join('');
-      return '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div>'
-        + '<div class="card-title">'+esc(f.emoji||'\u{1F4CA}')+' '+esc(f.name)+'</div>'
-        + (f.subtitle ? '<div class="card-sub">'+esc(f.subtitle)+'</div>' : '')
-        + '</div></div>' + stages + '</div>';
+function renderFunnelList(funnels){
+  var el = document.getElementById('funnel-list');
+  if (!el) return;
+  if (!funnels.length) {
+    el.innerHTML = '<div class="empty-state">'
+      + '<div class="empty-icon">\u2705</div>'
+      + '<div class="empty-title">No funnels yet</div>'
+      + '<div class="empty-text">Create your first funnel to track visitors &rarr; leads &rarr; customers, stage by stage. Ask your instructor to help you design one.</div>'
+      + '<div class="empty-cta"><button class="btn gold" id="add-funnel-btn">\u002B Create your first funnel</button></div>'
+      + '</div>';
+    return;
+  }
+  el.innerHTML = funnels.map(function(f){
+    var stages = (f.stages||[]).map(function(s){
+      var pct = s.goal > 0 ? Math.min(100, 100*s.current/s.goal) : 0;
+      return '<div class="funnel-bar"><div class="funnel-bar-top"><span>'+esc(s.label)+'</span><span><strong>'+num(s.current)+'</strong> / '+num(s.goal)+'</span></div>'
+        + '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct.toFixed(1)+'%"></div></div></div>';
     }).join('');
+    return '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div>'
+      + '<div class="card-title">'+esc(f.emoji||'\u{1F4CA}')+' '+esc(f.name)+'</div>'
+      + (f.subtitle ? '<div class="card-sub">'+esc(f.subtitle)+'</div>' : '')
+      + '</div></div>' + stages + '</div>';
+  }).join('')
+  + '<div class="empty-cta"><button class="btn" id="add-funnel-btn">\u002B Add another funnel</button></div>';
+}
+function refreshFunnels(){
+  return fetch('/api/funnels', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    renderFunnelList((j && j.ok && j.funnels) || []);
   }).catch(function(){});
+}
+(function(){ refreshFunnels(); })();
+
+/* ---------- add-funnel modal ---------- */
+function funnelKeyFromName(name){
+  return String(name||'').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+}
+function openFunnelModal(){
+  var m = document.getElementById('funnel-modal');
+  if (!m) return;
+  document.getElementById('funnel-modal-err').style.display = 'none';
+  document.getElementById('funnel-modal-ok').style.display = 'none';
+  m.style.display = 'flex';
+  var nameEl = document.getElementById('funnel-name');
+  if (nameEl) nameEl.focus();
+}
+function closeFunnelModal(){
+  var m = document.getElementById('funnel-modal');
+  if (m) m.style.display = 'none';
+}
+function funnelModalError(msg){
+  var el = document.getElementById('funnel-modal-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('funnel-modal-ok').style.display = 'none';
+}
+function funnelModalOk(msg){
+  var el = document.getElementById('funnel-modal-ok');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('funnel-modal-err').style.display = 'none';
+}
+function parseFunnelStages(text){
+  /* one stage per line; optional goal after a colon, e.g. "Leads: 1000" */
+  var stages = [];
+  String(text||'').split(/\r?\n/).forEach(function(line){
+    line = line.trim();
+    if (!line) return;
+    var label = line, goal = null;
+    var ci = line.lastIndexOf(':');
+    if (ci > 0) {
+      var maybeGoal = line.slice(ci+1).trim().replace(/,/g, '');
+      if (maybeGoal !== '' && !isNaN(Number(maybeGoal))) {
+        label = line.slice(0, ci).trim();
+        goal = Number(maybeGoal);
+      }
+    }
+    if (label) stages.push({ label: label, goalValue: goal });
+  });
+  return stages;
+}
+(function(){
+  var modal = document.getElementById('funnel-modal');
+  var form = document.getElementById('funnel-modal-form');
+  var nameEl = document.getElementById('funnel-name');
+  var subEl = document.getElementById('funnel-subtitle');
+  var keyEl = document.getElementById('funnel-key');
+  var stagesEl = document.getElementById('funnel-stages');
+  var submitBtn = document.getElementById('funnel-modal-submit');
+  var cancelBtn = document.getElementById('funnel-modal-cancel');
+  var keyTouched = false;
+  if (!modal || !form) return;
+  /* "#add-funnel-btn" is re-rendered by renderFunnelList -- use delegation */
+  document.addEventListener('click', function(e){
+    var t = e.target && e.target.closest ? e.target.closest('#add-funnel-btn') : null;
+    if (t) { e.preventDefault(); setMainTab('conversions'); openFunnelModal(); window.scrollTo({top:0, behavior:'smooth'}); }
+  });
+  nameEl.addEventListener('input', function(){
+    if (!keyTouched) keyEl.value = funnelKeyFromName(nameEl.value);
+  });
+  keyEl.addEventListener('input', function(){ keyTouched = true; });
+  cancelBtn.addEventListener('click', closeFunnelModal);
+  modal.addEventListener('click', function(e){ if (e.target === modal) closeFunnelModal(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && modal.style.display !== 'none') closeFunnelModal();
+  });
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = nameEl.value.trim();
+    var subtitle = subEl.value.trim();
+    var funnelKey = keyEl.value.trim().toLowerCase();
+    if (!funnelKey) funnelKey = funnelKeyFromName(name);
+    if (name.length < 2) { funnelModalError('Please enter a funnel name (at least 2 characters).'); return; }
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(funnelKey)) {
+      funnelModalError('Funnel key must be lowercase letters, numbers and dashes only.');
+      return;
+    }
+    var stages = parseFunnelStages(stagesEl.value);
+    if (!stages.length) { funnelModalError('Add at least one stage \u2014 one per line, e.g. "Visitors: 10000".'); return; }
+    if (stages.length > 12) { funnelModalError('Too many stages \u2014 12 maximum.'); return; }
+    submitBtn.disabled = true;
+    fetch(API_BASE + '/api/funnels', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiH()),
+      body: JSON.stringify({ funnelKey: funnelKey, name: name, subtitle: subtitle || null, stages: stages })
+    }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); })
+    .then(function(res){
+      var j = res.body || {};
+      if (j.ok) {
+        funnelModalOk('\u2705 Funnel created! Loading\u2026');
+        refreshFunnels().then(function(){
+          setTimeout(function(){
+            closeFunnelModal();
+            setMainTab('conversions');
+            nameEl.value = ''; subEl.value = ''; keyEl.value = ''; stagesEl.value = '';
+            keyTouched = false;
+          }, 900);
+        });
+      } else {
+        var msg = 'Could not create the funnel. Please try again.';
+        if (j.error === 'funnel_key_taken') msg = 'That funnel key is already taken \u2014 try a different one.';
+        else if (j.error === 'invalid_funnel_key') msg = 'Funnel key must be lowercase letters, numbers and dashes only.';
+        else if (j.error === 'invalid_funnel_name') msg = 'Please enter a funnel name (at least 2 characters).';
+        else if (j.error === 'invalid_stages' || j.error === 'invalid_stage_label') msg = 'Check your stages \u2014 one label per line.';
+        else if (j.error === 'invalid_stage_goal') msg = 'Stage goals must be positive numbers.';
+        else if (j.error === 'duplicate_stage_key') msg = 'Two stages have the same name \u2014 make each one unique.';
+        funnelModalError(msg);
+      }
+    })
+    .catch(function(){
+      funnelModalError('Network error. Check your connection and try again.');
+    })
+    .then(function(){ submitBtn.disabled = false; });
+  });
 })();
 
 /* ---------- influencers ---------- */
