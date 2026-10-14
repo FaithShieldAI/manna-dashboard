@@ -20,8 +20,13 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "start": "node src/server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "node --test tests/e2e/*.test.js"
   },
   "type": "commonjs",
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "devDependencies": {
+    "puppeteer-core": "^25.14.0",
+    "tough-cookie": "^6.0.2"
+  }
 }
