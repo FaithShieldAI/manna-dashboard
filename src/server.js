@@ -91,13 +91,13 @@ app.get('/forgot', sendPage('forgot.html'));
 app.get('/reset', sendPage('reset.html'));
 app.get('/verify', sendPage('verify.html'));
 app.get('/leads', requireAuthPage, sendPage('leads.html'));
-app.get('/onboarding', requireAuth, sendPage('onboarding.html'));
+app.get('/onboarding', requireAuthPage, sendPage('onboarding.html'));
 app.get('/terms', sendPage('terms.html'));
 app.get('/privacy', sendPage('privacy.html'));
 
 // /app — the dashboard, auth-gated, per-tenant data injected at serve time.
 const { serveApp } = require('./app-serve');
-app.get('/app', requireAuth, (req, res) => serveApp(req, res));
+app.get('/app', requireAuthPage, (req, res) => serveApp(req, res));
 
 // Root -> app (which bounces to /login when unauthenticated).
 app.get('/', (req, res) => res.redirect('/app'));

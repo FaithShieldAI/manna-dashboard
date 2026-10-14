@@ -79,7 +79,11 @@ function cookieOptions() {
   return {
     httpOnly: true,
     secure: isProd, // Secure cookies require HTTPS; dev runs on http
-    sameSite: 'strict',
+    // 'lax' (not 'strict'): the cookie is still never sent cross-site on
+    // POST/subresource requests, but top-level navigations from external
+    // links (email verification, links shared in chat) arrive authenticated
+    // instead of appearing logged-out until the next in-site navigation.
+    sameSite: 'lax',
     path: '/',
     maxAge: SESSION_TTL_MS,
   };
