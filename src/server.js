@@ -239,6 +239,16 @@ try {
   console.error('[seed] Startup seed failed:', e.message);
 }
 
+// Seed demo data (email stats, campaigns, goals) for d2rm-media tenant
+try {
+  const { seedDemoData } = require('../scripts/seed-demo-data');
+  Promise.resolve(seedDemoData('d2rm-media')).catch(e => {
+    console.error('[seed] Demo data seed failed:', e.message);
+  });
+} catch (e) {
+  console.error('[seed] Demo data seed failed:', e.message);
+}
+
 sessions.purgeExpired();
 setInterval(() => sessions.purgeExpired(), 60 * 60 * 1000).unref(); // hourly
 
