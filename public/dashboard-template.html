@@ -216,6 +216,7 @@
     <button class="main-tab" data-tab="influencers">&#128101; Influencers</button>
     <button class="main-tab" data-tab="social">&#128248; Social</button>
     <button class="main-tab" data-tab="ipregistry">&#128274; IP Registry</button>
+    <button class="main-tab" data-tab="billing">&#128179; Billing</button>
   </nav>
 
   <div class="main-tab-panel" id="panel-overview">
@@ -291,8 +292,8 @@
       <div class="card-sub">every campaign you run, tracked in one place</div>
     </div></div>
     <div class="table-wrap"><table>
-      <tr><th>Campaign</th><th>Provider</th><th class="n">Sent</th><th class="n">Opens</th><th class="n">Clicks</th></tr>
-      <tbody id="campaign-rows"><tr><td colspan="5" class="empty">No campaigns yet</td></tr></tbody>
+      <tr><th>Campaign</th><th>Provider</th><th class="n">Sent</th><th class="n">Opens</th><th class="n">Clicks</th><th class="n">ROI</th></tr>
+      <tbody id="campaign-rows"><tr><td colspan="6" class="empty">No campaigns yet</td></tr></tbody>
     </table></div>
   </div>
 
@@ -326,6 +327,7 @@
       <div class="empty-icon">&#9989;</div>
       <div class="empty-title">No funnels yet</div>
       <div class="empty-text">Create your first funnel to track visitors &rarr; leads &rarr; customers, stage by stage. Ask your instructor to help you design one.</div>
+      <div class="empty-cta"><button class="btn gold" id="add-funnel-btn">&#43; Create your first funnel</button></div>
     </div></div>
   </div>
 
@@ -447,6 +449,19 @@
   </div>
 
   </div><!-- /panel-ipregistry -->
+
+  <!-- ============ TAB: BILLING ============ -->
+  <div class="main-tab-panel" id="panel-billing" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#128179; Billing</div>
+      <div class="card-sub">your plan, usage and limits</div>
+    </div><span class="live-badge" id="billing-status-badge" style="display:none"></span></div>
+    <div id="billing-body"><div class="empty">Loading billing info&hellip;</div></div>
+  </div>
+
+  </div><!-- /panel-billing -->
 </div>
 
 <footer style="margin-top:1rem;color:var(--text3);font-size:12px;text-align:center">
@@ -737,8 +752,18 @@ document.querySelectorAll('.range-tab').forEach(function(b){
     if (!tb) return;
     if (!rows.length) return; /* empty state already in HTML */
     tb.innerHTML = rows.map(function(c){
+      var roiHtml;
+      if (c.roi_pct !== null && c.roi_pct !== undefined) {
+        var cls = c.roi_pct >= 0 ? 'chg-up' : 'chg-down';
+        roiHtml = '<span class="'+cls+'">'+c.roi_pct+'%</span>';
+      } else if ((Number(c.revenue_cents) || 0) > 0) {
+        roiHtml = '<span class="chg-up">\u221e</span>';
+      } else {
+        roiHtml = '\u2014';
+      }
       return '<tr><td class="subj">'+esc(c.name)+'</td><td>'+esc(c.provider||'\u2014')+'</td>'
-        + '<td class="n">'+num(c.sent)+'</td><td class="n">'+num(c.opens)+'</td><td class="n">'+num(c.clicks)+'</td></tr>';
+        + '<td class="n">'+num(c.sent)+'</td><td class="n">'+num(c.opens)+'</td><td class="n">'+num(c.clicks)+'</td>'
+        + '<td class="n">'+roiHtml+'</td></tr>';
     }).join('');
   }).catch(function(){});
 })();
@@ -1006,6 +1031,95 @@ function refreshSites(){
 /* wire every add-site entry point to the modal */
 var _addSite = document.getElementById('add-site-btn');
 if (_addSite) _addSite.addEventListener('click', function(e){ e.preventDefault(); setMainTab('sites'); openSiteModal(); });
+
+/* ---------- billing ---------- */
+var _billingLoaded = false;
+function billingUsageBar(label, used, limit){
+  var pct = 0, right;
+  if (limit === null || limit === undefined) {
+    right = 'unlimited';
+  } else {
+    pct = limit > 0 ? Math.min(100, 100*used/limit) : 0;
+    right = '<strong>'+num(used)+'</strong> / '+num(limit);
+  }
+  return '<div class="funnel-bar"><div class="funnel-bar-top"><span>'+esc(label)+'</span><span>'+right+'</span></div>'
+    + '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct.toFixed(1)+'%"></div></div></div>';
+}
+function loadBilling(){
+  var body = document.getElementById('billing-body');
+  var badge = document.getElementById('billing-status-badge');
+  if (!body) return;
+  body.innerHTML = '<div class="empty">Loading billing info&hellip;</div>';
+  fetch(API_BASE + '/api/billing', { headers: apiH() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j || !j.ok) throw new Error('bad_response');
+      var html = '';
+      /* current plan */
+      html += '<div class="card" style="border:1px solid rgba(217,164,65,.35);margin-bottom:1rem"><div class="card-header"><div>'
+        + '<div class="card-title">'+esc(j.plan_name)+' &middot; '+esc(j.price_label)+'</div>'
+        + '<div class="card-sub">'+esc(j.tagline || '')+'</div></div></div>'
+        + '<div style="font-size:13px;color:var(--text2)">Subscription status: <strong style="color:var(--text)">'+esc(j.subscription_status || 'unknown')+'</strong></div></div>';
+      /* usage */
+      html += '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div>'
+        + '<div class="card-title">Usage this month</div>'
+        + '<div class="card-sub">resets monthly &middot; billing period '+esc(j.usage && j.usage.month_key ? j.usage.month_key : '')+'</div></div></div>'
+        + billingUsageBar('Projects', j.usage.projects_used, j.limits.projects)
+        + billingUsageBar('Emails sent', j.usage.emails_sent_this_month, j.limits.emails_per_month)
+        + '</div>';
+      /* plans */
+      var plans = [
+        { key:'starter', name:'Starter', price:'$50/mo', tagline:'For the solo creator getting started.', projects:'2 projects', emails:'5,000 emails/mo' },
+        { key:'pro', name:'Pro', price:'$100/mo', tagline:'For serious operators running multiple projects.', projects:'10 projects', emails:'20,000 emails/mo' }
+      ];
+      html += '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div>'
+        + '<div class="card-title">Plans</div>'
+        + '<div class="card-sub">pick the one that fits &mdash; changes are handled by D2RM</div></div></div>'
+        + '<div class="cols">';
+      plans.forEach(function(p){
+        var isCurrent = (j.plan === p.key);
+        html += '<div class="stat-card"'+(isCurrent ? ' style="border-color:var(--gold)"' : '')+'>'
+          + '<div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">&#128179;</span>'
+          + (isCurrent ? '<span class="live-badge">CURRENT</span>' : '') + '</div>'
+          + '<div class="stat-label">'+esc(p.name)+'</div>'
+          + '<div class="stat-value" style="font-size:22px">'+esc(p.price)+'</div>'
+          + '<div class="stat-change">'+esc(p.tagline)+'</div>'
+          + '<div style="font-size:12px;color:var(--text2);margin-top:8px">'+esc(p.projects)+' &middot; '+esc(p.emails)+'</div>'
+          + (isCurrent
+              ? ''
+              : '<button class="btn gold billing-req" data-plan="'+esc(p.key)+'" style="margin-top:10px">Request this plan</button>')
+          + '</div>';
+      });
+      html += '</div><div id="billing-note" style="font-size:12px;color:var(--text3);margin-top:10px">'
+        + esc(j.checkout && j.checkout.note ? j.checkout.note : '') + '</div></div>';
+      body.innerHTML = html;
+      if (badge) {
+        badge.style.display = '';
+        badge.textContent = j.plan_name;
+      }
+      /* wire request buttons */
+      Array.prototype.forEach.call(body.querySelectorAll('.billing-req'), function(btn){
+        btn.addEventListener('click', function(){
+          var note = document.getElementById('billing-note');
+          var pname = btn.getAttribute('data-plan');
+          if (note) {
+            note.innerHTML = 'To switch to <strong>'+esc(pname)+'</strong>, contact D2RM and we will set it up for you. Online checkout is not enabled in this build.';
+            note.style.color = 'var(--gold)';
+          }
+        });
+      });
+      _billingLoaded = true;
+    })
+    .catch(function(){
+      body.innerHTML = '<div class="empty">Could not load billing info. Check your connection and reopen this tab.</div>';
+    });
+}
+/* lazy-load billing on first open of the tab */
+document.querySelectorAll('.main-tab').forEach(function(b){
+  if (b.getAttribute('data-tab') === 'billing') {
+    b.addEventListener('click', function(){ if (!_billingLoaded) loadBilling(); });
+  }
+});
 </script>
 </body>
 </html>
