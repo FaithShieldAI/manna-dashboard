@@ -48,12 +48,34 @@
       var err = (j.status === 'failed' && j.error) ? '<div class="small j-err">' + esc(j.error) + '</div>' : '';
       var runBtn = (j.status === 'queued' || j.status === 'failed' || j.status === 'canceled')
         ? '<button class="ghost" data-run="' + j.id + '">Run</button>' : '';
+      var cancelBtn = (j.status === 'queued')
+        ? '<button class="ghost" data-cancel="' + j.id + '">Cancel</button>' : '';
       return '<div class="job"><div class="jh"><div><span class="jt">' + esc(j.source) + '</span> ' + badge(j.status) + stats + '</div>'
-        + '<div class="row">' + runBtn + '</div></div>'
+        + '<div class="row">' + runBtn + cancelBtn + '</div></div>'
         + '<div class="jm">' + input + ' · max ' + j.max_results + ' · ' + esc(j.created_at || '') + '</div>' + err + '</div>';
     }).join('');
     box.querySelectorAll('[data-run]').forEach(function (b) {
       b.addEventListener('click', function () { runJob(b.getAttribute('data-run')); });
+    });
+    box.querySelectorAll('[data-cancel]').forEach(function (b) {
+      b.addEventListener('click', function () { cancelJob(b.getAttribute('data-cancel')); });
+    });
+  }
+
+  function cancelJob(id) {
+    if (!window.confirm('Cancel this lead collection job?')) return;
+    D2RM.clearAlerts();
+    D2RM.api('POST', '/api/leads/jobs/' + id + '/cancel', {}).then(function (r) {
+      D2RM.clearAlerts();
+      if (r.json && r.json.ok) {
+        D2RM.showSuccess('ok', 'Job canceled.');
+      } else {
+        D2RM.showError('err', D2RM.friendly(r.json && r.json.error));
+      }
+      loadJobs();
+    }).catch(function () {
+      D2RM.showError('err', 'Network error — refresh to check the job status.');
+      loadJobs();
     });
   }
 

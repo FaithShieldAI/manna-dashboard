@@ -45,6 +45,9 @@
     invalid_token: 'That link is invalid or expired. Request a new one.',
     too_many_requests: 'Too many attempts — wait a few minutes and try again.',
     csrf_check_failed: 'Security check failed. Reload the page and try again.',
+    job_not_found: 'Job not found — refresh the page.',
+    job_not_cancelable: 'That job can no longer be canceled.',
+    invalid_job_id: 'Invalid job.',
   };
 
   function friendly(err) {
