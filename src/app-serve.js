@@ -65,6 +65,113 @@ function escHtml(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// --- serve-time transform safety net ----------------------------------------
+// The dashboard template is patched per request by string/regex replacement
+// (see serveApp below). If a template edit changes or removes one of the
+// target strings, the corresponding feature dies SILENTLY in production.
+// This section exists so that never happens quietly again.
+//
+// TRANSFORM_TARGETS declares every replacement target in one place. The
+// startup self-check (runs automatically when this module loads, i.e. at
+// server boot) verifies each target exists in the template and logs LOUDLY
+// if one is missing. GET /api/transform-health exposes the same check at
+// runtime. If you intentionally rename a target in the template, update the
+// pattern here AND the corresponding replace() call in serveApp.
+const TRANSFORM_TARGETS = [
+  {
+    name: 'api-base',
+    kind: 'string',
+    pattern: "var API_BASE = 'https://muse4.pythonanywhere.com';",
+    breaks: 'Sites tab would call the wrong API origin (compat shim breaks).',
+  },
+  {
+    name: 'sites-data',
+    kind: 'regex',
+    pattern: /var SITES = \[[\s\S]*?\];/,
+    breaks: 'Sites tab never loads existing sites (loadSites exits on empty SITES).',
+  },
+  {
+    name: 'email-windows',
+    kind: 'regex',
+    pattern: /var EMAIL_WINDOWS = \{[\s\S]*?\};/,
+    breaks: 'Email range tabs (24h/7d/30d/All) do nothing; warm clickers never render.',
+  },
+  {
+    name: 'goals-grid',
+    kind: 'string',
+    pattern: '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">',
+    breaks: 'Goals section shows "Loading goals…" forever (boot script cannot find its grid).',
+  },
+  {
+    name: 'nav-right',
+    kind: 'string',
+    pattern: '<div class="nav-right">',
+    breaks: 'Tenant chip + Setup/Leads/Log out links never injected into nav.',
+  },
+  {
+    name: 'body-close',
+    kind: 'string',
+    pattern: '</body>',
+    breaks: 'Boot script (goals re-render + logout handler) never injected.',
+  },
+];
+
+function targetMatches(html, t) {
+  // NOTE: patterns carry no /g flag, so regex .test() is stateless here.
+  return t.kind === 'regex' ? t.pattern.test(html) : html.includes(t.pattern);
+}
+
+// Pure check: returns [{ name, ok, breaks }] for every transform target.
+// Pass an html string to check a candidate template; omit to check the live one.
+function checkTransforms(html) {
+  const src = html == null ? loadDashboardHtml() : html;
+  return TRANSFORM_TARGETS.map(t => ({
+    name: t.name,
+    ok: targetMatches(src, t),
+    breaks: t.breaks,
+  }));
+}
+
+function logTransformReport(failures) {
+  const line = '='.repeat(72);
+  console.error('\n' + line);
+  console.error('!! MANNA SERVE-TIME TRANSFORM CHECK FAILED !!');
+  console.error(line);
+  console.error('The dashboard template is MISSING serve-time replacement targets.');
+  console.error('Features WILL break silently in production until this is fixed:');
+  for (const f of failures) {
+    console.error('  [MISSING] ' + f.name);
+    console.error('            -> ' + f.breaks);
+  }
+  console.error('Template: ' + DASHBOARD_PATH);
+  console.error('Fix: restore the target string(s) in the template, or update BOTH');
+  console.error('TRANSFORM_TARGETS and the replace() call in serveApp if the rename');
+  console.error('was intentional.');
+  console.error(line + '\n');
+}
+
+// Startup self-check: runs once when this module is required (server boot).
+// Never throws — a broken template must not prevent the server from starting
+// (serveApp already 500s with a clear message); it must only be LOUD.
+(function startupTransformCheck() {
+  try {
+    const failures = checkTransforms().filter(c => !c.ok);
+    if (failures.length) {
+      logTransformReport(failures);
+    } else {
+      console.log('[transforms] OK — all ' + TRANSFORM_TARGETS.length +
+        ' serve-time replacement targets verified in template');
+    }
+  } catch (e) {
+    const line = '='.repeat(72);
+    console.error('\n' + line);
+    console.error('!! MANNA SERVE-TIME TRANSFORM CHECK FAILED !!');
+    console.error('Could not load dashboard template: ' + e.message);
+    console.error('Template: ' + DASHBOARD_PATH);
+    console.error(line + '\n');
+  }
+})();
+
 function serveApp(req, res) {
   let html;
   try {
@@ -75,6 +182,10 @@ function serveApp(req, res) {
 
   const tdb = req.tdb;
   const tenant = req.tenant;
+
+  // NOTE: every replacement target below is declared in TRANSFORM_TARGETS
+  // (safety-net block above). Keep them in sync — the startup self-check and
+  // GET /api/transform-health verify the targets, not these replacements.
 
   // 1. Same-origin API for the Sites tab (compat shim in server.js).
   html = html.replace(
@@ -152,4 +263,4 @@ function serveApp(req, res) {
   res.send(html);
 }
 
-module.exports = { serveApp, mapWindows };
+module.exports = { serveApp, mapWindows, checkTransforms, TRANSFORM_TARGETS };
