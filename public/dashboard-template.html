@@ -145,6 +145,22 @@
   .funnel-track { background:var(--bg4); border-radius:6px; height:14px; overflow:hidden; }
   .funnel-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#9a7433,#f0c876); }
 
+  /* Add-site modal */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal-card { background:var(--bg2); border:1px solid rgba(217,164,65,.35); border-radius:12px; padding:1.5rem; width:100%; max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,.6); }
+  .modal-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .modal-sub { font-size:13px; color:var(--text2); margin-bottom:1.25rem; }
+  .modal-field { margin-bottom:1rem; }
+  .modal-field label { display:block; font-size:12px; font-weight:600; color:var(--text2); margin-bottom:6px; letter-spacing:.03em; }
+  .modal-field input { width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:12px 14px; font-size:14px; font-family:inherit; }
+  .modal-field input:focus { outline:none; border-color:var(--gold); }
+  .modal-field .hint { font-size:11px; color:var(--text3); margin-top:5px; }
+  .modal-err { display:none; background:var(--red-bg); border:1px solid rgba(232,92,92,.25); color:var(--red); border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:1rem; }
+  .modal-ok { display:none; background:var(--green-bg); border:1px solid rgba(34,201,138,.25); color:var(--green); border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:1rem; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:1.25rem; }
+  .modal-actions .btn { cursor:pointer; font-family:inherit; }
+  .modal-actions .btn[disabled] { opacity:.5; cursor:wait; }
+
 </style>
 
 </head>
@@ -438,6 +454,36 @@
   <a href="/terms" style="color:var(--text3)">Terms</a> &middot;
   <a href="/privacy" style="color:var(--text3)">Privacy</a>
 </footer>
+
+<!-- ============ ADD SITE MODAL ============ -->
+<div class="modal-backdrop" id="site-modal" style="display:none">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="site-modal-title">
+    <div class="modal-title" id="site-modal-title">&#127760; Add your first site</div>
+    <div class="modal-sub">Connect a project to start tracking visitors in real time.</div>
+    <div class="modal-err" id="site-modal-err"></div>
+    <div class="modal-ok" id="site-modal-ok"></div>
+    <form id="site-modal-form">
+      <div class="modal-field">
+        <label for="site-name">Project name</label>
+        <input type="text" id="site-name" maxlength="120" placeholder="Mike's Pizza Shop" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label for="site-url">Website URL <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input type="text" id="site-url" maxlength="500" placeholder="https://mikespizza.com" autocomplete="off" inputmode="url">
+      </div>
+      <div class="modal-field">
+        <label for="site-key">Site key</label>
+        <input type="text" id="site-key" maxlength="40" placeholder="mikes-pizza-shop" autocomplete="off">
+        <div class="hint">Lowercase letters, numbers and dashes only. Used in your tracking snippet.</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="site-modal-cancel">Cancel</button>
+        <button type="submit" class="btn gold" id="site-modal-submit">&#43; Add site</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 var API_BASE = 'https://muse4.pythonanywhere.com';
 var SITES = [];
@@ -512,13 +558,16 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
       + '<div class="suggest-step"><div class="suggest-num">2</div><div><strong>Set up lead collection</strong><div style="font-size:13px;color:var(--text2)">Build your list \u2014 your trial includes dashboard + collection.</div></div></div>'
       + '<div class="suggest-step"><div class="suggest-num">3</div><div><strong>I\u2019ll guide each step</strong><div style="font-size:13px;color:var(--text2)">Ask me anything as you go \u2014 I\u2019m your instructor.</div></div></div>'
       + '<div class="suggest-actions">'
-      + '<button class="btn gold" data-goto-tab="sites">\u{1F310} Add my site \u2014 start step 1</button>'
+      + '<button class="btn gold" data-open-site-modal="1">\u{1F310} Add my site \u2014 start step 1</button>'
       + '<a class="btn" href="/leads">\u{1F4E5} Collect leads \u2014 step 2</a>'
       + '</div>';
     msgs.appendChild(card);
     msgs.scrollTop = msgs.scrollHeight;
     card.querySelectorAll('[data-goto-tab]').forEach(function(b){
       b.addEventListener('click', function(){ setMainTab(b.getAttribute('data-goto-tab')); window.scrollTo({top:0, behavior:'smooth'}); });
+    });
+    card.querySelectorAll('[data-open-site-modal]').forEach(function(b){
+      b.addEventListener('click', function(){ setMainTab('sites'); openSiteModal(); window.scrollTo({top:0, behavior:'smooth'}); });
     });
   }
   function send(text){
@@ -843,8 +892,120 @@ if (_nt) {
   var _now = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
   _nt.innerHTML = 'Site data live \u00B7 ' + _now + ' PT \u00B7 auto-refresh 5 min';
 }
+/* ---------- add-site modal ---------- */
+function siteKeyFromName(name){
+  return String(name||'').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+}
+function openSiteModal(){
+  var m = document.getElementById('site-modal');
+  if (!m) return;
+  document.getElementById('site-modal-err').style.display = 'none';
+  document.getElementById('site-modal-ok').style.display = 'none';
+  m.style.display = 'flex';
+  var nameEl = document.getElementById('site-name');
+  if (nameEl) nameEl.focus();
+}
+function closeSiteModal(){
+  var m = document.getElementById('site-modal');
+  if (m) m.style.display = 'none';
+}
+function siteModalError(msg){
+  var el = document.getElementById('site-modal-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('site-modal-ok').style.display = 'none';
+}
+function siteModalOk(msg){
+  var el = document.getElementById('site-modal-ok');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('site-modal-err').style.display = 'none';
+}
+function refreshSites(){
+  return fetch(API_BASE + '/api/sites', { headers: apiH() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (j && j.ok && Array.isArray(j.sites)) {
+        SITES = j.sites.map(function(s){
+          return { key: s.site_key, emoji: s.emoji || '\u{1F310}', name: s.name, url: s.url || '#' };
+        });
+      }
+      loadSites();
+    })
+    .catch(function(){ loadSites(); });
+}
+(function(){
+  var modal = document.getElementById('site-modal');
+  var form = document.getElementById('site-modal-form');
+  var nameEl = document.getElementById('site-name');
+  var urlEl = document.getElementById('site-url');
+  var keyEl = document.getElementById('site-key');
+  var submitBtn = document.getElementById('site-modal-submit');
+  var cancelBtn = document.getElementById('site-modal-cancel');
+  var keyTouched = false;
+  if (!modal || !form) return;
+  /* auto-fill the site key from the project name until the user edits it */
+  nameEl.addEventListener('input', function(){
+    if (!keyTouched) keyEl.value = siteKeyFromName(nameEl.value);
+  });
+  keyEl.addEventListener('input', function(){ keyTouched = true; });
+  cancelBtn.addEventListener('click', closeSiteModal);
+  modal.addEventListener('click', function(e){ if (e.target === modal) closeSiteModal(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && modal.style.display !== 'none') closeSiteModal();
+  });
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = nameEl.value.trim();
+    var url = urlEl.value.trim();
+    var siteKey = keyEl.value.trim().toLowerCase();
+    if (!siteKey) siteKey = siteKeyFromName(name);
+    if (name.length < 2) { siteModalError('Please enter a project name (at least 2 characters).'); return; }
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(siteKey)) {
+      siteModalError('Site key must be lowercase letters, numbers and dashes only.');
+      return;
+    }
+    submitBtn.disabled = true;
+    fetch(API_BASE + '/api/sites', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiH()),
+      body: JSON.stringify({ siteKey: siteKey, name: name, url: url || null })
+    }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); })
+    .then(function(res){
+      var j = res.body || {};
+      if (j.ok) {
+        siteModalOk('\u2705 Site added! Loading your dashboard\u2026');
+        refreshSites().then(function(){
+          setTimeout(function(){
+            closeSiteModal();
+            setMainTab('sites');
+            /* reset the form for next time */
+            nameEl.value = ''; urlEl.value = ''; keyEl.value = '';
+            keyTouched = false;
+          }, 900);
+        });
+      } else {
+        var msg = 'Could not add the site. Please try again.';
+        if (j.error === 'site_key_taken') msg = 'That site key is already taken \u2014 try a different one.';
+        else if (j.error === 'invalid_site_key') msg = 'Site key must be lowercase letters, numbers and dashes only.';
+        else if (j.error === 'invalid_site_name') msg = 'Please enter a project name (at least 2 characters).';
+        else if (j.error === 'project_limit_reached') msg = 'Project limit reached on your plan \u2014 upgrade to add more.';
+        siteModalError(msg);
+      }
+    })
+    .catch(function(){
+      siteModalError('Network error. Check your connection and try again.');
+    })
+    .then(function(){ submitBtn.disabled = false; });
+  });
+})();
+/* wire every add-site entry point to the modal */
 var _addSite = document.getElementById('add-site-btn');
-if (_addSite) _addSite.addEventListener('click', function(){ setMainTab('sites'); });
+if (_addSite) _addSite.addEventListener('click', function(e){ e.preventDefault(); setMainTab('sites'); openSiteModal(); });
 </script>
 </body>
 </html>
