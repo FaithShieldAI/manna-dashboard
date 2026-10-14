@@ -159,6 +159,25 @@ function forTenant(tenantId) {
       );
       return funnels.map(f => ({ ...f, stages: stageStmt.all(f.id) }));
     },
+    getFunnel(funnelKey) {
+      return db.prepare(
+        'SELECT id, funnel_key, name, emoji, subtitle FROM funnels WHERE tenant_id = ? AND funnel_key = ?'
+      ).get(t, funnelKey);
+    },
+    createFunnel({ funnelKey, name, emoji, subtitle, stages }) {
+      // stages: [{ stageKey, label, goalValue }] — goalValue null = no goal
+      const fr = db.prepare(`
+        INSERT INTO funnels (tenant_id, funnel_key, name, emoji, subtitle)
+        VALUES (?, ?, ?, ?, ?)`).run(t, funnelKey, name, emoji || null, subtitle || null);
+      const funnelId = Number(fr.lastInsertRowid);
+      const ins = db.prepare(`
+        INSERT INTO funnel_stages (funnel_id, stage_key, label, goal_value, sort_order)
+        VALUES (?, ?, ?, ?, ?)`);
+      (stages || []).forEach((s, i) => {
+        ins.run(funnelId, s.stageKey, s.label, s.goalValue == null ? null : Number(s.goalValue), i);
+      });
+      return funnelId;
+    },
 
     // -- influencers ------------------------------------------------------
     influencers({ category, status, limit = 200 } = {}) {
