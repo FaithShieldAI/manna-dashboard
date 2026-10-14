@@ -58,7 +58,7 @@ test('sources listed', async () => {
   const r = await c.get('/api/leads/sources');
   assert.equal(r.status, 200);
   const keys = r.json.sources.map(s => s.key).sort();
-  assert.deepEqual(keys, ['weblist', 'youtube']);
+  assert.deepEqual(keys, ['aisearch', 'weblist', 'youtube']);
 });
 
 test('job validation', async () => {

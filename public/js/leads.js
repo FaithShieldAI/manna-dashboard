@@ -4,11 +4,13 @@
   var sourceSel = document.getElementById('source');
   var kwBlock = document.getElementById('kw-block');
   var seedBlock = document.getElementById('seed-block');
+  var aiBlock = document.getElementById('ai-block');
 
   sourceSel.addEventListener('change', function () {
-    var isYt = sourceSel.value === 'youtube';
-    kwBlock.classList.toggle('is-hidden', !isYt);
-    seedBlock.classList.toggle('is-hidden', isYt);
+    var v = sourceSel.value;
+    kwBlock.classList.toggle('is-hidden', v !== 'youtube');
+    seedBlock.classList.toggle('is-hidden', v !== 'weblist');
+    aiBlock.classList.toggle('is-hidden', v !== 'aisearch');
   });
 
   document.getElementById('logout').addEventListener('click', function () {
@@ -37,7 +39,9 @@
     box.innerHTML = jobs.map(function (j) {
       var input = j.source === 'youtube'
         ? esc(j.keywords.join(', '))
-        : esc(j.seeds.slice(0, 3).join(', ') + (j.seeds.length > 3 ? ' …(+' + (j.seeds.length - 3) + ' more)' : ''));
+        : j.source === 'aisearch'
+          ? '🤖 ' + esc(j.query || 'AI search')
+          : esc(j.seeds.slice(0, 3).join(', ') + (j.seeds.length > 3 ? ' …(+' + (j.seeds.length - 3) + ' more)' : ''));
       var stats = (j.status === 'done')
         ? '<span class="small"> · ' + j.found_count + ' emails found · <strong class="j-new">' + j.new_count + ' new</strong> added to your list</span>'
         : '';
@@ -77,13 +81,55 @@
     });
   }
 
+  function finishRun(btn, r) {
+    btn.disabled = false;
+    document.getElementById('run-hint').classList.add('is-hidden');
+    D2RM.clearAlerts();
+    if (r.json && r.json.ok) {
+      var res = r.json.result || r.json;
+      var msg = 'Done: ' + (res.found || 0) + ' emails found, ' + (res.new || 0) + ' new leads added to your list.';
+      if (res.parsed && res.parsed.business_type) {
+        msg = 'Searched for "' + res.parsed.business_type
+          + (res.parsed.location ? ' in ' + res.parsed.location : '') + '". ' + msg;
+      }
+      D2RM.showSuccess('ok', msg);
+    } else {
+      D2RM.showError('err', D2RM.friendly(r.json && r.json.error));
+    }
+    loadJobs();
+  }
+
+  function failRun(btn) {
+    btn.disabled = false;
+    document.getElementById('run-hint').classList.add('is-hidden');
+    D2RM.showError('err', 'Network error — the job may still be running. Refresh in a bit.');
+    loadJobs();
+  }
+
   document.getElementById('run-job').addEventListener('click', function () {
     D2RM.clearAlerts();
     var btn = this;
     var source = sourceSel.value;
+    var maxr = parseInt(document.getElementById('maxr').value, 10);
+
+    // AI search goes straight to its own endpoint (creates + runs the job inline).
+    if (source === 'aisearch') {
+      var q = document.getElementById('ai-query').value.trim();
+      if (!q) {
+        D2RM.showError('err', 'Describe your ideal customer — e.g. "AV integrators in Texas".');
+        return;
+      }
+      btn.disabled = true;
+      document.getElementById('run-hint').classList.remove('is-hidden');
+      D2RM.api('POST', '/api/leads/ai-search', { query: q, max_results: maxr })
+        .then(function (r) { finishRun(btn, r); })
+        .catch(function () { failRun(btn); });
+      return;
+    }
+
     var payload = {
       source: source,
-      max_results: parseInt(document.getElementById('maxr').value, 10),
+      max_results: maxr,
       auto_run: true,
     };
     if (source === 'youtube') payload.keywords = lines('keywords');
@@ -98,23 +144,9 @@
     }
     btn.disabled = true;
     document.getElementById('run-hint').classList.remove('is-hidden');
-    D2RM.api('POST', '/api/leads/jobs', payload).then(function (r) {
-      btn.disabled = false;
-      document.getElementById('run-hint').classList.add('is-hidden');
-      D2RM.clearAlerts();
-      if (r.json && r.json.ok) {
-        var res = r.json.result || {};
-        D2RM.showSuccess('ok', 'Done: ' + (res.found || 0) + ' emails found, ' + (res.new || 0) + ' new leads added to your list.');
-      } else {
-        D2RM.showError('err', D2RM.friendly(r.json && r.json.error));
-      }
-      loadJobs();
-    }).catch(function () {
-      btn.disabled = false;
-      document.getElementById('run-hint').classList.add('is-hidden');
-      D2RM.showError('err', 'Network error — the job may still be running. Refresh in a bit.');
-      loadJobs();
-    });
+    D2RM.api('POST', '/api/leads/jobs', payload)
+      .then(function (r) { finishRun(btn, r); })
+      .catch(function () { failRun(btn); });
   });
 
   loadJobs();

@@ -28,6 +28,7 @@
 const express = require('express');
 const youtube = require('../lib/collectors/youtube');
 const weblist = require('../lib/collectors/weblist');
+const aisearch = require('../lib/collectors/aisearch');
 
 const router = express.Router();
 
@@ -46,6 +47,13 @@ const SOURCES = {
     input: 'seeds',
     example: ['https://example-creator.com', 'https://directory.example/niche'],
   },
+  aisearch: {
+    key: 'aisearch',
+    name: 'AI search',
+    description: 'Describe your ideal customer in plain English — e.g. "AV integrators in Texas". The AI searches the live web for matching businesses and pulls public contact emails.',
+    input: 'query',
+    example: ['AV integrators in Texas', 'coffee roasters near Portland'],
+  },
 };
 
 const MAX_ACTIVE_JOBS = 10; // per tenant; keeps the shared server polite
@@ -60,6 +68,7 @@ function publicJob(row) {
     source: row.source,
     keywords,
     seeds,
+    query: row.query_text || null,
     max_results: row.max_results,
     status: row.status,
     found_count: row.found_count,
@@ -72,8 +81,9 @@ function publicJob(row) {
 }
 
 // --- insert leads into the tenant's influencers table (deduped by email) ---
-function ingestLeads(tdb, source, leads) {
+function ingestLeads(tdb, job, leads) {
   const known = tdb.influencerEmails();
+  const source = job.source;
   let added = 0;
   for (const lead of leads) {
     for (const email of (lead.emails || [])) {
@@ -81,16 +91,20 @@ function ingestLeads(tdb, source, leads) {
       if (known.has(e)) continue;
       known.add(e);
       const isYt = source === 'youtube';
+      const isAi = source === 'aisearch';
+      const notes = isYt
+        ? `Collected ${(lead.keyword ? `for keyword "${lead.keyword}" ` : '')}from YouTube channel "${lead.name}"`
+        : isAi
+          ? `AI search "${job.query_text || ''}" → ${lead.name || lead.url}${lead.location ? ` (${lead.location})` : ''}`
+          : `Collected from seed URL ${lead.url}`;
       tdb.createInfluencer({
-        handle: isYt ? (lead.handle || lead.name) : (lead.title || lead.url),
+        handle: isYt ? (lead.handle || lead.name) : (lead.name || lead.title || lead.url),
         platform: isYt ? 'youtube' : 'web',
         email: e,
         tier: null,
         category: 'influencer',
         status: 'unvetted',
-        notes: isYt
-          ? `Collected ${(lead.keyword ? `for keyword "${lead.keyword}" ` : '')}from YouTube channel "${lead.name}"`
-          : `Collected from seed URL ${lead.url}`,
+        notes,
         source: `lead-collect:${source}`,
       });
       added += 1;
@@ -109,24 +123,29 @@ async function runJob(tdb, job) {
     const maxResults = Math.min(Math.max(job.max_results || 25, 1), 100);
 
     let leads;
+    let parsed = null;
     if (job.source === 'youtube') {
       leads = await youtube.collect({ keywords, maxPerKeyword: 8, maxLeads: maxResults, noDelay: false });
     } else if (job.source === 'weblist') {
       const raw = await weblist.collect({ seeds });
       leads = raw.slice(0, maxResults);
+    } else if (job.source === 'aisearch') {
+      const res = await aisearch.collect({ query: job.query_text, maxLeads: maxResults, noDelay: false });
+      leads = res.leads;
+      parsed = res.parsed;
     } else {
       throw new Error(`unknown source: ${job.source}`);
     }
 
     const found = leads.reduce((a, l) => a + (l.emails || []).length, 0);
-    const added = ingestLeads(tdb, job.source, leads);
+    const added = ingestLeads(tdb, job, leads);
     tdb.updateCollectionJob(job.id, {
       status: 'done',
       found_count: found,
       new_count: added,
       finished_at: new Date().toISOString(),
     });
-    return { ok: true, found, new: added, leads: leads.slice(0, maxResults) };
+    return { ok: true, found, new: added, parsed, leads: leads.slice(0, maxResults) };
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[leads/run]', e);
@@ -144,34 +163,68 @@ router.get('/sources', (req, res) => {
   res.json({ ok: true, sources: Object.values(SOURCES) });
 });
 
-router.post('/jobs', async (req, res) => {
-  const { source, keywords, seeds, max_results, auto_run } = req.body || {};
+// --- shared job creation (validates input, enforces the active-job cap) ---
+function createJob(tdb, { source, query, keywords, seeds, maxResults }) {
   if (!SOURCES[source]) {
-    return res.status(400).json({ ok: false, error: 'invalid_source', valid: Object.keys(SOURCES) });
+    return { error: { status: 400, body: { ok: false, error: 'invalid_source', valid: Object.keys(SOURCES) } } };
   }
+  const q = String(query || '').trim().slice(0, 200);
   const kw = Array.isArray(keywords) ? keywords.map(String).map(s => s.trim()).filter(Boolean).slice(0, 10) : [];
   const sd = Array.isArray(seeds) ? seeds.map(String).map(s => s.trim()).filter(Boolean).slice(0, 50) : [];
   if (source === 'youtube' && kw.length === 0) {
-    return res.status(400).json({ ok: false, error: 'keywords_required' });
+    return { error: { status: 400, body: { ok: false, error: 'keywords_required' } } };
   }
   if (source === 'weblist' && sd.length === 0) {
-    return res.status(400).json({ ok: false, error: 'seeds_required' });
+    return { error: { status: 400, body: { ok: false, error: 'seeds_required' } } };
   }
-  const maxResults = Math.min(Math.max(parseInt(max_results, 10) || 25, 1), 100);
+  if (source === 'aisearch' && !q) {
+    return { error: { status: 400, body: { ok: false, error: 'query_required' } } };
+  }
+  const max = Math.min(Math.max(parseInt(maxResults, 10) || 25, 1), 100);
 
-  const active = req.tdb.listCollectionJobs(100).filter(j => j.status === 'queued' || j.status === 'running').length;
+  const active = tdb.listCollectionJobs(100).filter(j => j.status === 'queued' || j.status === 'running').length;
   if (active >= MAX_ACTIVE_JOBS) {
-    return res.status(429).json({ ok: false, error: 'too_many_jobs', max_active: MAX_ACTIVE_JOBS });
+    return { error: { status: 429, body: { ok: false, error: 'too_many_jobs', max_active: MAX_ACTIVE_JOBS } } };
   }
 
-  const r = req.tdb.createCollectionJob({ source, keywords: kw, seeds: sd, maxResults });
-  const job = publicJob(req.tdb.getCollectionJob(Number(r.lastInsertRowid)));
+  const r = tdb.createCollectionJob({ source, keywords: kw, seeds: sd, maxResults: max, queryText: q || null });
+  return { job: publicJob(tdb.getCollectionJob(Number(r.lastInsertRowid))) };
+}
+
+router.post('/jobs', async (req, res) => {
+  const { source, query, keywords, seeds, max_results, auto_run } = req.body || {};
+  const created = createJob(req.tdb, { source, query, keywords, seeds, maxResults: max_results });
+  if (created.error) return res.status(created.error.status).json(created.error.body);
 
   if (auto_run) {
-    const result = await runJob(req.tdb, req.tdb.getCollectionJob(job.id));
-    return res.status(201).json({ ok: true, job: publicJob(req.tdb.getCollectionJob(job.id)), result });
+    const result = await runJob(req.tdb, req.tdb.getCollectionJob(created.job.id));
+    return res.status(201).json({ ok: true, job: publicJob(req.tdb.getCollectionJob(created.job.id)), result });
   }
-  res.status(201).json({ ok: true, job });
+  res.status(201).json({ ok: true, job: created.job });
+});
+
+/**
+ * Origami-style entry point: plain-English query straight to an inline run.
+ *   POST /api/leads/ai-search  { query: "AV integrators in Texas", max_results?: 25 }
+ * Creates an aisearch collection job, runs it inline, and ingests the leads
+ * into the tenant's list — same as the jobs flow, one call.
+ */
+router.post('/ai-search', async (req, res) => {
+  const { query, max_results } = req.body || {};
+  const created = createJob(req.tdb, { source: 'aisearch', query, maxResults: max_results });
+  if (created.error) return res.status(created.error.status).json(created.error.body);
+
+  const result = await runJob(req.tdb, req.tdb.getCollectionJob(created.job.id));
+  const status = result.ok ? 201 : 502;
+  res.status(status).json({
+    ok: result.ok,
+    job: publicJob(req.tdb.getCollectionJob(created.job.id)),
+    parsed: result.parsed || null,
+    found: result.found || 0,
+    new: result.new || 0,
+    leads: result.leads || [],
+    error: result.error,
+  });
 });
 
 router.get('/jobs', (req, res) => {
