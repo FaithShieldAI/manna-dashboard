@@ -159,6 +159,7 @@ api.use('/sites', require('./routes/sites'));
 api.use('/email', require('./routes/email'));
 api.use('/funnels', require('./routes/funnels'));
 api.use('/influencers', require('./routes/influencers'));
+api.use('/vetted', require('./routes/vetted'));
 api.use('/ip-registry', require('./routes/ipRegistry'));
 api.use('/billing', require('./routes/billing'));
 api.use('/leads', require('./routes/leads'));

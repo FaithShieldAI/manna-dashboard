@@ -194,6 +194,26 @@ function forTenant(tenantId) {
         'SELECT category, COUNT(*) AS n FROM influencers WHERE tenant_id = ? GROUP BY category'
       ).all(t);
     },
+    influencerVettedCounts() {
+      // Rows of { category, status, n } for the Vetted tab.
+      return db.prepare(
+        'SELECT category, status, COUNT(*) AS n FROM influencers WHERE tenant_id = ? GROUP BY category, status'
+      ).all(t);
+    },
+    pendingVetted({ category, limit = 100 } = {}) {
+      let sql = 'SELECT id, handle, platform, email, tier, category, status, source, created_at FROM influencers WHERE tenant_id = ? AND status = ?';
+      const params = [t, 'unvetted'];
+      if (category) { sql += ' AND category = ?'; params.push(category); }
+      sql += ' ORDER BY created_at DESC LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params);
+    },
+    setInfluencerStatus(id, status) {
+      const r = db.prepare(
+        'UPDATE influencers SET status = ? WHERE tenant_id = ? AND id = ?'
+      ).run(status, t, id);
+      return r.changes > 0;
+    },
     influencerEmails() {
       // Lowercased email set for collection dedupe.
       return new Set(

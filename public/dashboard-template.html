@@ -121,6 +121,10 @@
   .instructor-form input:focus { outline:none; border-color:var(--gold); }
   .btn.gold { background:linear-gradient(180deg,#f0c876,#9a7433); color:#1a1206; font-weight:700; border:none; cursor:pointer; }
   .btn.gold:hover { filter:brightness(1.07); }
+  .btn-ok { display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:6px; border:1px solid #2f7d4f; background:rgba(46,160,80,.12); color:#7ee2a8; font-size:12px; cursor:pointer; }
+  .btn-ok:hover { background:rgba(46,160,80,.25); }
+  .btn-no { display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:6px; border:1px solid #7d2f2f; background:rgba(160,46,46,.12); color:#e27e7e; font-size:12px; cursor:pointer; }
+  .btn-no:hover { background:rgba(160,46,46,.25); }
   .suggest-card { background:var(--bg3); border:1px solid rgba(217,164,65,.32); border-radius:10px; padding:14px 16px; align-self:flex-start; max-width:94%; }
   .suggest-step { display:flex; gap:12px; align-items:flex-start; margin:12px 0; }
   .suggest-num { flex:none; width:26px; height:26px; border-radius:50%; background:rgba(217,164,65,.18); border:1px solid var(--gold); color:#f0c876; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -214,6 +218,7 @@
     <button class="main-tab" data-tab="conversions">&#9989; Conversions</button>
     <button class="main-tab" data-tab="sites">&#127760; Sites</button>
     <button class="main-tab" data-tab="influencers">&#128101; Influencers</button>
+    <button class="main-tab" data-tab="vetted">&#9989; Vetted</button>
     <button class="main-tab" data-tab="social">&#128248; Social</button>
     <button class="main-tab" data-tab="ipregistry">&#128274; IP Registry</button>
     <button class="main-tab" data-tab="billing">&#128179; Billing</button>
@@ -380,6 +385,48 @@
   </div>
 
   </div><!-- /panel-influencers -->
+
+  <!-- ============ TAB: VETTED ============ -->
+  <div class="main-tab-panel" id="panel-vetted" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#9989; Vetted Leads</div>
+      <div class="card-sub">review new leads by category, approve the good ones, reject the rest</div>
+    </div></div>
+    <div class="card-sub" style="margin-bottom:0.5rem;font-weight:600">Vetted</div>
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)" id="vet-grid">
+      <div class="stat-card"><div class="stat-label">&#127793; Influencers</div><div class="stat-value" id="vet-influencer" style="color:var(--gold)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#127908; Podcasts</div><div class="stat-value" id="vet-podcast" style="color:var(--gold)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#9978; Pastors</div><div class="stat-value" id="vet-pastor" style="color:var(--gold)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#128591; Churches</div><div class="stat-value" id="vet-church" style="color:var(--gold)">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">&#9878; Attorneys</div><div class="stat-value" id="vet-attorney" style="color:var(--gold)">&mdash;</div></div>
+    </div>
+    <div class="card-sub" style="margin:1rem 0 0.5rem;font-weight:600">Waiting for review</div>
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+      <div class="stat-card"><div class="stat-label">Influencers</div><div class="stat-value" id="vetu-influencer">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Podcasts</div><div class="stat-value" id="vetu-podcast">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Pastors</div><div class="stat-value" id="vetu-pastor">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Churches</div><div class="stat-value" id="vetu-church">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">Attorneys</div><div class="stat-value" id="vetu-attorney">&mdash;</div></div>
+    </div>
+    <div style="margin:1rem 0 0.5rem"><label class="card-sub" for="vet-cat" style="font-weight:600">Category:&nbsp;</label>
+      <select id="vet-cat" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+        <option value="">All categories</option>
+        <option value="influencer">Influencers</option>
+        <option value="podcast">Podcasts</option>
+        <option value="pastor">Pastors</option>
+        <option value="church">Churches</option>
+        <option value="attorney">Attorneys</option>
+      </select>
+    </div>
+    <div class="table-wrap"><table>
+      <tr><th>Lead</th><th>Category</th><th>Source</th><th>Added</th><th>Actions</th></tr>
+      <tbody id="vet-rows"><tr><td colspan="5" class="empty">No leads waiting for review &mdash; new collection results appear here.</td></tr></tbody>
+    </table></div>
+  </div>
+
+  </div><!-- /panel-vetted -->
 
   <!-- ============ TAB: SOCIAL ============ -->
   <div class="main-tab-panel" id="panel-social" style="display:none">
@@ -991,6 +1038,68 @@ function parseFunnelStages(text){
     });
     set('inf-nano', num(nano)); set('inf-micro', num(micro)); set('inf-macro', num(macro));
   }).catch(function(){});
+})();
+
+/* ---------- vetted ---------- */
+(function(){
+  function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+  var CATS = ['influencer','podcast','pastor','church','attorney'];
+  var catSel = document.getElementById('vet-cat');
+  function loadStats(){
+    fetch('/api/vetted/stats', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+      if (!(j && j.ok)) return;
+      CATS.forEach(function(c){
+        set('vet-'+c, num((j.vetted||{})[c]||0));
+        set('vetu-'+c, num((j.unvetted||{})[c]||0));
+      });
+    }).catch(function(){});
+  }
+  function postAct(id, action, row){
+    fetch('/api/vetted/' + id + '/' + action, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiH())
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.ok) {
+        if (row && row.parentNode) row.parentNode.removeChild(row);
+        loadStats();
+      }
+    }).catch(function(){});
+  }
+  function loadPending(){
+    var cat = catSel ? catSel.value : '';
+    var url = '/api/vetted/pending?limit=100' + (cat ? '&category=' + encodeURIComponent(cat) : '');
+    fetch(url, { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+      var rows = (j && j.ok && j.leads) || [];
+      var tb = document.getElementById('vet-rows');
+      if (!tb) return;
+      if (!rows.length) {
+        tb.innerHTML = '<tr><td colspan="5" class="empty">No leads waiting for review &mdash; new collection results appear here.</td></tr>';
+        return;
+      }
+      tb.innerHTML = rows.map(function(l){
+        var label = esc(l.handle || l.email || '\u2014');
+        var sub = l.handle && l.email ? '<div style="font-size:0.8em;opacity:0.65">' + esc(l.email) + '</div>' : '';
+        var added = l.created_at ? esc(String(l.created_at).slice(0,10)) : '\u2014';
+        return '<tr><td class="subj">' + label + sub + '</td>'
+          + '<td>' + esc(l.category || '') + '</td>'
+          + '<td>' + esc(l.source || '') + '</td>'
+          + '<td>' + added + '</td>'
+          + '<td style="white-space:nowrap">'
+          + '<button class="btn-ok" data-vet-approve="' + l.id + '">&#9989; Approve</button> '
+          + '<button class="btn-no" data-vet-reject="' + l.id + '">&#10060; Reject</button>'
+          + '</td></tr>';
+      }).join('');
+      tb.querySelectorAll('[data-vet-approve]').forEach(function(b){
+        b.addEventListener('click', function(){ postAct(b.getAttribute('data-vet-approve'), 'approve', b.closest('tr')); });
+      });
+      tb.querySelectorAll('[data-vet-reject]').forEach(function(b){
+        b.addEventListener('click', function(){ postAct(b.getAttribute('data-vet-reject'), 'reject', b.closest('tr')); });
+      });
+    }).catch(function(){});
+  }
+  if (catSel) catSel.addEventListener('change', loadPending);
+  loadStats();
+  loadPending();
 })();
 
 /* ---------- social ---------- */
