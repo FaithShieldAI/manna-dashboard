@@ -239,11 +239,18 @@ try {
   console.error('[seed] Startup seed failed:', e.message);
 }
 
-// Seed demo data (email stats, campaigns, goals) for d2rm-media tenant
+// Seed demo data (email stats, campaigns, goals) for all tenants on startup
 try {
   const { seedDemoData } = require('../scripts/seed-demo-data');
-  Promise.resolve(seedDemoData('d2rm-media')).catch(e => {
-    console.error('[seed] Demo data seed failed:', e.message);
+  const { db } = require('./db');
+  const slugs = db.prepare('SELECT slug FROM tenants').all().map(r => r.slug);
+  for (const slug of slugs) {
+    Promise.resolve(seedDemoData(slug)).catch(e => {
+      console.error(`[seed] Demo data seed failed for ${slug}:`, e.message);
+    });
+  }
+} catch (e) {
+  console.error('[seed] Demo data seed failed:', e.message);
   });
 } catch (e) {
   console.error('[seed] Demo data seed failed:', e.message);
