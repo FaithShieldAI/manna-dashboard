@@ -49,7 +49,7 @@
   .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
 
   /* 3 — D2RM dashboard frame */
-  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; width: 100%; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
   .card-title { font-size: 14px; font-weight: 600; color: var(--dtext); }
   .card-sub { font-size: 12px; color: var(--dtext2); }
@@ -79,7 +79,7 @@
   /* Main navigation tabs — D2RM structure, Manna gold active (never white) */
   .main-tabs { display: flex; gap: 10px; margin: 0 0 1.5rem; flex-wrap: wrap; border-bottom: 2px solid var(--dborder); padding-bottom: 12px; }
   .main-tab { -webkit-appearance: none; appearance: none; background: var(--dbg2); border: 1px solid var(--dborder2); color: var(--dtext2);
-    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; }
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; position: relative; z-index: 1; }
   .main-tab:hover { border-color: var(--mgold); color: var(--dtext); }
   .main-tab.active { background: var(--mgold); border-color: var(--mgold); color: #0f0f1a; }
   .main-tab-panel { animation: fadeIn 0.2s ease-in; }
