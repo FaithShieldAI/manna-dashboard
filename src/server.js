@@ -214,6 +214,20 @@ const { social, goals } = require('./routes/socialGoals');
 api.use('/social', social);
 api.use('/goals', goals);
 
+// Serve-time transform health: verifies every string/regex replacement target
+// in app-serve.js still exists in the dashboard template. Auth-gated; safe to
+// poll after deploys that touch the template.
+const { checkTransforms: checkServeTransforms } = require('./app-serve');
+api.get('/transform-health', (req, res) => {
+  try {
+    const checks = checkServeTransforms();
+    const failed = checks.filter(c => !c.ok);
+    res.json({ ok: failed.length === 0, checks });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'template_unavailable', detail: e.message });
+  }
+});
+
 app.use('/api', api);
 
 // --- 404 + error handler -------------------------------------------------------
@@ -249,9 +263,6 @@ try {
       console.error(`[seed] Demo data seed failed for ${slug}:`, e.message);
     });
   }
-} catch (e) {
-  console.error('[seed] Demo data seed failed:', e.message);
-  });
 } catch (e) {
   console.error('[seed] Demo data seed failed:', e.message);
 }
