@@ -35,6 +35,7 @@
         <select id="source">
           <option value="youtube">YouTube channel search — keywords → channel emails</option>
           <option value="weblist">Seed URL list — paste pages → contact emails</option>
+          <option value="aisearch">AI search — describe your ideal customer → business emails</option>
         </select>
       </div>
       <div>
@@ -56,6 +57,11 @@
       <label for="seeds">Seed URLs — one per line</label>
       <textarea id="seeds" placeholder="https://example-creator.com&#10;https://directory.example/niche"></textarea>
       <p class="hint">We fetch each page and extract public contact emails. Paste homepages, link-in-bio pages, or directories.</p>
+    </div>
+    <div id="ai-block" class="is-hidden">
+      <label for="ai-query">Describe your ideal customer</label>
+      <input type="text" id="ai-query" maxlength="200" placeholder="AV integrators in Texas" autocomplete="off">
+      <p class="hint">Plain English — e.g. "AV integrators in Texas", "coffee roasters near Portland". The AI searches the live web for matching businesses and pulls public contact emails into your list.</p>
     </div>
     <button class="primary mw320" id="run-job">Create &amp; run job</button>
     <p class="hint is-hidden" id="run-hint">Running — this can take a minute or two. Please wait…</p>

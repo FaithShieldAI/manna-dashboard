@@ -162,7 +162,7 @@ function forTenant(tenantId) {
 
     // -- influencers ------------------------------------------------------
     influencers({ category, status, limit = 200 } = {}) {
-      let sql = 'SELECT id, handle, platform, email, tier, category, status, notes, created_at FROM influencers WHERE tenant_id = ?';
+      let sql = 'SELECT id, handle, platform, email, tier, category, status, notes, source, created_at FROM influencers WHERE tenant_id = ?';
       const params = [t];
       if (category) { sql += ' AND category = ?'; params.push(category); }
       if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -191,22 +191,23 @@ function forTenant(tenantId) {
     },
 
     // -- lead collection --------------------------------------------------
-    createCollectionJob({ source, keywords, seeds, maxResults }) {
+    createCollectionJob({ source, keywords, seeds, maxResults, queryText }) {
       return db.prepare(`
-        INSERT INTO collection_jobs (tenant_id, source, keywords_json, seeds_json, max_results)
-        VALUES (?, ?, ?, ?, ?)`)
-        .run(t, source, JSON.stringify(keywords || []), JSON.stringify(seeds || []), maxResults || 25);
+        INSERT INTO collection_jobs (tenant_id, source, keywords_json, seeds_json, query_text, max_results)
+        VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(t, source, JSON.stringify(keywords || []), JSON.stringify(seeds || []),
+          queryText || null, maxResults || 25);
     },
     listCollectionJobs(limit = 50) {
       return db.prepare(`
-        SELECT id, source, keywords_json, seeds_json, max_results, status,
+        SELECT id, source, keywords_json, seeds_json, query_text, max_results, status,
                found_count, new_count, error, started_at, finished_at, created_at
         FROM collection_jobs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?`)
         .all(t, limit);
     },
     getCollectionJob(id) {
       return db.prepare(`
-        SELECT id, source, keywords_json, seeds_json, max_results, status,
+        SELECT id, source, keywords_json, seeds_json, query_text, max_results, status,
                found_count, new_count, error, started_at, finished_at, created_at
         FROM collection_jobs WHERE tenant_id = ? AND id = ?`).get(t, id);
     },
