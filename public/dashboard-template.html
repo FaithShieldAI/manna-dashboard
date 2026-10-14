@@ -499,6 +499,40 @@
   </div>
 </div>
 
+<!-- ============ ADD FUNNEL MODAL ============ -->
+<div class="modal-backdrop" id="funnel-modal" style="display:none">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="funnel-modal-title">
+    <div class="modal-title" id="funnel-modal-title">&#9989; Create your first funnel</div>
+    <div class="modal-sub">Track visitors &rarr; leads &rarr; customers, stage by stage.</div>
+    <div class="modal-err" id="funnel-modal-err"></div>
+    <div class="modal-ok" id="funnel-modal-ok"></div>
+    <form id="funnel-modal-form">
+      <div class="modal-field">
+        <label for="funnel-name">Funnel name</label>
+        <input type="text" id="funnel-name" maxlength="120" placeholder="Email signup funnel" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label for="funnel-subtitle">Subtitle <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input type="text" id="funnel-subtitle" maxlength="200" placeholder="How visitors become customers" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label for="funnel-key">Funnel key</label>
+        <input type="text" id="funnel-key" maxlength="40" placeholder="email-signup-funnel" autocomplete="off">
+        <div class="hint">Lowercase letters, numbers and dashes only.</div>
+      </div>
+      <div class="modal-field">
+        <label for="funnel-stages">Stages <span style="color:var(--text3);font-weight:400">(one per line)</span></label>
+        <textarea id="funnel-stages" rows="5" placeholder="Visitors: 10000&#10;Leads: 1000&#10;Customers: 100"></textarea>
+        <div class="hint">Each line is a stage. Add a goal after a colon, e.g. "Leads: 1000". Goal is optional.</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="funnel-modal-cancel">Cancel</button>
+        <button type="submit" class="btn gold" id="funnel-modal-submit">&#43; Create funnel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 var API_BASE = 'https://muse4.pythonanywhere.com';
 var SITES = [];
