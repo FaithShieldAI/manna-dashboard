@@ -53,10 +53,11 @@ const GOALS = [
   { goal_key: 'k_punk',           label: 'K-Punk Kickstarter notify-me', current_value: 1,    goal_value: 5000,  unit: 'signups' },
 ];
 
-function main() {
+function main(tenantSlug) {
   migrate();
 
-  const tenant = unscoped.getTenantBySlug(TENANT_SLUG);
+  const slug = (tenantSlug || TENANT_SLUG).toLowerCase();
+  const tenant = unscoped.getTenantBySlug(slug);
   if (!tenant) {
     console.error(`[seed-demo] tenant not found: "${TENANT_SLUG}"`);
     console.error('[seed-demo] The account must be created first (via /signup on the staging app).');
@@ -125,4 +126,8 @@ function main() {
   console.log('[seed-demo] done');
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { seedDemoData: main };
