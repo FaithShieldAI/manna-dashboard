@@ -37,7 +37,7 @@ router.post('/sync-d2rm', (req, res) => {
 
   const sourceDbPath = process.env.D2RM_SOURCE_DB || BUNDLED_SOURCE_DB;
   if (!fs.existsSync(sourceDbPath)) {
-    return res.status(500).json({ ok: false, error: 'source_db_missing' });
+    return res.status(500).json({ ok: false, error: 'source_db_missing', path: sourceDbPath, cwd: process.cwd() });
   }
 
   try {
