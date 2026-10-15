@@ -76,10 +76,12 @@ function purgeExpired() {
 }
 
 function cookieOptions() {
-  const isProd = process.env.NODE_ENV === 'production';
+  // Secure on any HTTPS deployment (production AND staging are both HTTPS
+  // on Render). Only development runs on plain http://localhost.
+  const isHttpsEnv = process.env.NODE_ENV !== 'development';
   return {
     httpOnly: true,
-    secure: isProd, // Secure cookies require HTTPS; dev runs on http
+    secure: isHttpsEnv,
     // 'lax' (not 'strict'): the cookie is still never sent cross-site on
     // POST/subresource requests, but top-level navigations from external
     // links (email verification, links shared in chat) arrive authenticated
