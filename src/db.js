@@ -410,12 +410,12 @@ const unscoped = {
   db,
   getUserByEmail(email) {
     return db.prepare(
-      'SELECT id, tenant_id, email, password_hash, display_name, role, email_verified_at FROM users WHERE email = ?'
+      'SELECT id, tenant_id, email, password_hash, display_name, role, email_verified_at, created_at FROM users WHERE email = ?'
     ).get(email);
   },
   getUserById(id) {
     return db.prepare(
-      'SELECT id, tenant_id, email, display_name, role, email_verified_at FROM users WHERE id = ?'
+      'SELECT id, tenant_id, email, display_name, role, email_verified_at, created_at FROM users WHERE id = ?'
     ).get(id);
   },
   getTenantById(id) {

@@ -36,7 +36,7 @@ function verifySession(token) {
   const tokenHash = sha256hex(token);
   const row = db.prepare(`
     SELECT s.id AS session_id, s.expires_at,
-           u.id AS user_id, u.tenant_id, u.email, u.display_name, u.role, u.email_verified_at
+           u.id AS user_id, u.tenant_id, u.email, u.display_name, u.role, u.email_verified_at, u.created_at
     FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token_hash = ?`).get(tokenHash);
   if (!row) return null;
@@ -55,6 +55,7 @@ function verifySession(token) {
       display_name: row.display_name,
       role: row.role,
       email_verified_at: row.email_verified_at,
+      created_at: row.created_at || null,
     },
   };
 }
