@@ -347,6 +347,55 @@
     });
   }
 
+  // ------------------------------------------------------------------ key numbers
+  /* Populate the Key Numbers 4-col grid from /api/overview so the cards show
+     live values + D2RM-style color graph bars instead of static dashes. */
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-US');
+  }
+  function loadKeyNumbers() {
+    api('GET', '/api/overview').then(function (r) {
+      if (!r.json || !r.json.ok) return;
+      var j = r.json;
+      var vals = {
+        sent:        j.email.sent,
+        opens:       j.email.opens,
+        clicks:      j.email.clicks,
+        warm:        j.email.warmTotal,
+        influencers: j.counts.influencers,
+        sites:       j.counts.sites,
+        ip:          j.counts.ipAssets,
+        social:      j.counts.socialAccounts,
+      };
+      var subs = {
+        sent:        vals.sent ? fmt(vals.sent) + ' sent all time' : 'no sends yet',
+        opens:       vals.sent ? j.email.openRate + '% open rate' : 'open rate',
+        clicks:      vals.sent ? j.email.clickRate + '% click rate' : 'click rate',
+        warm:        vals.warm ? fmt(vals.warm) + ' all time' : 'hottest retargeting leads',
+        influencers: vals.influencers ? 'across all categories' : 'across all categories',
+        sites:       vals.sites ? fmt(vals.sites) + ' tracked' : 'live analytics',
+        ip:          vals.ip ? fmt(vals.ip) + ' registered' : 'in the registry',
+        social:      vals.social ? fmt(vals.social) + ' connected' : 'connected',
+      };
+      /* Color graph bars: each bar shows the metric relative to the largest
+         Key Number, so the grid reads as a visual graph like D2RM's. */
+      var max = 1;
+      Object.keys(vals).forEach(function (k) { if (vals[k] > max) max = vals[k]; });
+      Object.keys(vals).forEach(function (k) {
+        var vEl = document.querySelector('[data-kn="' + k + '"]');
+        if (vEl) vEl.textContent = fmt(vals[k]);
+        var sEl = document.querySelector('[data-kn-sub="' + k + '"]');
+        if (sEl) sEl.textContent = subs[k];
+        var bEl = document.querySelector('[data-kn-bar="' + k + '"]');
+        if (bEl) {
+          var pct = max > 0 ? (100 * vals[k] / max) : 0;
+          bEl.style.width = (Math.round(pct * 10) / 10) + '%';
+          bEl.title = fmt(vals[k]);
+        }
+      });
+    }).catch(function () {});
+  }
+
   // ------------------------------------------------------------------ boot
   function refresh(full) {
     return api('GET', '/api/onboarding/status').then(function (r) {
@@ -366,4 +415,5 @@
   });
 
   refresh(true);
+  loadKeyNumbers();
 })();
