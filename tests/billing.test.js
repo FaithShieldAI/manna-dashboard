@@ -73,8 +73,20 @@ test('billing endpoint reports plan, limits, usage (stripe live)', async () => {
   assert.match(r.json.tagline, /little guy money/);
 });
 
+test('trial users cannot send email (paid plans only)', async () => {
+  const c = await registerStarter('trial-email@example.org');
+  const r = await c.post('/api/email/log-send', { count: 10 });
+  assert.equal(r.status, 403);
+  assert.equal(r.json.error, 'email_requires_paid_plan');
+});
+
 test('email quota enforced at 5k/mo for starter', async () => {
   const c = await registerStarter('starter3@example.org');
+  // Simulate a paid subscription — trial users can't send email.
+  const DatabaseSync = require('node:sqlite').DatabaseSync;
+  const tdb = new DatabaseSync(process.env.DATABASE_PATH);
+  tdb.prepare("UPDATE tenants SET subscription_status='active' WHERE slug LIKE '%starter3%'").run();
+  tdb.close();
   const ok = await c.post('/api/email/log-send', { count: 4999 });
   assert.equal(ok.status, 200);
   assert.equal(ok.json.used, 4999);
