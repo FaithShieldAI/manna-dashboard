@@ -58,7 +58,7 @@ test('pro allows up to 10 projects', async () => {
   assert.equal(over.json.limit, 10);
 });
 
-test('billing endpoint reports plan, limits, usage (stripe stubbed)', async () => {
+test('billing endpoint reports plan, limits, usage (stripe live)', async () => {
   const c = await registerStarter('starter2@example.org');
   const r = await c.get('/api/billing');
   assert.equal(r.status, 200);
@@ -68,7 +68,8 @@ test('billing endpoint reports plan, limits, usage (stripe stubbed)', async () =
   assert.equal(r.json.limits.emails_per_month, 5000);
   assert.equal(r.json.usage.projects_used, 0);
   assert.equal(r.json.usage.emails_remaining, 5000);
-  assert.equal(r.json.checkout.stubbed, true);
+  assert.equal(typeof r.json.stripe.configured, 'boolean');
+  assert.equal(r.json.stripe.has_subscription, false);
   assert.match(r.json.tagline, /little guy money/);
 });
 
@@ -102,4 +103,38 @@ test('site creation validates input', async () => {
   const dup2 = await c.post('/api/sites', { siteKey: 'dup', name: 'Dup Two' });
   assert.equal(dup2.status, 409);
   assert.equal(dup2.json.error, 'site_key_taken');
+});
+
+test('checkout rejects invalid plan', async () => {
+  const c = await registerStarter('starter5@example.org');
+  const r = await c.post('/api/billing/checkout', { plan: 'enterprise_xxx' });
+  // 400 when Stripe configured, 503 when not — either way, not a silent downgrade
+  assert.ok(r.status === 400 || r.status === 503, `expected 400/503, got ${r.status}`);
+  if (r.status === 400) assert.equal(r.json.error, 'invalid_plan');
+});
+
+test('checkout requires auth', async () => {
+  const c = client(base);
+  const r = await c.post('/api/billing/checkout', { plan: 'pro' });
+  assert.equal(r.status, 401);
+});
+
+test('portal requires auth and handles missing customer', async () => {
+  const anon = client(base);
+  const r1 = await anon.post('/api/billing/portal', {});
+  assert.equal(r1.status, 401);
+  const c = await registerStarter('starter6@example.org');
+  const r2 = await c.post('/api/billing/portal', {});
+  // 404 no customer yet, or 503 Stripe not configured in test env
+  assert.ok(r2.status === 404 || r2.status === 503, `expected 404/503, got ${r2.status}`);
+});
+
+test('webhook rejects unsigned requests', async () => {
+  // Raw POST without a valid Stripe-Signature -> 400 (or 503 if unconfigured)
+  const res = await fetch(base + '/api/billing/webhook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'ping' }),
+  });
+  assert.ok([400, 503].includes(res.status), `expected 400/503, got ${res.status}`);
 });

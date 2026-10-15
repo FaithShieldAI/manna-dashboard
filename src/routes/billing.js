@@ -107,6 +107,11 @@ router.post('/checkout', async (req, res) => {
     const sessionParams = {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
+      // Cards + ACH (US bank debit). ACH costs ~0.8% vs ~2.9% for cards.
+      payment_method_types: ['card', 'us_bank_account'],
+      payment_method_options: {
+        us_bank_account: { financial_connections: { permissions: ['payment_method'] } },
+      },
       success_url: successUrl + '?checkout=success',
       cancel_url: cancelUrl + '?checkout=cancelled',
       // Tie the session back to the tenant so the webhook can activate it.

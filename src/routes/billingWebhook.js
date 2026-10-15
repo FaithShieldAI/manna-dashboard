@@ -19,11 +19,8 @@
  * metadata tenant_id -> stripe_customer_id match. Nothing is trusted from
  * the client; price->plan mapping uses server-side env vars only.
  */
-const express = require('express');
 const stripeLib = require('../lib/stripe');
 const { db } = require('../db');
-
-const router = express.Router();
 
 /** Stripe subscription status -> our tenant subscription_status enum. */
 function mapStatus(stripeStatus) {
@@ -77,7 +74,7 @@ function applySubscription(tenantId, { customerId, subscriptionId, stripeStatus,
   }
 }
 
-router.post('/', async (req, res) => {
+async function webhookHandler(req, res) {
   const stripe = stripeLib.getStripe();
   const secret = stripeLib.webhookSecret();
   if (!stripe || !secret) {
@@ -163,6 +160,6 @@ router.post('/', async (req, res) => {
     // Return 500 so Stripe retries; the event wasn't applied.
     res.status(500).json({ ok: false, error: 'handler_failed' });
   }
-});
+}
 
-module.exports = router;
+module.exports = webhookHandler;
