@@ -168,7 +168,11 @@ function createJob(tdb, { source, query, keywords, seeds, maxResults }) {
   if (!SOURCES[source]) {
     return { error: { status: 400, body: { ok: false, error: 'invalid_source', valid: Object.keys(SOURCES) } } };
   }
-  const q = String(query || '').trim().slice(0, 200);
+  const rawQ = String(query || '').trim();
+  if (rawQ.length > 500) {
+    return { error: { status: 400, body: { ok: false, error: 'query_too_long', max: 500 } } };
+  }
+  const q = rawQ.slice(0, 500);
   const kw = Array.isArray(keywords) ? keywords.map(String).map(s => s.trim()).filter(Boolean).slice(0, 10) : [];
   const sd = Array.isArray(seeds) ? seeds.map(String).map(s => s.trim()).filter(Boolean).slice(0, 50) : [];
   if (source === 'youtube' && kw.length === 0) {

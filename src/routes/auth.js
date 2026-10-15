@@ -11,13 +11,13 @@ const crypto = require('crypto');
 const { unscoped, db, transaction } = require('../db');
 const password = require('../lib/password');
 const sessions = require('../lib/sessions');
-const { authLimiter } = require('../middleware/rateLimit');
+const { authLimiter, loginLimiter } = require('../middleware/rateLimit');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(authLimiter);
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const MIN_PASSWORD_LEN = 12;
 const PLANS = ['starter', 'pro', 'agency'];
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -59,7 +59,10 @@ router.post('/register', async (req, res) => {
     if (typeof pw !== 'string' || pw.length < MIN_PASSWORD_LEN || pw.length > 128) {
       return res.status(400).json({ ok: false, error: 'password_too_short', minLength: MIN_PASSWORD_LEN });
     }
-    const cleanPlan = PLANS.includes(plan) ? plan : 'starter';
+    const cleanPlan = PLANS.includes(plan) ? plan : (plan === undefined ? 'starter' : null);
+    if (cleanPlan === null) {
+      return res.status(400).json({ ok: false, error: 'invalid_plan', valid: PLANS });
+    }
 
     if (unscoped.getUserByEmail(cleanEmail)) {
       // Generic message — do not confirm whether the email is registered.
@@ -144,7 +147,7 @@ router.post('/register', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password: pw } = req.body || {};
     const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -196,6 +199,30 @@ router.post('/logout-everywhere', requireAuth, (req, res) => {
 // ---------------------------------------------------------------------------
 router.get('/me', requireAuth, (req, res) => {
   res.json({ ok: true, user: publicUser(req.user), tenant: req.tenant });
+});
+
+// ---------------------------------------------------------------------------
+// Self-service account deletion. Deletes the user, revokes all their
+// sessions, and removes the tenant if they were its last user.
+router.delete('/me', requireAuth, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const tenantId = req.user.tenant_id;
+    const { db } = require('../db');
+
+    sessions.revokeAllUserSessions(userId);
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+
+    const remaining = db.prepare('SELECT COUNT(*) AS n FROM users WHERE tenant_id = ?').get(tenantId);
+    if (remaining.n === 0) {
+      db.prepare('DELETE FROM tenants WHERE id = ?').run(tenantId);
+    }
+
+    res.clearCookie(sessions.COOKIE_NAME, { path: '/' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'delete_failed' });
+  }
 });
 
 // ---------------------------------------------------------------------------
