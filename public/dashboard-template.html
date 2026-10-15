@@ -292,7 +292,7 @@
   </div>
 
   <!-- ============ OVERVIEW: D2RM SYNC (Michael/Leon only) ============ -->
-  <div class="card" id="d2rm-sync-card" style="display:none;border:1px solid rgba(217,164,65,.35)">
+  <div class="card" id="d2rm-sync-card" style="border:1px solid rgba(217,164,65,.35)">
     <div class="card-header"><div>
       <div class="card-title">&#128260; Sync my D2RM data</div>
       <div class="card-sub">Pull your real D2RM contacts, campaigns and goals into this Manna account. Safe to run more than once &mdash; it updates instead of duplicating.</div>
@@ -312,7 +312,7 @@
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
         var email = (j && j.user && j.user.email) ? String(j.user.email).toLowerCase().trim() : '';
-        if (ALLOWED.indexOf(email) === -1) return; // card stays hidden
+        if (ALLOWED.indexOf(email) === -1) { card.style.display = 'none'; return; } // hide for non-allowed
         card.style.display = '';
         var btn = document.getElementById('d2rm-sync-btn');
         var status = document.getElementById('d2rm-sync-status');
