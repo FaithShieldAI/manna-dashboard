@@ -101,10 +101,21 @@
   .range-tab:hover { border-color:var(--gold); color:var(--text); }
   .range-tab.active { background:linear-gradient(180deg,#f0c876,#9a7433); border-color:var(--gold); color:#1a1206; font-weight:700; }
 
-  /* Main navigation tabs */
-  .main-tabs { display:flex; gap:10px; margin:0 0 1.5rem; flex-wrap:wrap; border-bottom:2px solid var(--border); padding-bottom:12px; }
+  /* Main navigation tabs — single scrollable row so all 11 tabs stay reachable */
+  .main-tabs { display:flex; gap:10px; margin:0 0 1.5rem; flex-wrap:nowrap; overflow-x:auto;
+    border-bottom:2px solid var(--border); padding-bottom:12px;
+    scrollbar-width:thin; scrollbar-color:rgba(217,164,65,.55) transparent; -webkit-overflow-scrolling:touch; }
+  .main-tabs::-webkit-scrollbar { height:8px; }
+  .main-tabs::-webkit-scrollbar-track { background:transparent; }
+  .main-tabs::-webkit-scrollbar-thumb { background:rgba(217,164,65,.45); border-radius:4px; }
+  .main-tabs::-webkit-scrollbar-thumb:hover { background:rgba(217,164,65,.7); }
+  /* edge-fade indicators, toggled by JS when the bar can scroll further */
+  .main-tabs.scroll-l { -webkit-mask-image:linear-gradient(to right, transparent, #000 28px); mask-image:linear-gradient(to right, transparent, #000 28px); }
+  .main-tabs.scroll-r { -webkit-mask-image:linear-gradient(to left, transparent, #000 28px); mask-image:linear-gradient(to left, transparent, #000 28px); }
+  .main-tabs.scroll-l.scroll-r { -webkit-mask-image:linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
   .main-tab { background:var(--bg2); border:1px solid var(--border2); color:var(--text2);
-    padding:10px 20px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
+    padding:10px 20px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600;
+    flex:0 0 auto; white-space:nowrap; }
   .main-tab:hover { border-color:var(--gold); color:var(--gold-bright,#f0c876); }
   .main-tab.active { background:linear-gradient(180deg,rgba(217,164,65,.22),rgba(217,164,65,.08)); border-color:var(--gold); color:#f0c876; }
   .main-tab-panel { animation:fadeIn 0.2s ease-in; }
@@ -208,8 +219,8 @@
     <div class="instructor-msgs" id="instructor-msgs"></div>
     <div class="instructor-chips" id="instructor-chips">
       <button class="chip" data-suggest="1">&#10024; Suggest a start</button>
-      <button class="chip" data-q="How do I collect leads?">&#128229; Collect leads</button>
-      <button class="chip" data-q="How do I add my site?">&#127760; Add my site</button>
+      <button class="chip" data-goto="leads">&#128229; Collect leads</button>
+      <button class="chip" data-site-modal="1">&#127760; Add my site</button>
       <button class="chip" data-q="What should I do next?">&#127919; What&rsquo;s next?</button>
     </div>
     <form class="instructor-form" id="instructor-form">
@@ -279,6 +290,60 @@
       <div class="check-item"><div class="check-box" id="gs-goal">&#9675;</div><div><div style="font-weight:600">Set a goal</div><div style="font-size:13px;color:var(--text2)">Pick a round number to chase &mdash; your instructor will track your pace.</div></div></div>
     </div>
   </div>
+
+  <!-- ============ OVERVIEW: D2RM SYNC (Michael/Leon only) ============ -->
+  <div class="card" id="d2rm-sync-card" style="display:none;border:1px solid rgba(217,164,65,.35)">
+    <div class="card-header"><div>
+      <div class="card-title">&#128260; Sync my D2RM data</div>
+      <div class="card-sub">Pull your real D2RM contacts, campaigns and goals into this Manna account. Safe to run more than once &mdash; it updates instead of duplicating.</div>
+    </div></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn gold" id="d2rm-sync-btn" type="button">Sync my D2RM data</button>
+      <span id="d2rm-sync-status" style="font-size:13px;color:var(--text2)"></span>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var ALLOWED = ['michael@faithshield.ai', 'leon@faithshield.ai'];
+    var card = document.getElementById('d2rm-sync-card');
+    if (!card) return;
+    function apiH(){ return { 'X-Requested-With': 'XMLHttpRequest' }; }
+    fetch('/api/auth/me', { headers: apiH() })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var email = (j && j.user && j.user.email) ? String(j.user.email).toLowerCase().trim() : '';
+        if (ALLOWED.indexOf(email) === -1) return; // card stays hidden
+        card.style.display = '';
+        var btn = document.getElementById('d2rm-sync-btn');
+        var status = document.getElementById('d2rm-sync-status');
+        btn.addEventListener('click', function(){
+          btn.disabled = true;
+          status.textContent = 'Syncing\u2026 this can take a minute.';
+          fetch('/api/admin/sync-d2rm', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+            body: '{}'
+          }).then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
+          .then(function(res){
+            btn.disabled = false;
+            if (res.body && res.body.ok) {
+              var c = (res.body.synced && res.body.synced.contacts) || {};
+              status.textContent = '\u2705 Synced ' + (c.inserted || 0) + ' new / ' + (c.updated || 0)
+                + ' updated contacts (' + (c.total || 0) + ' total). Campaigns, snapshots and goals updated too. Refreshing\u2026';
+              setTimeout(function(){ location.reload(); }, 1500);
+            } else if (res.status === 403) {
+              status.textContent = 'Not available for this account.';
+            } else {
+              status.textContent = 'Sync failed: ' + ((res.body && res.body.error) || ('HTTP ' + res.status));
+            }
+          }).catch(function(){
+            btn.disabled = false;
+            status.textContent = 'Sync failed: network error.';
+          });
+        });
+      }).catch(function(){});
+  })();
+  </script>
 
   </div><!-- /panel-overview -->
 
@@ -746,6 +811,30 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
   }
 })();
 
+/* ---------- tab bar: horizontal scroll + edge indicators ---------- */
+(function(){
+  var bar = document.getElementById('main-tabs');
+  if (!bar) return;
+  function update(){
+    var max = bar.scrollWidth - bar.clientWidth;
+    bar.classList.toggle('scroll-l', bar.scrollLeft > 4);
+    bar.classList.toggle('scroll-r', bar.scrollLeft < max - 4);
+  }
+  bar.addEventListener('scroll', update, { passive:true });
+  window.addEventListener('resize', update);
+  /* keep the active tab visible when switching */
+  var _setMainTab = window.setMainTab;
+  if (typeof _setMainTab === 'function') {
+    window.setMainTab = function(tab){
+      _setMainTab(tab);
+      var btn = bar.querySelector('.main-tab[data-tab="' + tab + '"]');
+      if (btn) { try { btn.scrollIntoView({ behavior:'auto', block:'nearest', inline:'nearest' }); } catch(e){} }
+      update();
+    };
+  }
+  update();
+})();
+
 /* ---------- AI Instructor ---------- */
 (function(){
   var msgs = document.getElementById('instructor-msgs');
@@ -811,6 +900,15 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
         renderSuggestCard();
         history.push({ role: 'user', content: 'Suggest a start' });
         history.push({ role: 'assistant', content: 'Provided the 3-step starting plan.' });
+      } else if (chip.hasAttribute('data-goto')) {
+        /* Action chip: take the user straight to the relevant tab. */
+        setMainTab(chip.getAttribute('data-goto'));
+        try { window.scrollTo({top:0, behavior:'auto'}); } catch(e){}
+      } else if (chip.hasAttribute('data-site-modal')) {
+        /* Action chip: open the Sites tab with the add-site dialog. */
+        setMainTab('sites');
+        if (typeof openSiteModal === 'function') openSiteModal();
+        try { window.scrollTo({top:0, behavior:'auto'}); } catch(e){}
       } else {
         send(chip.getAttribute('data-q'));
       }
@@ -1317,15 +1415,12 @@ function parseFunnelStages(text){
     .then(function(res){
       var j = res.body || {};
       if (j.ok) {
-        funnelModalOk('\u2705 Funnel created! Loading\u2026');
-        refreshFunnels().then(function(){
-          setTimeout(function(){
-            closeFunnelModal();
-            setMainTab('conversions');
-            nameEl.value = ''; subEl.value = ''; keyEl.value = ''; stagesEl.value = '';
-            keyTouched = false;
-          }, 900);
-        });
+        /* Close immediately — the list refreshes in the background. */
+        closeFunnelModal();
+        setMainTab('conversions');
+        nameEl.value = ''; subEl.value = ''; keyEl.value = ''; stagesEl.value = '';
+        keyTouched = false;
+        refreshFunnels();
       } else {
         var msg = 'Could not create the funnel. Please try again.';
         if (j.error === 'funnel_key_taken') msg = 'That funnel key is already taken \u2014 try a different one.';
@@ -1621,16 +1716,13 @@ function refreshSites(){
     .then(function(res){
       var j = res.body || {};
       if (j.ok) {
-        siteModalOk('\u2705 Site added! Loading your dashboard\u2026');
-        refreshSites().then(function(){
-          setTimeout(function(){
-            closeSiteModal();
-            setMainTab('sites');
-            /* reset the form for next time */
-            nameEl.value = ''; urlEl.value = ''; keyEl.value = '';
-            keyTouched = false;
-          }, 900);
-        });
+        /* Close immediately — the list refreshes in the background. */
+        closeSiteModal();
+        setMainTab('sites');
+        /* reset the form for next time */
+        nameEl.value = ''; urlEl.value = ''; keyEl.value = '';
+        keyTouched = false;
+        refreshSites();
       } else {
         var msg = 'Could not add the site. Please try again.';
         if (j.error === 'site_key_taken') msg = 'That site key is already taken \u2014 try a different one.';
@@ -1685,11 +1777,18 @@ function loadBilling(){
         + billingUsageBar('Projects', j.usage.projects_used, j.limits.projects)
         + billingUsageBar('Emails sent', j.usage.emails_sent_this_month, j.limits.emails_per_month)
         + '</div>';
-      /* plans */
-      var plans = [
-        { key:'starter', name:'Starter', price:'$50/mo', tagline:'For the solo creator getting started.', projects:'2 projects', emails:'5,000 emails/mo' },
-        { key:'pro', name:'Pro', price:'$100/mo', tagline:'For serious operators running multiple projects.', projects:'10 projects', emails:'20,000 emails/mo' }
+      /* plans — rendered from the server's PUBLIC_PLANS (src/lib/plans.js),
+         never hardcoded, so the UI can't drift from real pricing */
+      var plans = (j.plans && j.plans.length) ? j.plans : [
+        { key:'starter', name:'Starter', price_label:'$29.99/mo', regular_price_label:'$49.99/mo', special_offer:true, tagline:'For the solo creator getting started.', projects:2, emails_per_month:5000 },
+        { key:'pro', name:'Pro', price_label:'$100/mo', regular_price_label:null, special_offer:false, tagline:'For serious operators running multiple projects.', projects:10, emails_per_month:20000 }
       ];
+      function planSpecs(p){
+        var bits = [];
+        if (p.projects != null) bits.push(p.projects + ' projects');
+        if (p.emails_per_month != null) bits.push(Number(p.emails_per_month).toLocaleString('en-US') + ' emails/mo');
+        return bits.join(' &middot; ');
+      }
       html += '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div>'
         + '<div class="card-title">Plans</div>'
         + '<div class="card-sub">pick the one that fits &mdash; changes are handled by D2RM</div></div></div>'
@@ -1700,9 +1799,12 @@ function loadBilling(){
           + '<div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">&#128179;</span>'
           + (isCurrent ? '<span class="live-badge">CURRENT</span>' : '') + '</div>'
           + '<div class="stat-label">'+esc(p.name)+'</div>'
-          + '<div class="stat-value" style="font-size:22px">'+esc(p.price)+'</div>'
+          + '<div class="stat-value" style="font-size:22px">'+esc(p.price_label)+'</div>'
+          + (p.special_offer && p.regular_price_label
+              ? '<div style="font-size:12px;color:var(--gold);margin-top:4px">&#10022; Special offer &mdash; regular '+esc(p.regular_price_label)+'</div>'
+              : '')
           + '<div class="stat-change">'+esc(p.tagline)+'</div>'
-          + '<div style="font-size:12px;color:var(--text2);margin-top:8px">'+esc(p.projects)+' &middot; '+esc(p.emails)+'</div>'
+          + '<div style="font-size:12px;color:var(--text2);margin-top:8px">'+planSpecs(p)+'</div>'
           + (isCurrent
               ? ''
               : '<button class="btn gold billing-req" data-plan="'+esc(p.key)+'" style="margin-top:10px">Request this plan</button>')

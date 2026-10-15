@@ -13,7 +13,7 @@
  * assigns the plan manually (the "takeaway sale": custom tier by request).
  */
 const express = require('express');
-const { getPlan } = require('../lib/plans');
+const { getPlan, PUBLIC_PLANS } = require('../lib/plans');
 const { currentMonthKey } = require('../lib/plans');
 const mailer = require('../lib/mailer');
 
@@ -30,6 +30,18 @@ router.get('/', (req, res) => {
     plan: plan.key,
     plan_name: plan.name,
     price_label: plan.price_label,
+    /* Public plans for the dashboard plan picker — single source of truth
+       is src/lib/plans.js so the UI can never drift from real pricing. */
+    plans: PUBLIC_PLANS.map(p => ({
+      key: p.key,
+      name: p.name,
+      tagline: p.tagline,
+      price_label: p.price_label,
+      regular_price_label: p.regular_price_label || null,
+      special_offer: !!p.special_offer,
+      projects: p.projects,
+      emails_per_month: p.emails_per_month,
+    })),
     tagline: 'Big agency data, little guy money.',
     subscription_status: req.tenant.subscription_status,
     limits: {

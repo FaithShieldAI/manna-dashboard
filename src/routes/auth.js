@@ -40,7 +40,7 @@ function slugify(name) {
 }
 
 function publicUser(u) {
-  return { id: u.id, email: u.email, display_name: u.display_name, role: u.role };
+  return { id: u.id, email: u.email, display_name: u.display_name, role: u.role, created_at: u.created_at || null };
 }
 
 // ---------------------------------------------------------------------------
