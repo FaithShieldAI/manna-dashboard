@@ -1,5 +1,6 @@
 node_modules
 data/
+!data/d2rm-source.db
 .git
 .gitignore
 tests/
