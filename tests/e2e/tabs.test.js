@@ -69,7 +69,7 @@ test('E2E TABS: all 8 tabs switch panels on onboarding.html (real JS)', async ()
   }
 });
 
-test('E2E TABS: all 10 tabs switch panels on dashboard-template.html incl. Vetted', async () => {
+test('E2E TABS: all 11 tabs switch panels on dashboard-template.html incl. Vetted', async () => {
   const page = await browser.newPage();
   const errors = watchConsole(page);
   try {
