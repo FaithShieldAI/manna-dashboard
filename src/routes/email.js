@@ -70,6 +70,16 @@ router.post('/campaigns', (req, res) => {
 // performed here (stubbed) — this is the accounting choke point so the
 // $29.99/$100 tiers' 5k/20k monthly limits are enforced in one place.
 router.post('/log-send', (req, res) => {
+  // Email sending is paid-plans only — trial users get dashboard + lead
+  // collection, no email sending (Michael, 2026-10-13).
+  const subStatus = req.tenant.subscription_status;
+  if (subStatus !== 'active') {
+    return res.status(403).json({
+      ok: false,
+      error: 'email_requires_paid_plan',
+      message: 'Email sending is available on paid plans. Upgrade to send emails.',
+    });
+  }
   const plan = getPlan(req.tenant.plan) || getPlan('starter');
   const count = parseInt(req.body && req.body.count, 10);
   if (!Number.isInteger(count) || count < 1 || count > 100000) {
