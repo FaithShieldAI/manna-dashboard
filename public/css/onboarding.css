@@ -49,15 +49,17 @@
   .chat-form button { background: var(--gold); color: #0f0f1a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
 
   /* 3 — D2RM dashboard frame */
-  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; width: 100%; }
+  .card { background: var(--dbg2); border: 1px solid var(--dborder); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; width: 100%; max-width: 100%; }
+  .main-tab-panel { width: 100%; max-width: 100%; }
+  .main-tab-panel .card { width: 100%; max-width: 100%; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
   .card-title { font-size: 14px; font-weight: 600; color: var(--dtext); }
   .card-sub { font-size: 12px; color: var(--dtext2); }
   .goals-card { border: 1px solid rgba(217,164,65,0.35); margin-bottom: 1.25rem; }
   .top-card { border: 1px solid rgba(217,164,65,0.4); }
 
-  /* D2RM stat cards */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.25rem; }
+  /* D2RM stat cards — full-width 4-column grid, exactly like the D2RM dashboard */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.25rem; width: 100%; max-width: 100%; }
   .stats-grid.goals { grid-template-columns: repeat(3, 1fr); }
   .card .stats-grid:last-child { margin-bottom: 0; }
   @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } .stats-grid.goals { grid-template-columns: repeat(2, 1fr); } }
@@ -189,7 +191,13 @@
 .empty-hint { color: var(--text3); font-size: 12px; text-align: center; padding: 0 8px 8px; }
 /* sharebar: inline height/margin merged into base (all 6 usages were identical) */
 .sharebar { height: 10px !important; margin: 8px 0 4px !important; }
-.sharefill { height: 100%; border-radius: 3px; width: 0%; }
+.sharefill { height: 100%; border-radius: 3px; width: 0%; transition: width .5s ease; }
+/* Key Numbers color graphs — thin D2RM-style bars under each stat value.
+   Colors: dark purple, blue, green, gold. NO orange. */
+.kn-bar { height: 6px !important; margin: 10px 0 0 !important; }
+.kn-green { color: var(--dgreen); }
+.kn-gold { color: var(--mgold); }
+.kn-purple { color: var(--dpurple); }
 .sfgreen { background: var(--dgreen); }
 .sfpurple { background: var(--dpurple); }
 .sfgold { background: var(--mgold); }
