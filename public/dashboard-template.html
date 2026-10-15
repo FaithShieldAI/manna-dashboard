@@ -533,11 +533,11 @@
       <div class="card-sub">your outreach pipeline &mdash; nano to macro, vetted and tracked</div>
     </div></div>
     <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)" id="inf-grid">
-      <div class="stat-card"><div class="stat-label">&#127793; Nano (1K&ndash;10K)</div><div class="stat-value" id="inf-nano">&mdash;</div></div>
-      <div class="stat-card"><div class="stat-label">&#127807; Micro (10K&ndash;100K)</div><div class="stat-value" id="inf-micro">&mdash;</div></div>
-      <div class="stat-card"><div class="stat-label">&#127795; Macro (100K+)</div><div class="stat-value" id="inf-macro">&mdash;</div></div>
-      <div class="stat-card"><div class="stat-label">&#127908; Podcasts</div><div class="stat-value" id="inf-podcast">&mdash;</div></div>
-      <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="inf-total" style="color:var(--gold)">&mdash;</div></div>
+      <div class="stat-card inf-filter-card" data-filter="nano" style="cursor:pointer"><div class="stat-label">&#127793; Nano (1K&ndash;10K)</div><div class="stat-value" id="inf-nano">&mdash;</div></div>
+      <div class="stat-card inf-filter-card" data-filter="micro" style="cursor:pointer"><div class="stat-label">&#127807; Micro (10K&ndash;100K)</div><div class="stat-value" id="inf-micro">&mdash;</div></div>
+      <div class="stat-card inf-filter-card" data-filter="macro" style="cursor:pointer"><div class="stat-label">&#127795; Macro (100K+)</div><div class="stat-value" id="inf-macro">&mdash;</div></div>
+      <div class="stat-card inf-filter-card" data-filter="podcast" style="cursor:pointer"><div class="stat-label">&#127908; Podcasts</div><div class="stat-value" id="inf-podcast">&mdash;</div></div>
+      <div class="stat-card inf-filter-card" data-filter="all" style="cursor:pointer"><div class="stat-label">Total</div><div class="stat-value" id="inf-total" style="color:var(--gold)">&mdash;</div></div>
     </div>
     <div class="table-wrap" style="margin-top:1rem"><table>
       <tr><th>Creator</th><th>Category</th><th>Status</th><th class="n">Followers</th></tr>
@@ -1444,31 +1444,60 @@ function parseFunnelStages(text){
 /* ---------- influencers ---------- */
 (function(){
   function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+  var allRows = [];       // full unfiltered list
+  var activeFilter = 'all';
+  function tierOf(i){
+    var f = Number(i.followers)||0;
+    if (f >= 100000) return 'macro';
+    if (f >= 10000) return 'micro';
+    if (f > 0) return 'nano';
+    return '';
+  }
+  function renderRows(){
+    var tb = document.getElementById('inf-rows');
+    if (!tb) return;
+    var rows = allRows.filter(function(i){
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'podcast') return i.category === 'podcast';
+      return tierOf(i) === activeFilter;
+    });
+    if (!rows.length) {
+      tb.innerHTML = '<tr><td colspan="4" class="empty">No influencers match this filter.</td></tr>';
+      return;
+    }
+    tb.innerHTML = rows.slice(0,50).map(function(i){
+      return '<tr><td class="subj">'+esc(i.name||i.handle||'\u2014')+'</td><td>'+esc(i.category||'')+'</td>'
+        + '<td><span class="badge b-gold">'+esc(i.status||'')+'</span></td>'
+        + '<td class="n">'+num(i.followers)+'</td></tr>';
+    }).join('');
+    // highlight active card
+    document.querySelectorAll('.inf-filter-card').forEach(function(c){
+      c.style.borderColor = (c.getAttribute('data-filter') === activeFilter) ? 'var(--gold)' : '';
+    });
+  }
+  // click a stat card -> filter the table
+  document.querySelectorAll('.inf-filter-card').forEach(function(card){
+    card.addEventListener('click', function(){
+      activeFilter = card.getAttribute('data-filter');
+      renderRows();
+    });
+  });
   fetch('/api/influencers/counts', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
     var counts = (j && j.ok && j.counts) || [];
     var byCat = {}, total = 0;
     counts.forEach(function(c){ byCat[c.category] = (byCat[c.category]||0) + c.n; total += c.n; });
     set('inf-total', num(total));
     set('inf-podcast', num(byCat.podcast||0));
-    /* tier split isn't tracked per-tier in counts; show totals by status instead */
-    return fetch('/api/influencers?limit=100', { headers: apiH() });
+    return fetch('/api/influencers?limit=500', { headers: apiH() });
   }).then(function(r){ return r ? r.json() : null; }).then(function(j){
-    var rows = (j && j.ok && j.influencers) || [];
-    var tb = document.getElementById('inf-rows');
-    if (!tb) return;
-    if (!rows.length) return;
-    tb.innerHTML = rows.slice(0,25).map(function(i){
-      return '<tr><td class="subj">'+esc(i.name||i.handle||'\u2014')+'</td><td>'+esc(i.category||'')+'</td>'
-        + '<td><span class="badge b-gold">'+esc(i.status||'')+'</span></td>'
-        + '<td class="n">'+num(i.followers)+'</td></tr>';
-    }).join('');
-    /* nano/micro/macro from follower counts */
+    allRows = (j && j.ok && j.influencers) || [];
     var nano=0, micro=0, macro=0;
-    rows.forEach(function(i){
-      var f = Number(i.followers)||0;
-      if (f >= 100000) macro++; else if (f >= 10000) micro++; else if (f > 0) nano++;
+    allRows.forEach(function(i){
+      var t = tierOf(i);
+      if (t === 'macro') macro++; else if (t === 'micro') micro++; else if (t === 'nano') nano++;
     });
     set('inf-nano', num(nano)); set('inf-micro', num(micro)); set('inf-macro', num(macro));
+    renderRows();
   }).catch(function(){});
 })();
 
