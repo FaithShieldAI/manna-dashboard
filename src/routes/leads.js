@@ -115,7 +115,8 @@ function ingestLeads(tdb, job, leads) {
 
 async function runJob(tdb, job) {
   const started = new Date().toISOString();
-  tdb.updateCollectionJob(job.id, { status: 'running', started_at: started, error: null });
+  // Status is set to 'running' by the caller before invoking in background.
+  // This function only updates on completion or failure.
   try {
     let keywords = [], seeds = [];
     try { keywords = JSON.parse(job.keywords_json || '[]'); } catch (e) { /* keep [] */ }
@@ -145,7 +146,7 @@ async function runJob(tdb, job) {
       new_count: added,
       finished_at: new Date().toISOString(),
     });
-    return { ok: true, found, new: added, parsed, leads: leads.slice(0, maxResults) };
+    return { ok: true, found, new: added, parsed, leads: leads.slice(0, 50), total_leads: leads.length };
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[leads/run]', e);
@@ -254,10 +255,15 @@ router.post('/jobs/:id/run', async (req, res) => {
   if (row.status === 'done') {
     return res.status(409).json({ ok: false, error: 'job_already_done' });
   }
-  // Re-running a failed/canceled/queued job is allowed (fresh attempt).
-  const result = await runJob(req.tdb, row);
-  const status = result.ok ? 200 : 502;
-  res.status(status).json({ ...result, job: publicJob(req.tdb.getCollectionJob(id)) });
+  // Run in background — return immediately so large jobs don't timeout the HTTP request.
+  // The frontend polls GET /jobs/:id for status updates.
+  req.tdb.updateCollectionJob(id, { status: 'running', started_at: new Date().toISOString(), error: null });
+  setImmediate(() => {
+    runJob(req.tdb, { ...row, status: 'running' }).catch(e => {
+      console.error('[leads/run] background error:', e);
+    });
+  });
+  res.json({ ok: true, job: publicJob(req.tdb.getCollectionJob(id)) });
 });
 
 router.post('/jobs/:id/cancel', (req, res) => {
