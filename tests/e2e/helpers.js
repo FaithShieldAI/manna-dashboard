@@ -178,7 +178,7 @@ function uniqueEmail(prefix) {
 }
 
 const TABS_ONBOARDING = ['overview', 'email', 'warm', 'conversions', 'sites', 'influencers', 'social', 'ipregistry'];
-const TABS_APP = ['overview', 'email', 'warm', 'conversions', 'sites', 'influencers', 'vetted', 'social', 'ipregistry', 'billing'];
+const TABS_APP = ['overview', 'email', 'warm', 'leads', 'conversions', 'sites', 'influencers', 'vetted', 'social', 'ipregistry', 'billing'];
 
 module.exports = {
   CHROME_PATH,

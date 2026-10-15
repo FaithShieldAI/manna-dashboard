@@ -3,6 +3,8 @@
  * Email API — windowed aggregates (EMAIL_WINDOWS equivalent) + campaigns.
  * GET /api/email/windows
  * GET /api/email/campaigns            (now with ROI per campaign)
+ * GET /api/email/templates           (installed templates, tenant-scoped)
+ * GET /api/email/templates/:key      (full template content for copy/use)
  * POST /api/email/log-send           (metering choke point: enforces the
  *                                     plan's monthly email quota; delivery
  *                                     itself is stubbed in this build)
@@ -66,7 +68,7 @@ router.post('/campaigns', (req, res) => {
 // POST /api/email/log-send { count, campaign_id? }
 // Records metered email sends against the plan quota. Delivery is NOT
 // performed here (stubbed) — this is the accounting choke point so the
-// $50/$100 tiers' 5k/20k monthly limits are enforced in one place.
+// $29.99/$100 tiers' 5k/20k monthly limits are enforced in one place.
 router.post('/log-send', (req, res) => {
   const plan = getPlan(req.tenant.plan) || getPlan('starter');
   const count = parseInt(req.body && req.body.count, 10);
@@ -104,6 +106,42 @@ router.post('/log-send', (req, res) => {
     delivery: mailer.isSesConfigured()
       ? { stubbed: false, provider: 'ses', note: 'Sends go through Amazon SES.' }
       : { stubbed: true, provider: 'stub', note: 'SES not configured — sends are logged only. Set AWS keys + SES_FROM_EMAIL to go live.' },
+  });
+});
+
+// GET /api/email/templates — installed email templates for this tenant
+// (installed via onboarding; tenant-scoped by req.tdb)
+router.get('/templates', (req, res) => {
+  const rows = req.tdb.previewEmailTemplates().map(t => ({
+    template_key: t.template_key,
+    name: t.name,
+    subject: t.subject,
+    category: t.category,
+    is_starter: !!t.is_starter,
+    preview: t.preview || '',
+  }));
+  res.json({ ok: true, templates: rows });
+});
+
+// GET /api/email/templates/:key — full template content (for copy/use)
+router.get('/templates/:key', (req, res) => {
+  const key = String(req.params.key || '').slice(0, 80);
+  if (!/^[a-zA-Z0-9_-]+$/.test(key)) {
+    return res.status(400).json({ ok: false, error: 'invalid_key' });
+  }
+  const t = req.tdb.getEmailTemplate(key);
+  if (!t) return res.status(404).json({ ok: false, error: 'template_not_found' });
+  res.json({
+    ok: true,
+    template: {
+      template_key: t.template_key,
+      name: t.name,
+      subject: t.subject,
+      body_html: t.body_html,
+      body_text: t.body_text,
+      category: t.category,
+      is_starter: !!t.is_starter,
+    },
   });
 });
 

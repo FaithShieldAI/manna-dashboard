@@ -52,14 +52,14 @@ test('H2: direct /leads.html cannot bypass the auth gate', async () => {
   assert.equal(r.status, 302);
 });
 
-test('H2: /leads serves 200 to authenticated users', async () => {
+test('H2: /leads redirects authenticated users to the Leads tab', async () => {
   const c = client(base);
   const r0 = await c.post('/api/auth/register', {
     companyName: 'Leads Page Co', email: 'leads-page@example.org', password: TEST_PW,
   });
   assert.equal(r0.status, 201);
   const r = await c.get('/leads');
-  assert.equal(r.status, 200);
+  assert.equal(r.status, 302); // canonical: the Leads tab lives at /app#leads
 });
 
 test('M1: /api/leads/sources requires auth (401 without session)', async () => {

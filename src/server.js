@@ -90,7 +90,7 @@ app.get('/signup', sendPage('signup.html'));
 app.get('/forgot', sendPage('forgot.html'));
 app.get('/reset', sendPage('reset.html'));
 app.get('/verify', sendPage('verify.html'));
-app.get('/leads', requireAuthPage, sendPage('leads.html'));
+app.get('/leads', requireAuthPage, (req, res) => res.redirect('/app#leads'));
 app.get('/onboarding', requireAuthPage, sendPage('onboarding.html'));
 app.get('/terms', sendPage('terms.html'));
 app.get('/privacy', sendPage('privacy.html'));

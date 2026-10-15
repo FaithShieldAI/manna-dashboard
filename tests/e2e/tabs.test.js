@@ -120,3 +120,27 @@ test('E2E TABS: [data-goto-tab] shortcuts switch tabs too', async () => {
     await page.close();
   }
 });
+
+test('E2E TABS: Leads tab panel contains the collection job form', async () => {
+  const page = await browser.newPage();
+  const errors = watchConsole(page);
+  try {
+    await loadRealPage(page, 'dashboard-template.html', []);
+    // Switch to the leads tab via a real click.
+    await page.$eval('button.main-tab[data-tab="leads"]', (el) => el.click());
+    await new Promise((r) => setTimeout(r, 150));
+    assert.ok(await isPanelVisible(page, 'leads'), 'FAIL: panel-leads not visible after clicking Leads tab');
+    for (const id of ['lead-source', 'lead-maxr', 'lead-keywords', 'lead-run', 'lead-jobs']) {
+      assert.ok(await page.$('#' + id), `FAIL: #${id} missing from Leads panel`);
+    }
+    // Source switching toggles the right input block (static, no network).
+    await page.select('#lead-source', 'weblist');
+    await new Promise((r) => setTimeout(r, 100));
+    const seedVisible = await page.evaluate(() => !document.getElementById('lead-seed-block').classList.contains('is-hidden'));
+    const kwHidden = await page.evaluate(() => document.getElementById('lead-kw-block').classList.contains('is-hidden'));
+    assert.ok(seedVisible && kwHidden, 'FAIL: source select did not toggle seed/keyword blocks');
+    assert.deepEqual(errors, [], `console/page errors:\n${errors.join('\n')}`);
+  } finally {
+    await page.close();
+  }
+});
