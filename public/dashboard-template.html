@@ -308,7 +308,7 @@
     var card = document.getElementById('d2rm-sync-card');
     if (!card) return;
     function apiH(){ return { 'X-Requested-With': 'XMLHttpRequest' }; }
-    fetch('/api/auth/me', { headers: apiH() })
+    fetch('/api/auth/me', { headers: apiH(), credentials: 'same-origin' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
         var email = (j && j.user && j.user.email) ? String(j.user.email).toLowerCase().trim() : '';
