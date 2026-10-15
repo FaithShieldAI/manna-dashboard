@@ -73,20 +73,23 @@ test('billing endpoint reports plan, limits, usage (stripe live)', async () => {
   assert.match(r.json.tagline, /little guy money/);
 });
 
-test('trial users cannot send email (paid plans only)', async () => {
+test('trial users get 100 free emails (fishhook)', async () => {
   const c = await registerStarter('trial-email@example.org');
-  const r = await c.post('/api/email/log-send', { count: 10 });
-  assert.equal(r.status, 403);
-  assert.equal(r.json.error, 'email_requires_paid_plan');
+  const ok = await c.post('/api/email/log-send', { count: 100 });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json.remaining, 0);
+
+  const over = await c.post('/api/email/log-send', { count: 1 });
+  assert.equal(over.status, 403);
+  assert.equal(over.json.error, 'trial_email_limit_reached');
 });
 
 test('email quota enforced at 5k/mo for starter', async () => {
   const c = await registerStarter('starter3@example.org');
-  // Simulate a paid subscription — trial users can't send email.
-  const DatabaseSync = require('node:sqlite').DatabaseSync;
-  const tdb = new DatabaseSync(process.env.DATABASE_PATH);
-  tdb.prepare("UPDATE tenants SET subscription_status='active' WHERE slug LIKE '%starter3%'").run();
-  tdb.close();
+  // Simulate a paid subscription — trial users get 100 free, not the full quota.
+  const { db } = require('../src/db');
+  const u = db.prepare('SELECT tenant_id FROM users WHERE email=?').get('starter3@example.org');
+  db.prepare("UPDATE tenants SET subscription_status='active' WHERE id=?").run(u.tenant_id);
   const ok = await c.post('/api/email/log-send', { count: 4999 });
   assert.equal(ok.status, 200);
   assert.equal(ok.json.used, 4999);
