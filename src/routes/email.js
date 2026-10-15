@@ -70,32 +70,27 @@ router.post('/campaigns', (req, res) => {
 // performed here (stubbed) — this is the accounting choke point so the
 // $29.99/$100 tiers' 5k/20k monthly limits are enforced in one place.
 router.post('/log-send', (req, res) => {
-  // Email sending is paid-plans only — trial users get dashboard + lead
-  // collection, no email sending (Michael, 2026-10-13).
+  // Trial users get 100 free emails (fishhook — enough to test the full
+  // flow). Paid plans get their full quota. (Michael, 2026-10-15)
   const subStatus = req.tenant.subscription_status;
-  if (subStatus !== 'active') {
-    return res.status(403).json({
-      ok: false,
-      error: 'email_requires_paid_plan',
-      message: 'Email sending is available on paid plans. Upgrade to send emails.',
-    });
-  }
+  const isTrial = subStatus !== 'active';
   const plan = getPlan(req.tenant.plan) || getPlan('starter');
+  const effectiveLimit = isTrial ? 100 : plan.emails_per_month;
   const count = parseInt(req.body && req.body.count, 10);
   if (!Number.isInteger(count) || count < 1 || count > 100000) {
     return res.status(400).json({ ok: false, error: 'invalid_count' });
   }
   const monthKey = currentMonthKey();
   const used = req.tdb.getUsage(monthKey);
-  if (plan.emails_per_month != null && used + count > plan.emails_per_month) {
+  if (effectiveLimit != null && used + count > effectiveLimit) {
     return res.status(403).json({
       ok: false,
-      error: 'email_quota_exceeded',
+      error: isTrial ? 'trial_email_limit_reached' : 'email_quota_exceeded',
       plan: plan.key,
-      limit: plan.emails_per_month,
+      limit: effectiveLimit,
       used,
       requested: count,
-      remaining: Math.max(0, plan.emails_per_month - used),
+      remaining: Math.max(0, effectiveLimit - used),
     });
   }
   const { campaign_id } = req.body || {};
@@ -112,7 +107,7 @@ router.post('/log-send', (req, res) => {
     logged: count,
     month_key: monthKey,
     used: used + count,
-    remaining: plan.emails_per_month == null ? null : plan.emails_per_month - (used + count),
+    remaining: effectiveLimit == null ? null : effectiveLimit - (used + count),
     delivery: mailer.isSesConfigured()
       ? { stubbed: false, provider: 'ses', note: 'Sends go through Amazon SES.' }
       : { stubbed: true, provider: 'stub', note: 'SES not configured — sends are logged only. Set AWS keys + SES_FROM_EMAIL to go live.' },
