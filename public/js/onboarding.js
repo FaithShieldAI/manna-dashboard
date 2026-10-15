@@ -101,6 +101,26 @@
       var body = document.createElement('div');
       body.className = 'step-body';
       renderStepBody(s, body, status);
+      /* Sticky action bar: wrap the step's trailing action buttons/rows so
+         they stay visible (stuck to the viewport bottom) while scrolling
+         through long steps. Rebuilt on every render; alerts insert at the
+         top of the body and never land inside the bar. */
+      (function () {
+        var kids = Array.prototype.slice.call(body.children);
+        var take = [];
+        for (var i = kids.length - 1; i >= 0; i--) {
+          var el = kids[i];
+          var isAction = el.tagName === 'BUTTON' ||
+            (el.classList && (el.classList.contains('row') || el.classList.contains('ob-linkline')));
+          if (!isAction) break;
+          take.unshift(el);
+        }
+        if (!take.length) return;
+        var bar = document.createElement('div');
+        bar.className = 'step-actions';
+        body.insertBefore(bar, take[0]);
+        take.forEach(function (el) { bar.appendChild(el); });
+      })();
       card.appendChild(body);
       stepsEl.appendChild(card);
     });
@@ -109,6 +129,9 @@
 
   function renderStepBody(step, body, status) {
     if (step.done) {
+      /* Templates step: don't just say "Done" — show where they went, as
+         clickable links straight into the dashboard Templates section. */
+      if (step.id === 'starter_content') { renderInstalledTemplates(body); return; }
       var p = document.createElement('p');
       p.className = 'ob-done';
       p.textContent = '✓ Done';
@@ -247,7 +270,8 @@
         api('POST', '/api/onboarding/templates/install', s).then(function (rr) {
           installBtn.disabled = false;
           if (rr.json && rr.json.ok) {
-            alertBox(body, 'ok', 'Installed ' + rr.json.installed.email + ' email + ' + rr.json.installed.social + ' social templates.');
+            /* Re-render: the step flips to done and shows installed templates
+               as clickable links into the Templates section. */
             refresh(false);
           } else alertBox(body, 'err', 'Install failed.');
         }).catch(function () { installBtn.disabled = false; });
@@ -257,7 +281,8 @@
         api('POST', '/api/onboarding/templates/install-all', {}).then(function (rr) {
           allBtn.disabled = false;
           if (rr.json && rr.json.ok) {
-            alertBox(body, 'ok', 'All starter templates installed.');
+            /* Re-render: the step flips to done and shows installed templates
+               as clickable links into the Templates section. */
             refresh(false);
           } else alertBox(body, 'err', 'Install failed.');
         }).catch(function () { allBtn.disabled = false; });
@@ -279,6 +304,44 @@
     }
   }
 
+  /* Installed templates as clickable deep links into the dashboard
+     Templates section (/app#tpl-<key>). Used for the done state of the
+     "Install starter templates" step — shows where they went. */
+  function renderInstalledTemplates(body) {
+    api('GET', '/api/onboarding/templates').then(function (r) {
+      if (!r.json || !r.json.ok) return;
+      var installed = r.json.installed.email || [];
+      var ok = document.createElement('div');
+      ok.className = 'alert ok';
+      ok.textContent = installed.length
+        ? '\u2713 ' + installed.length + ' email template' + (installed.length === 1 ? '' : 's') + ' installed \u2014 find ' + (installed.length === 1 ? 'it' : 'them') + ' here:'
+        : '\u2713 Templates installed.';
+      body.appendChild(ok);
+      var list = document.createElement('div');
+      list.className = 'tpl-installed';
+      installed.forEach(function (t) {
+        var a = document.createElement('a');
+        a.className = 'tpl-link';
+        a.href = '/app#tpl-' + t.template_key;
+        a.textContent = t.name + ' \u2192';
+        list.appendChild(a);
+      });
+      body.appendChild(list);
+      var bar = document.createElement('div');
+      bar.className = 'step-actions';
+      var open = document.createElement('button');
+      open.textContent = 'Open Templates section \u2192';
+      open.addEventListener('click', function () { window.location.href = '/app#templates'; });
+      bar.appendChild(open);
+      var more = document.createElement('button');
+      more.className = 'ghost';
+      more.textContent = 'Install more';
+      more.addEventListener('click', function () { body.innerHTML = ''; renderTemplates(body); });
+      bar.appendChild(more);
+      body.appendChild(bar);
+    });
+  }
+
   function renderLeadJob(body) {
     var p = document.createElement('p');
     p.className = 'ob-p';
@@ -292,7 +355,7 @@
     row.appendChild(kw); row.appendChild(go);
     var link = document.createElement('p');
     link.className = 'ob-linkline';
-    link.innerHTML = 'Or use the full <a href="/leads" class="ob-goldlink">Leads page</a> for seed URLs and job history.';
+    link.innerHTML = 'Or open the <a href="/app#leads" class="ob-goldlink">Leads tab</a> for seed URLs and job history.';
     body.appendChild(p); body.appendChild(row); body.appendChild(link);
     go.addEventListener('click', function () {
       var keywords = kw.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);

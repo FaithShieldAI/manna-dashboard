@@ -344,6 +344,12 @@ function forTenant(tenantId) {
         SELECT template_key, name, subject, body_html, body_text, category, is_starter
         FROM email_templates WHERE tenant_id = ? AND template_key = ?`).get(t, key);
     },
+    previewEmailTemplates() {
+      return db.prepare(`
+        SELECT template_key, name, subject, category, is_starter,
+               SUBSTR(body_text, 1, 160) AS preview
+        FROM email_templates WHERE tenant_id = ? ORDER BY id`).all(t);
+    },
     installEmailTemplate({ templateKey, name, subject, bodyHtml, bodyText, category, isStarter }) {
       return db.prepare(`
         INSERT INTO email_templates (tenant_id, template_key, name, subject, body_html, body_text, category, is_starter)

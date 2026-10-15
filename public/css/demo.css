@@ -114,9 +114,10 @@
   font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
   color: var(--gold-bright); margin-bottom: 14px;
 }
-.feat-stage { position: relative; min-height: 190px; }
+.feat-stage { position: relative; min-height: 190px; display: grid; }
 .feat-card {
-  position: absolute; inset: 0;
+  grid-area: 1 / 1;
+  position: relative;
   background: linear-gradient(160deg, rgba(217,164,65,.08), rgba(217,164,65,.015) 55%, transparent);
   border: 1px solid var(--border-gold);
   border-radius: 18px;
@@ -124,7 +125,6 @@
   opacity: 0; transform: translateX(36px);
   transition: opacity .55s ease, transform .55s cubic-bezier(.2,.7,.3,1);
   pointer-events: none;
-  overflow: hidden;
 }
 .feat-card.active { opacity: 1; transform: none; pointer-events: auto; }
 .feat-card::after {

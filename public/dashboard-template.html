@@ -58,6 +58,27 @@
   .b-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(79,163,232,0.2); }
   .b-gold { background:var(--gold-bg); color:var(--gold); border:1px solid rgba(217,164,65,0.35); }
   .b-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.2); }
+  /* Email templates */
+  .tpl-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .tpl-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; display:flex; flex-direction:column; gap:6px; }
+  .tpl-card:hover { border-color:rgba(217,164,65,.35); }
+  .tpl-name { font-weight:700; font-size:13px; letter-spacing:.03em; text-transform:uppercase; }
+  .tpl-subj { font-size:12px; color:var(--gold); }
+  .tpl-preview { font-size:12px; color:var(--text2); line-height:1.5; }
+  .tpl-use { margin-top:8px; align-self:flex-start; cursor:pointer; }
+  @media (max-width:1100px) { .tpl-grid { grid-template-columns:1fr; } }
+  /* Lead collection tab */
+  .is-hidden { display: none !important; }
+  .modal-field textarea, .modal-field select { width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:12px 14px; font-size:14px; font-family:inherit; }
+  .modal-field textarea:focus, .modal-field select:focus { outline:none; border-color:var(--gold); }
+  .modal-field textarea { min-height:90px; resize:vertical; }
+  .job { border:1px solid var(--border); border-radius:10px; padding:16px; margin-top:12px; background:var(--bg2); }
+  .job .jh { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .job .jt { font-weight:700; text-transform:capitalize; }
+  .job .jm { color:var(--text3); font-size:13px; margin-top:6px; }
+  .job .row { display:flex; gap:8px; }
+  .j-new { color:var(--green); }
+  .j-err { color:#ff8a93; font-size:13px; margin-top:6px; }
   .b-red { background:var(--red-bg); color:var(--red); border:1px solid rgba(232,92,92,0.2); }
   .empty { text-align:center; color:var(--text3); padding:24px; }
   .note { background:var(--amber-bg); border:1px solid rgba(240,200,118,0.25); border-radius:8px; padding:10px 16px; font-size:13px; margin-bottom:1rem; color:var(--amber); }
@@ -215,6 +236,7 @@
     <button class="main-tab active" data-tab="overview">&#128202; Overview</button>
     <button class="main-tab" data-tab="email">&#128231; Email</button>
     <button class="main-tab" data-tab="warm">&#128293; Warm Leads</button>
+    <button class="main-tab" data-tab="leads">&#127919; Leads</button>
     <button class="main-tab" data-tab="conversions">&#9989; Conversions</button>
     <button class="main-tab" data-tab="sites">&#127760; Sites</button>
     <button class="main-tab" data-tab="influencers">&#128101; Influencers</button>
@@ -252,7 +274,7 @@
     </div></div>
     <div class="check-list" id="getting-started-list">
       <div class="check-item"><div class="check-box" id="gs-site">&#9675;</div><div><div style="font-weight:600">Add your first project / site</div><div style="font-size:13px;color:var(--text2)">Connect a site to start tracking visitors in real time. Go to the <a href="#" data-goto-tab="sites">Sites tab</a>.</div></div></div>
-      <div class="check-item"><div class="check-box" id="gs-leads">&#9675;</div><div><div style="font-weight:600">Collect your first leads</div><div style="font-size:13px;color:var(--text2)">Build your list &mdash; trial includes dashboard + lead collection. Open the <a href="/leads">Leads page</a>.</div></div></div>
+      <div class="check-item"><div class="check-box" id="gs-leads">&#9675;</div><div><div style="font-weight:600">Collect your first leads</div><div style="font-size:13px;color:var(--text2)">Build your list &mdash; trial includes dashboard + lead collection. Open the <a href="/app#leads" style="color:var(--gold)">Leads tab</a>.</div></div></div>
       <div class="check-item"><div class="check-box" id="gs-email">&#9675;</div><div><div style="font-weight:600">Log your first email send</div><div style="font-size:13px;color:var(--text2)">Sending unlocks on paid plans &mdash; log sends to track performance from day one.</div></div></div>
       <div class="check-item"><div class="check-box" id="gs-goal">&#9675;</div><div><div style="font-weight:600">Set a goal</div><div style="font-size:13px;color:var(--text2)">Pick a round number to chase &mdash; your instructor will track your pace.</div></div></div>
     </div>
@@ -302,6 +324,20 @@
     </table></div>
   </div>
 
+  <!-- ============ EMAIL: TEMPLATES ============ -->
+  <div class="card" id="templates-card">
+    <div class="card-header"><div>
+      <div class="card-title">&#9998; Templates</div>
+      <div class="card-sub">your installed email templates &mdash; copy one to use it</div>
+    </div></div>
+    <div class="tpl-grid" id="template-list">
+      <div class="empty-state">
+        <div class="empty-icon">&#9998;</div>
+        <div class="empty-title">Loading templates&hellip;</div>
+      </div>
+    </div>
+  </div>
+
   </div><!-- /panel-email -->
 
   <!-- ============ TAB: WARM LEADS ============ -->
@@ -319,6 +355,64 @@
   </div>
 
   </div><!-- /panel-warm -->
+
+  <!-- ============ TAB: LEADS ============ -->
+  <div class="main-tab-panel" id="panel-leads" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#127919; New collection job</div>
+      <div class="card-sub">keywords in, emails out &mdash; straight into your list</div>
+    </div></div>
+    <div class="modal-err" id="lead-err"></div>
+    <div class="modal-ok" id="lead-ok"></div>
+    <div class="cols">
+      <div class="modal-field">
+        <label for="lead-source">Source</label>
+        <select id="lead-source">
+          <option value="youtube">YouTube channel search &mdash; keywords &rarr; channel emails</option>
+          <option value="weblist">Seed URL list &mdash; paste pages &rarr; contact emails</option>
+          <option value="aisearch">AI search &mdash; describe your ideal customer &rarr; business emails</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label for="lead-maxr">Max leads per job</label>
+        <select id="lead-maxr">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field" id="lead-kw-block">
+      <label for="lead-keywords">Keywords &mdash; one per line (your niche)</label>
+      <textarea id="lead-keywords" rows="4" placeholder="fitness coach&#10;sourdough baking&#10;indie game dev"></textarea>
+      <div class="hint">We search public YouTube channels matching each keyword and pull business emails from their about pages + linked sites. No login needed.</div>
+    </div>
+    <div class="modal-field is-hidden" id="lead-seed-block">
+      <label for="lead-seeds">Seed URLs &mdash; one per line</label>
+      <textarea id="lead-seeds" rows="4" placeholder="https://example-creator.com&#10;https://directory.example/niche"></textarea>
+      <div class="hint">We fetch each page and extract public contact emails. Paste homepages, link-in-bio pages, or directories.</div>
+    </div>
+    <div class="modal-field is-hidden" id="lead-ai-block">
+      <label for="lead-ai-query">Describe your ideal customer</label>
+      <input type="text" id="lead-ai-query" maxlength="200" placeholder="AV integrators in Texas" autocomplete="off">
+      <div class="hint">Plain English &mdash; e.g. &ldquo;AV integrators in Texas&rdquo;, &ldquo;coffee roasters near Portland&rdquo;. The AI searches the live web for matching businesses and pulls public contact emails into your list.</div>
+    </div>
+    <button class="btn gold" id="lead-run">Create &amp; run job</button>
+    <div class="hint is-hidden" id="lead-run-hint" style="margin-top:8px">Running &mdash; this can take a minute or two. Please wait&hellip;</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">Your jobs</div>
+      <div class="card-sub">collection history</div>
+    </div></div>
+    <div id="lead-jobs"><div class="empty-state"><div class="empty-title">Loading&hellip;</div></div></div>
+  </div>
+
+  </div><!-- /panel-leads -->
 
   <!-- ============ TAB: CONVERSIONS ============ -->
   <div class="main-tab-panel" id="panel-conversions" style="display:none">
@@ -627,8 +721,29 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
 (function(){
   var saved = 'overview';
   try { saved = localStorage.getItem('manna_main_tab') || 'overview'; } catch(e) {}
+  var hash = window.location.hash || '';
+  var tplKey = null;
+  var hm = hash.match(/^#tpl-([A-Za-z0-9_-]+)$/);
+  if (hm) tplKey = hm[1];
+  if (hash === '#templates' || tplKey) saved = 'email';
+  else if (hash === '#leads') saved = 'leads';
   if (!document.getElementById('panel-'+saved)) saved = 'overview';
   setMainTab(saved);
+  /* Deep links: /app#templates lands on the Templates card;
+     /app#tpl-<key> lands on that specific template card;
+     /app#leads lands on the Leads tab. */
+  if (hash === '#templates' || tplKey) {
+    var tries = 0;
+    (function scrollTo(){
+      var el = tplKey ? document.getElementById('tpl-' + tplKey)
+                      : document.getElementById('templates-card');
+      if (el) { try { el.scrollIntoView({ behavior:'auto', block:'start' }); } catch(e){} }
+      else if (++tries < 20) setTimeout(scrollTo, 250);
+    })();
+    try { history.replaceState(null, '', '/app'); } catch(e){}
+  } else if (hash === '#leads') {
+    try { history.replaceState(null, '', '/app'); } catch(e){}
+  }
 })();
 
 /* ---------- AI Instructor ---------- */
@@ -655,7 +770,7 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
       + '<div class="suggest-step"><div class="suggest-num">3</div><div><strong>I\u2019ll guide each step</strong><div style="font-size:13px;color:var(--text2)">Ask me anything as you go \u2014 I\u2019m your instructor.</div></div></div>'
       + '<div class="suggest-actions">'
       + '<button class="btn gold" data-open-site-modal="1">\u{1F310} Add my site \u2014 start step 1</button>'
-      + '<a class="btn" href="/leads">\u{1F4E5} Collect leads \u2014 step 2</a>'
+      + '<button class="btn" data-goto-tab="leads">\u{1F4E5} Collect leads \u2014 step 2</button>'
       + '</div>';
     msgs.appendChild(card);
     msgs.scrollTop = msgs.scrollHeight;
@@ -847,6 +962,226 @@ document.querySelectorAll('.range-tab').forEach(function(b){
         + '<td class="n">'+roiHtml+'</td></tr>';
     }).join('');
   }).catch(function(){});
+})();
+
+/* ---------- email templates ---------- */
+(function(){
+  var listEl = document.getElementById('template-list');
+  if (!listEl) return;
+  function copyText(text, btn){
+    function done(){ var o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = o; }, 1500); }
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta); done();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else fallback();
+  }
+  fetch('/api/email/templates', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var rows = (j && j.ok && j.templates) || [];
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="empty-state">'
+        + '<div class="empty-icon">&#9998;</div>'
+        + '<div class="empty-title">No templates yet</div>'
+        + '<div class="empty-text">Install some from <a href="/onboarding" style="color:var(--gold)">onboarding</a> and they will show up here.</div>'
+        + '</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function(t){
+      return '<div class="tpl-card" id="tpl-'+esc(t.template_key)+'">'
+        + '<div class="tpl-name">'+esc(t.name)+'</div>'
+        + '<div class="tpl-subj">'+esc(t.subject || '\u2014')+'</div>'
+        + (t.preview ? '<div class="tpl-preview">'+esc(t.preview)+'\u2026</div>' : '')
+        + '<button class="btn tpl-use" data-key="'+esc(t.template_key)+'">Copy template</button>'
+        + '</div>';
+    }).join('');
+    listEl.querySelectorAll('.tpl-use').forEach(function(b){
+      b.addEventListener('click', function(){
+        var key = b.getAttribute('data-key');
+        b.disabled = true;
+        fetch('/api/email/templates/' + encodeURIComponent(key), { headers: apiH() })
+          .then(function(r){ return r.json(); })
+          .then(function(jj){
+            b.disabled = false;
+            if (jj && jj.ok && jj.template) {
+              var text = (jj.template.subject ? 'Subject: ' + jj.template.subject + '\n\n' : '')
+                + (jj.template.body_text || '');
+              copyText(text, b);
+            }
+          })
+          .catch(function(){ b.disabled = false; });
+      });
+    });
+  }).catch(function(){
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load templates</div></div>';
+  });
+})();
+
+/* ---------- leads ---------- */
+(function(){
+  var sourceSel = document.getElementById('lead-source');
+  if (!sourceSel) return;
+  var kwBlock = document.getElementById('lead-kw-block');
+  var seedBlock = document.getElementById('lead-seed-block');
+  var aiBlock = document.getElementById('lead-ai-block');
+  var errEl = document.getElementById('lead-err');
+  var okEl = document.getElementById('lead-ok');
+
+  sourceSel.addEventListener('change', function(){
+    var v = sourceSel.value;
+    kwBlock.classList.toggle('is-hidden', v !== 'youtube');
+    seedBlock.classList.toggle('is-hidden', v !== 'weblist');
+    aiBlock.classList.toggle('is-hidden', v !== 'aisearch');
+  });
+
+  function leadApi(method, path, body){
+    var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    return fetch(path, {
+      method: method, headers: headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }).then(function(r){
+      return r.json().catch(function(){ return null; }).then(function(j){
+        return { status: r.status, json: j };
+      });
+    });
+  }
+  var LEAD_FRIENDLY = {
+    job_not_found: 'Job not found \u2014 refresh the page.',
+    job_not_cancelable: 'That job can no longer be canceled.',
+    invalid_job_id: 'Invalid job.',
+    too_many_requests: 'Too many attempts \u2014 wait a few minutes and try again.',
+    csrf_check_failed: 'Security check failed. Reload the page and try again.',
+  };
+  function leadFriendly(err){ return LEAD_FRIENDLY[err] || 'Something went wrong. Please try again.'; }
+  function leadShowError(msg){ errEl.textContent = msg; errEl.style.display = 'block'; }
+  function leadShowOk(msg){ okEl.textContent = msg; okEl.style.display = 'block'; }
+  function leadClearAlerts(){ errEl.style.display = 'none'; okEl.style.display = 'none'; }
+
+  function lines(id){
+    return document.getElementById(id).value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  function leadBadge(status){
+    var cls = { queued: 'b-blue', running: 'b-gold', done: 'b-green', failed: 'b-red', canceled: 'b-red' }[status] || 'b-blue';
+    return '<span class="badge ' + cls + '">' + esc(status) + '</span>';
+  }
+  function renderLeadJobs(jobs){
+    var box = document.getElementById('lead-jobs');
+    if (!jobs.length) {
+      box.innerHTML = '<div class="empty-state"><div class="empty-title">No jobs yet</div><div class="empty-text">Create your first collection job above.</div></div>';
+      return;
+    }
+    box.innerHTML = jobs.map(function(j){
+      var input = j.source === 'youtube'
+        ? esc(j.keywords.join(', '))
+        : j.source === 'aisearch'
+          ? '\u{1F916} ' + esc(j.query || 'AI search')
+          : esc(j.seeds.slice(0, 3).join(', ') + (j.seeds.length > 3 ? ' \u2026(+' + (j.seeds.length - 3) + ' more)' : ''));
+      var stats = (j.status === 'done')
+        ? '<span style="font-size:13px;color:var(--text2)"> \u00B7 ' + num(j.found_count) + ' emails found \u00B7 <strong class="j-new">' + num(j.new_count) + ' new</strong> added to your list</span>'
+        : '';
+      var err = (j.status === 'failed' && j.error) ? '<div class="j-err">' + esc(j.error) + '</div>' : '';
+      var runBtn = (j.status === 'queued' || j.status === 'failed' || j.status === 'canceled')
+        ? '<button class="btn" data-lead-run="' + j.id + '">Run</button>' : '';
+      var cancelBtn = (j.status === 'queued')
+        ? '<button class="btn" data-lead-cancel="' + j.id + '">Cancel</button>' : '';
+      return '<div class="job"><div class="jh"><div><span class="jt">' + esc(j.source) + '</span> ' + leadBadge(j.status) + stats + '</div>'
+        + '<div class="row">' + runBtn + cancelBtn + '</div></div>'
+        + '<div class="jm">' + input + ' \u00B7 max ' + num(j.max_results) + ' \u00B7 ' + esc(j.created_at || '') + '</div>' + err + '</div>';
+    }).join('');
+    box.querySelectorAll('[data-lead-run]').forEach(function(b){
+      b.addEventListener('click', function(){ leadRunJob(b.getAttribute('data-lead-run')); });
+    });
+    box.querySelectorAll('[data-lead-cancel]').forEach(function(b){
+      b.addEventListener('click', function(){ leadCancelJob(b.getAttribute('data-lead-cancel')); });
+    });
+  }
+  function loadLeadJobs(){
+    leadApi('GET', '/api/leads/jobs').then(function(r){
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      renderLeadJobs((r.json && r.json.jobs) || []);
+    }).catch(function(){});
+  }
+  function leadCancelJob(id){
+    if (!window.confirm('Cancel this lead collection job?')) return;
+    leadClearAlerts();
+    leadApi('POST', '/api/leads/jobs/' + encodeURIComponent(id) + '/cancel', {}).then(function(r){
+      leadClearAlerts();
+      if (r.json && r.json.ok) leadShowOk('Job canceled.');
+      else leadShowError(leadFriendly(r.json && r.json.error));
+      loadLeadJobs();
+    }).catch(function(){
+      leadShowError('Network error \u2014 refresh to check the job status.');
+      loadLeadJobs();
+    });
+  }
+  function leadRunJob(id){
+    leadClearAlerts();
+    leadShowOk('Job running \u2014 this can take a minute or two\u2026');
+    leadApi('POST', '/api/leads/jobs/' + encodeURIComponent(id) + '/run', {}).then(function(r){
+      leadClearAlerts();
+      if (r.json && r.json.ok) {
+        leadShowOk('Done: ' + r.json.found + ' emails found, ' + r.json.new + ' new leads added to your list.');
+      } else {
+        leadShowError(leadFriendly(r.json && r.json.error));
+      }
+      loadLeadJobs();
+    }).catch(function(){
+      leadShowError('Network error \u2014 the job may still be running. Refresh in a bit.');
+      loadLeadJobs();
+    });
+  }
+  function leadFinishRun(btn, r){
+    btn.disabled = false;
+    document.getElementById('lead-run-hint').classList.add('is-hidden');
+    leadClearAlerts();
+    if (r.json && r.json.ok) {
+      var res = r.json.result || r.json;
+      var msg = 'Done: ' + (res.found || 0) + ' emails found, ' + (res.new || 0) + ' new leads added to your list.';
+      if (res.parsed && res.parsed.business_type) {
+        msg = 'Searched for "' + res.parsed.business_type
+          + (res.parsed.location ? ' in ' + res.parsed.location : '') + '". ' + msg;
+      }
+      leadShowOk(msg);
+    } else {
+      leadShowError(leadFriendly(r.json && r.json.error));
+    }
+    loadLeadJobs();
+  }
+  document.getElementById('lead-run').addEventListener('click', function(){
+    leadClearAlerts();
+    var btn = this;
+    var source = sourceSel.value;
+    var maxr = parseInt(document.getElementById('lead-maxr').value, 10) || 25;
+
+    if (source === 'aisearch') {
+      var q = document.getElementById('lead-ai-query').value.trim();
+      if (!q) { leadShowError('Describe your ideal customer \u2014 e.g. "AV integrators in Texas".'); return; }
+      btn.disabled = true;
+      document.getElementById('lead-run-hint').classList.remove('is-hidden');
+      leadApi('POST', '/api/leads/ai-search', { query: q, max_results: maxr })
+        .then(function(r){ leadFinishRun(btn, r); })
+        .catch(function(){ btn.disabled = false; document.getElementById('lead-run-hint').classList.add('is-hidden'); leadShowError('Network error \u2014 the job may still be running. Refresh in a bit.'); loadLeadJobs(); });
+      return;
+    }
+
+    var payload = { source: source, max_results: maxr, auto_run: true };
+    if (source === 'youtube') payload.keywords = lines('lead-keywords');
+    else payload.seeds = lines('lead-seeds');
+    if (source === 'youtube' && !payload.keywords.length) { leadShowError('Enter at least one keyword.'); return; }
+    if (source === 'weblist' && !payload.seeds.length) { leadShowError('Paste at least one URL.'); return; }
+    btn.disabled = true;
+    document.getElementById('lead-run-hint').classList.remove('is-hidden');
+    leadApi('POST', '/api/leads/jobs', payload)
+      .then(function(r){ leadFinishRun(btn, r); })
+      .catch(function(){ btn.disabled = false; document.getElementById('lead-run-hint').classList.add('is-hidden'); leadShowError('Network error \u2014 the job may still be running. Refresh in a bit.'); loadLeadJobs(); });
+  });
+
+  loadLeadJobs();
 })();
 
 /* ---------- funnels ---------- */
