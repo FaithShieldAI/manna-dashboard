@@ -207,7 +207,7 @@
     <img src="manna-logo.webp" alt="Manna" style="max-width:300px;width:60%;height:auto;display:block;margin:0 auto 6px">
     <p style="font-size:13px;color:var(--text2);margin:4px 0 0;letter-spacing:.12em;text-transform:uppercase">Marketing Command Center</p>
     <p style="margin:6px 0 0">Big agency data, little guy money.</p>
-    <p style="margin:6px 0 0">&#9201;&#65039; Dashboard live for: <strong id="elapsed-clock">&hellip;</strong></p>
+    <p style="margin:6px 0 0">&#9201;&#65039; Account age: <strong id="elapsed-clock">&hellip;</strong></p>
   </div>
 
   <!-- ============ AI INSTRUCTOR (your guide — top of dashboard) ============ -->
@@ -1600,8 +1600,19 @@ function parseFunnelStages(text){
   if (statusF) statusF.addEventListener('change', applyIpFilters);
 })();
 
-/* ---------- elapsed clock ---------- */
+/* ---------- account age clock ---------- */
 var DASH_START = new Date("2026-10-09T12:00:00-07:00");
+/* Try to use the user's actual signup date from /api/auth/me */
+try {
+  fetch('/api/auth/me', { credentials: 'same-origin' }).then(function(r) {
+    return r.json();
+  }).then(function(j) {
+    if (j && j.user && j.user.created_at) {
+      DASH_START = new Date(j.user.created_at);
+      updateElapsedClock();
+    }
+  }).catch(function() {});
+} catch (e) {}
 function _plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
 function updateElapsedClock(){
   var el = document.getElementById('elapsed-clock');
