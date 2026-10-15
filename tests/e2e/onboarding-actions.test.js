@@ -71,7 +71,10 @@ async function loadOnboardingWithStubs(page, { templatesDone }) {
     'GET /api/onboarding/socials': { ok: true, socials: [] },
     'GET /api/overview': { ok: true, email: {}, counts: {} },
   };
-  await page.evaluateOnNewDocument((s) => {
+  await page.setContent(readPublic('onboarding.html'), { waitUntil: 'domcontentloaded', timeout: 15000 });
+  // NOTE: page.setContent() wipes evaluateOnNewDocument scripts in this
+  // environment, so the fetch stub must be installed AFTER setContent.
+  await page.evaluate((s) => {
     window.fetch = function (path, opts) {
       var key = ((opts && opts.method) || 'GET') + ' ' + path;
       var body = s[key];
@@ -81,8 +84,10 @@ async function loadOnboardingWithStubs(page, { templatesDone }) {
       });
     };
   }, stubs);
-  await page.setContent(readPublic('onboarding.html'), { waitUntil: 'domcontentloaded', timeout: 15000 });
   await page.addScriptTag({ content: readPublic('js/onboarding.js') });
+  // Load the real shipped stylesheet so computed-style assertions (e.g. the
+  // sticky .step-actions bar) test the actual CSS, not just the class name.
+  await page.addStyleTag({ content: readPublic('css/onboarding.css') });
   await new Promise((r) => setTimeout(r, 600)); // let render + async template fetch settle
 }
 
@@ -155,7 +160,17 @@ test('E2E ACTIONS: dashboard honors #tpl-<key> deep links', async () => {
   const page = await browser.newPage();
   const errors = watchConsole(page);
   try {
-    await page.evaluateOnNewDocument(() => {
+    // The dashboard's JS is one big inline <script>, which would run during
+    // setContent — before any fetch stub exists. Strip it, stub fetch, then
+    // inject the real script so the templates render against the stub.
+    const full = readPublic('dashboard-template.html');
+    const m = full.match(/<script>([\s\S]*)<\/script>/);
+    assert.ok(m, 'inline dashboard script not found');
+    const stripped = full.replace(m[0], '<!-- inline script injected by test -->');
+    await page.setContent(stripped, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    // NOTE: setContent() wipes evaluateOnNewDocument scripts here, so the
+    // fetch stub is installed AFTER setContent instead.
+    await page.evaluate(() => {
       window.fetch = function (path) {
         if (String(path).indexOf('/api/email/templates') === 0) {
           return Promise.resolve({
@@ -169,7 +184,7 @@ test('E2E ACTIONS: dashboard honors #tpl-<key> deep links', async () => {
         return Promise.resolve({ status: 200, json: () => Promise.resolve({ ok: true }) });
       };
     });
-    await page.setContent(readPublic('dashboard-template.html'), { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.addScriptTag({ content: m[1] });
     await new Promise((r) => setTimeout(r, 800)); // let templates render
 
     // Per-template anchor must exist once templates render.
