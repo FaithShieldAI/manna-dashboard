@@ -28,6 +28,12 @@ app.use(helmet({
   contentSecurityPolicy: false, // frontend served separately in Phase 2
   crossOriginEmbedderPolicy: false,
 }));
+// Stripe webhook: needs the RAW body for signature verification, so it is
+// mounted before express.json(). No auth, no CSRF — the Stripe-Signature
+// header is the authentication. See src/routes/billingWebhook.js.
+app.post('/api/billing/webhook',
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  require('./routes/billingWebhook'));
 app.use(express.json({ limit: '256kb' }));
 app.use(cookieParser());
 
