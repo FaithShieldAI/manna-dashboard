@@ -120,7 +120,7 @@ async function runJob(tdb, job) {
     let keywords = [], seeds = [];
     try { keywords = JSON.parse(job.keywords_json || '[]'); } catch (e) { /* keep [] */ }
     try { seeds = JSON.parse(job.seeds_json || '[]'); } catch (e) { /* keep [] */ }
-    const maxResults = Math.min(Math.max(job.max_results || 25, 1), 100);
+    const maxResults = Math.min(Math.max(job.max_results || 25, 1), 20000);
 
     let leads;
     let parsed = null;
@@ -184,7 +184,7 @@ function createJob(tdb, { source, query, keywords, seeds, maxResults }) {
   if (source === 'aisearch' && !q) {
     return { error: { status: 400, body: { ok: false, error: 'query_required' } } };
   }
-  const max = Math.min(Math.max(parseInt(maxResults, 10) || 25, 1), 100);
+  const max = Math.min(Math.max(parseInt(maxResults, 10) || 25, 1), 20000);
 
   const active = tdb.listCollectionJobs(100).filter(j => j.status === 'queued' || j.status === 'running').length;
   if (active >= MAX_ACTIVE_JOBS) {
