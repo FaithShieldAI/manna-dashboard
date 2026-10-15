@@ -239,4 +239,21 @@ if (require.main === module) {
   });
 }
 
-module.exports = { seedInfluencers };
+/**
+ * Seed influencer contacts for ONE tenant only (used by the signup route so
+ * a brand-new account gets demo data immediately, without a server restart).
+ * Tenant-scoped: only the given tenant_id is touched. Idempotent: a tenant
+ * that already has influencers is skipped.
+ * Returns the per-tenant summary from seedTenant.
+ */
+function seedTenantInfluencers(tenantId) {
+  const rows = loadSeedRows();
+  if (!rows || rows.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log('[seed] no seed rows available, skipping');
+    return { tenantId, skipped: true, count: 0 };
+  }
+  return seedTenant(Number(tenantId), rows);
+}
+
+module.exports = { seedInfluencers, seedTenantInfluencers };

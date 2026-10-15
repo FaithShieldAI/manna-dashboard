@@ -251,6 +251,11 @@ button.ghost:hover { border-color: var(--border-gold); color: var(--gold-bright)
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .plan .pdesc { color: var(--text2); font-size: 12.5px; line-height: 1.6; }
+.plan .pspecial {
+  display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  color: #1a1206; background: linear-gradient(90deg, var(--gold-bright), var(--gold-deep));
+  border-radius: 999px; padding: 3px 10px; margin: 0 0 8px;
+}
 .plan input { display: none; }
 .plan .pcheck {
   position: absolute; top: 12px; right: 12px;

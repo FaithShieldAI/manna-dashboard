@@ -59,9 +59,9 @@ function main(tenantSlug) {
   const slug = (tenantSlug || TENANT_SLUG).toLowerCase();
   const tenant = unscoped.getTenantBySlug(slug);
   if (!tenant) {
-    console.error(`[seed-demo] tenant not found: "${TENANT_SLUG}"`);
-    console.error('[seed-demo] The account must be created first (via /signup on the staging app).');
-    process.exit(1);
+    // NOTE: throw (don't process.exit) so this module is safe to require
+    // from the signup route. The CLI wrapper below converts to exit code 1.
+    throw new Error(`[seed-demo] tenant not found: "${slug}" — the account must be created first (via /signup).`);
   }
   const tenantId = Number(tenant.id);
   console.log(`[seed-demo] tenant: ${tenant.name} (id=${tenantId}, slug=${tenant.slug})`);
@@ -127,7 +127,12 @@ function main(tenantSlug) {
 }
 
 if (require.main === module) {
-  main();
+  try {
+    main();
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
 }
 
 module.exports = { seedDemoData: main };

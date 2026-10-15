@@ -19,6 +19,10 @@ function freshDbPath() {
 function setupTestEnv() {
   process.env.DATABASE_PATH = freshDbPath();
   process.env.NODE_ENV = 'test';
+  // Signup demo-seeding is skipped in the test harness (it's a 9k-row insert
+  // per registration). The real path is covered by tests/signup-seed.test.js,
+  // which deliberately does NOT set this var.
+  process.env.MANNA_SKIP_SIGNUP_SEED = '1';
 }
 
 async function startServer() {
