@@ -1852,6 +1852,15 @@ function loadBilling(){
               : '<button class="btn gold billing-req" data-plan="'+esc(p.key)+'" style="margin-top:10px">Request this plan</button>')
           + '</div>';
       });
+      /* Enterprise — no fixed price, contact us for custom pricing */
+      html += '<div class="stat-card">'
+        + '<div class="stat-top"><span class="stat-icon" style="background:var(--gold-bg)">&#127970;</span></div>'
+        + '<div class="stat-label">Enterprise</div>'
+        + '<div class="stat-value" style="font-size:22px">Custom</div>'
+        + '<div class="stat-change">For teams with serious volume.</div>'
+        + '<div style="font-size:12px;color:var(--text2);margin-top:8px">Unlimited projects &middot; custom email volume</div>'
+        + '<a href="mailto:michael@faithshield.ai?subject=Enterprise%20plan%20inquiry" class="btn gold" style="margin-top:10px;display:inline-block;text-decoration:none">Contact us</a>'
+        + '</div>';
       html += '</div><div id="billing-note" style="font-size:12px;color:var(--text3);margin-top:10px">'
         + esc(j.checkout && j.checkout.note ? j.checkout.note : '') + '</div></div>';
       body.innerHTML = html;
