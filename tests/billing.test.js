@@ -63,7 +63,7 @@ test('billing endpoint reports plan, limits, usage (stripe stubbed)', async () =
   const r = await c.get('/api/billing');
   assert.equal(r.status, 200);
   assert.equal(r.json.plan, 'starter');
-  assert.equal(r.json.price_label, '$50/mo');
+  assert.equal(r.json.price_label, '$29.99/mo');
   assert.equal(r.json.limits.projects, 2);
   assert.equal(r.json.limits.emails_per_month, 5000);
   assert.equal(r.json.usage.projects_used, 0);

@@ -89,6 +89,24 @@ router.post('/register', async (req, res) => {
       return { tenantId: Number(t.lastInsertRowid), userId: Number(u.lastInsertRowid) };
     });
 
+    // Seed demo data for the NEW tenant immediately (tenant-scoped: only this
+    // tenant is touched). A new signup must land in a populated dashboard —
+    // the boot-time seeder only covers tenants that exist at server start.
+    // Skipped when MANNA_SKIP_SIGNUP_SEED=1 (test harness sets this; the
+    // dedicated tests/signup-seed.test.js exercises the real path).
+    // A seed failure must never break registration, so errors are logged.
+    if (process.env.MANNA_SKIP_SIGNUP_SEED !== '1') {
+      try {
+        const { seedDemoData } = require('../../scripts/seed-demo-data');
+        seedDemoData(slug);
+        const { seedTenantInfluencers } = require('../../scripts/seed-contacts');
+        seedTenantInfluencers(created.tenantId);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[auth/register] demo seed failed for tenant', slug, ':', e.message);
+      }
+    }
+
     // Email verification token (Phase 1: returned in dev only; Phase 2: emailed).
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');

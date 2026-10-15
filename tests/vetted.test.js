@@ -28,8 +28,11 @@ async function register(email) {
 }
 
 // Seed one tenant's influencers directly via the db facade (tenant-scoped handle).
+// Clears the tenant's influencers first: since 2026-10-14, /api/auth/register
+// seeds demo contacts at signup, so the fixture must start from a known state.
 function seedInfluencers(tenantId, rows) {
-  const { forTenant } = require('../src/db');
+  const { db, forTenant } = require('../src/db');
+  db.prepare('DELETE FROM influencers WHERE tenant_id = ?').run(tenantId);
   const tdb = forTenant(tenantId);
   for (const r of rows) tdb.createInfluencer(r);
 }

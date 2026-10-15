@@ -2,8 +2,8 @@
 /**
  * Plan definitions + limit enforcement.
  *
- * Pricing (Michael, 2026-10-12):
- *   starter — $50/mo:  2 projects,  5,000 emails/mo
+ * Pricing (Michael, 2026-10-14):
+ *   starter — $29.99/mo SPECIAL (regular $49.99/mo): 2 projects, 5,000 emails/mo
  *   pro     — $100/mo: 10 projects, 20,000 emails/mo
  *   agency  — custom:  invite-only, NOT advertised publicly. Kept in the
  *             plan enum so D2RM can assign it manually for custom deals
@@ -19,8 +19,11 @@ const PLANS = {
     key: 'starter',
     name: 'Starter',
     tagline: 'For the solo creator getting started.',
-    price_cents: 5000,          // $50/mo
-    price_label: '$50/mo',
+    price_cents: 2999,          // $29.99/mo special offer
+    price_label: '$29.99/mo',
+    regular_price_cents: 4999,  // $49.99/mo regular price
+    regular_price_label: '$49.99/mo',
+    special_offer: true,
     projects: 2,                // max sites/projects
     emails_per_month: 5000,
     public: true,               // shown on the signup plan picker
