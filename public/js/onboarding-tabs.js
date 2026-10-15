@@ -16,7 +16,7 @@
     /* On user clicks (not initial load), scroll the newly shown panel into
        view so the tab switch is visible — panels sit below Key Numbers. */
     if (target && opts && opts.scroll && typeof target.scrollIntoView === 'function') {
-      try { target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+      try { target.scrollIntoView({ behavior: 'auto', block: 'nearest' }); } catch (e) {}
     }
   }
   document.querySelectorAll('.main-tab').forEach(function (b) {
