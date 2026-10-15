@@ -165,6 +165,7 @@ api.use('/billing', require('./routes/billing'));
 api.use('/leads', require('./routes/leads'));
 api.use('/onboarding', require('./routes/onboarding'));
 api.use('/assistant', require('./routes/assistant'));
+api.use('/admin', require('./routes/admin'));
 
 // Compat shim: query-param style tracker endpoints the dashboard HTML calls
 // (API_BASE + '/api/stats?site=KEY'). Same tenant-scoped data, tracker shape.

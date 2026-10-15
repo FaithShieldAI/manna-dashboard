@@ -2,6 +2,10 @@ node_modules/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+# Bundled D2RM source snapshot for the /api/admin/sync-d2rm endpoint
+# (real contacts; repo must stay private). NOT served statically — data/
+# is outside public/ and express.static only serves public/.
+!data/d2rm-source.db
 .env
 *.log
 .DS_Store
