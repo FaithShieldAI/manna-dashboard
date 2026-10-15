@@ -1357,5 +1357,5 @@ csrf = CSRFProtect(app)
 csrf.exempt(stripe_webhook)
 
 # Stripe billing integration (subscription checkout, portal, webhook)
-from stripe_billing import init_stripe_billing  # noqa: E402
+from stripebilling import init_stripe_billing  # noqa: E402
 init_stripe_billing(app, db, login_required, now_iso, csrf)
