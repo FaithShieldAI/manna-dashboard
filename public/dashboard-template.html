@@ -334,7 +334,9 @@
             } else if (res.status === 403) {
               status.textContent = 'Not available for this account.';
             } else {
-              status.textContent = 'Sync failed: ' + ((res.body && res.body.error) || ('HTTP ' + res.status));
+              var errDetail = (res.body && res.body.error) || ('HTTP ' + res.status);
+              if (res.body && res.body.path) errDetail += ' (path: ' + res.body.path + ')';
+              status.textContent = 'Sync failed: ' + errDetail;
             }
           }).catch(function(){
             btn.disabled = false;
