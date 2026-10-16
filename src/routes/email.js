@@ -68,7 +68,7 @@ router.post('/campaigns', (req, res) => {
 // POST /api/email/log-send { count, campaign_id? }
 // Records metered email sends against the plan quota. Delivery is NOT
 // performed here (stubbed) — this is the accounting choke point so the
-// $29.99/$100 tiers' 5k/20k monthly limits are enforced in one place.
+// $29.99/$89.99 tiers' 5k/20k monthly limits are enforced in one place.
 router.post('/log-send', (req, res) => {
   // Trial users get 100 free emails (fishhook — enough to test the full
   // flow). Paid plans get their full quota. (Michael, 2026-10-15)

@@ -1823,7 +1823,7 @@ function loadBilling(){
          never hardcoded, so the UI can't drift from real pricing */
       var plans = (j.plans && j.plans.length) ? j.plans : [
         { key:'starter', name:'Starter', price_label:'$29.99/mo', regular_price_label:'$49.99/mo', special_offer:true, tagline:'For the solo creator getting started.', projects:2, emails_per_month:5000 },
-        { key:'pro', name:'Pro', price_label:'$100/mo', regular_price_label:null, special_offer:false, tagline:'For serious operators running multiple projects.', projects:10, emails_per_month:20000 }
+        { key:'pro', name:'Pro', price_label:'$69.99/mo', regular_price_label:'$89.99/mo', special_offer:true, tagline:'For serious operators running multiple projects.', projects:10, emails_per_month:20000 }
       ];
       function planSpecs(p){
         var bits = [];

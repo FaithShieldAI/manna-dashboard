@@ -4,7 +4,7 @@
  *
  * Pricing (Michael, 2026-10-14):
  *   starter — $29.99/mo SPECIAL (regular $49.99/mo): 2 projects, 5,000 emails/mo
- *   pro     — $100/mo: 10 projects, 20,000 emails/mo
+ *   pro     — $89.99/mo (sale $69.99/mo): 10 projects, 20,000 emails/mo
  *   agency  — custom:  invite-only, NOT advertised publicly. Kept in the
  *             plan enum so D2RM can assign it manually for custom deals
  *             (the "takeaway sale": prospects must call and ask).
@@ -32,8 +32,11 @@ const PLANS = {
     key: 'pro',
     name: 'Pro',
     tagline: 'For serious operators running multiple projects.',
-    price_cents: 10000,         // $100/mo
-    price_label: '$100/mo',
+    price_cents: 6999,          // $69.99/mo sale
+    price_label: '$69.99/mo',
+    regular_price_cents: 8999,
+    regular_price_label: '$89.99/mo',
+    special_offer: true,
     projects: 10,
     emails_per_month: 20000,
     public: true,
