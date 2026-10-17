@@ -36,22 +36,24 @@
     });
   }
 
+  /* i18n key map — resolved at call time so the dictionary is loaded. */
   const FRIENDLY = {
-    invalid_credentials: 'Wrong email or password.',
-    email_unavailable: 'That email is already registered. Try logging in.',
-    invalid_email: 'Enter a valid email address.',
-    password_too_short: 'Password must be at least 12 characters.',
-    invalid_company_name: 'Enter your company or project name.',
-    invalid_token: 'That link is invalid or expired. Request a new one.',
-    too_many_requests: 'Too many attempts — wait a few minutes and try again.',
-    csrf_check_failed: 'Security check failed. Reload the page and try again.',
-    job_not_found: 'Job not found — refresh the page.',
-    job_not_cancelable: 'That job can no longer be canceled.',
-    invalid_job_id: 'Invalid job.',
+    invalid_credentials: 'auth.js.err_invalid_credentials',
+    email_unavailable: 'auth.js.err_email_unavailable',
+    invalid_email: 'auth.js.err_invalid_email',
+    password_too_short: 'auth.js.err_password_too_short',
+    invalid_company_name: 'auth.js.err_invalid_company_name',
+    invalid_token: 'auth.js.err_invalid_token',
+    too_many_requests: 'dash.js.common.too_many_requests',
+    csrf_check_failed: 'dash.js.common.csrf_check_failed',
+    job_not_found: 'dash.js.common.job_not_found',
+    job_not_cancelable: 'dash.js.common.job_not_cancelable',
+    invalid_job_id: 'dash.js.common.job_invalid',
   };
 
   function friendly(err) {
-    return FRIENDLY[err] || 'Something went wrong. Please try again.';
+    var key = FRIENDLY[err];
+    return key ? MannaI18n.t(key) : MannaI18n.t('dash.js.common.error_generic');
   }
 
   window.D2RM = { api, showError, showSuccess, clearAlerts, friendly };

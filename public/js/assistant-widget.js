@@ -26,14 +26,14 @@
   fetch('/api/assistant/status', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(function (r) { return r.json(); })
     .then(function (j) {
-      if (j && j.ok) prov.textContent = j.provider === 'Muse' ? 'powered by Muse' : 'insights engine';
+      if (j && j.ok) prov.textContent = j.provider === 'Muse' ? MannaI18n.t('dash.js.scribe.powered_claude') : MannaI18n.t('dash.js.scribe.insights_engine');
     }).catch(function () {});
 
   fab.addEventListener('click', function () {
     panel.classList.toggle('open');
     if (panel.classList.contains('open') && !greeted) {
       greeted = true;
-      addMsg('Hi — I\'m your marketing co-pilot. I can read your dashboard data. Try "what should I do next?" or ask about email, funnels, or goals.', 'bot');
+      addMsg(MannaI18n.t('dash.js.scribe.greeting_widget'), 'bot');
     }
     if (panel.classList.contains('open')) input.focus();
   });
@@ -44,7 +44,7 @@
     if (!text) return;
     input.value = '';
     addMsg(text, 'user');
-    var typing = addMsg('thinking…', 'bot typing');
+    var typing = addMsg(MannaI18n.t('dash.js.common.thinking'), 'bot typing');
     fetch('/api/assistant/chat', {
       method: 'POST',
       headers: H(),
@@ -56,11 +56,11 @@
         history.push({ role: 'user', content: text });
         history.push({ role: 'assistant', content: j.reply });
       } else {
-        addMsg('Sorry — I hit an error. Try again in a moment.', 'bot');
+        addMsg(MannaI18n.t('dash.js.common.assistant_error'), 'bot');
       }
     }).catch(function () {
       typing.remove();
-      addMsg('Network error. Check your connection and try again.', 'bot');
+      addMsg(MannaI18n.t('dash.js.common.network_error'), 'bot');
     });
   });
 })();

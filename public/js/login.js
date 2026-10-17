@@ -17,7 +17,7 @@
       D2RM.showError('err', D2RM.friendly(r.json && r.json.error));
       btn.disabled = false;
     }).catch(function () {
-      D2RM.showError('err', 'Network error. Check your connection and try again.');
+      D2RM.showError('err', MannaI18n.t('dash.js.common.network_error'));
       btn.disabled = false;
     });
   });

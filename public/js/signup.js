@@ -26,11 +26,11 @@
         return;
       }
       var extra = '';
-      if (r.json && r.json.error === 'password_too_short') extra = ' (minimum ' + r.json.minLength + ' characters)';
+      if (r.json && r.json.error === 'password_too_short') extra = MannaI18n.t('signup.js.err_password_min_suffix', { min: r.json.minLength });
       D2RM.showError('err', D2RM.friendly(r.json && r.json.error) + extra);
       btn.disabled = false;
     }).catch(function () {
-      D2RM.showError('err', 'Network error. Check your connection and try again.');
+      D2RM.showError('err', MannaI18n.t('dash.js.common.network_error'));
       btn.disabled = false;
     });
   });

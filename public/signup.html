@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign up — Manna</title>
+<title data-i18n="auth.signup.meta_title">Sign up — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=2">
 <link rel="stylesheet" href="/css/demo.css?v=2">
 </head>
@@ -13,93 +13,95 @@
   <!-- ============ FORM ============ -->
   <div class="signup-form-col">
     <div class="card">
+      <div style="text-align:right;margin-bottom:4px"><select data-lang-picker aria-label="Language" style="font-size:12px;padding:4px 8px;border-radius:6px;background:#14141c;color:#e8e6df;border:1px solid #33333f;cursor:pointer"></select></div>
       <div class="brand"><img src="/manna-logo.webp" alt="Manna" class="brand-logo"></div>
-      <div class="tagline">Big agency data, little guy money.</div>
-      <div class="kicker">Start your free trial</div>
-      <h1>Create your account</h1>
-      <p class="sub">14-day free trial. No credit card required.</p>
+      <div data-i18n="auth.shared.tagline" class="tagline">Big agency data, little guy money.</div>
+      <div data-i18n="auth.signup.kicker" class="kicker">Start your free trial</div>
+      <h1 data-i18n="auth.signup.title">Create your account</h1>
+      <p data-i18n="auth.signup.sub" class="sub">14-day free trial. No credit card required.</p>
       <div class="error" id="err"></div>
       <div class="success" id="ok"></div>
       <form id="signup-form" autocomplete="on">
-        <label>Choose your plan</label>
+        <label data-i18n="auth.signup.choose_plan">Choose your plan</label>
         <div class="plan-grid">
           <label class="plan selected" id="plan-starter">
             <input type="radio" name="plan" value="starter" checked>
             <span class="pcheck">✓</span>
-            <div class="pname">Starter</div>
+            <div data-i18n="auth.signup.plan_starter_name" class="pname">Starter</div>
             <div class="pprice">$29.99/mo</div>
-            <div class="pspecial">✦ Special offer — regular $49.99/mo</div>
-            <div class="pdesc">2 projects · 5,000 emails/mo<br>Email + social dashboards, goal tracking, lead collection.</div>
+            <div data-i18n="auth.signup.plan_starter_special" class="pspecial">✦ Special offer — regular $49.99/mo</div>
+            <div data-i18n="auth.signup.plan_starter_desc" class="pdesc">2 projects · 5,000 emails/mo<br>Email + social dashboards, goal tracking, lead collection.</div>
           </label>
           <label class="plan" id="plan-pro">
             <input type="radio" name="plan" value="pro">
             <span class="pcheck">✓</span>
-            <div class="pname">Pro</div>
+            <div data-i18n="auth.signup.plan_pro_name" class="pname">Pro</div>
             <div class="pprice">$69.99/mo</div>
-            <div class="pspecial">✦ Special offer — regular $89.99/mo</div>
-            <div class="pdesc">10 projects · 20,000 emails/mo<br>Everything in Starter, plus ROI tracking &amp; priority insights.</div>
+            <div data-i18n="auth.signup.plan_pro_special" class="pspecial">✦ Special offer — regular $89.99/mo</div>
+            <div data-i18n="auth.signup.plan_pro_desc" class="pdesc">10 projects · 20,000 emails/mo<br>Everything in Starter, plus ROI tracking &amp; priority insights.</div>
           </label>
         </div>
-        <p class="hint">Need more? <a href="mailto:hello@d2rm.com">Talk to us</a> about a custom plan.</p>
-        <label for="company">Company / project name</label>
+        <p data-i18n="auth.signup.hint_custom_plan" class="hint">Need more? <a href="mailto:hello@d2rm.com">Talk to us</a> about a custom plan.</p>
+        <label data-i18n="auth.signup.label_company" for="company">Company / project name</label>
         <input type="text" id="company" name="company" required maxlength="120" autocomplete="organization">
-        <label for="name">Your name</label>
+        <label data-i18n="auth.signup.label_name" for="name">Your name</label>
         <input type="text" id="name" name="name" maxlength="80" autocomplete="name">
-        <label for="email">Email</label>
+        <label data-i18n="auth.shared.label_email" for="email">Email</label>
         <input type="email" id="email" name="email" required autocomplete="username">
-        <label for="password">Password</label>
+        <label data-i18n="auth.shared.label_password" for="password">Password</label>
         <input type="password" id="password" name="password" required autocomplete="new-password" minlength="12">
-        <p class="hint">At least 12 characters.</p>
-        <button class="primary" type="submit" id="submit" data-track="manna_signup">Start my free trial</button>
+        <p data-i18n="auth.shared.hint_password" class="hint">At least 12 characters.</p>
+        <button data-i18n="auth.signup.submit" class="primary" type="submit" id="submit" data-track="manna_signup">Start my free trial</button>
       </form>
-      <div class="links"><a href="/login">Already have an account? Log in</a></div>
+      <div class="links"><a data-i18n="auth.signup.have_account" href="/login">Already have an account? Log in</a></div>
     </div>
   </div>
 
   <!-- ============ LIVE DEMO ============ -->
   <aside class="demo-side">
-    <div class="demo-kicker"><span class="demo-dot"></span> Live preview — this could be you</div>
-    <h2 class="demo-title">See what <em>Manna</em> sees</h2>
-    <p class="demo-sub">While you set up, take a look inside. Real dashboards, real depth — this is a live preview of the command center waiting for your data.</p>
+    <div data-i18n="auth.signup.demo_kicker" class="demo-kicker"><span class="demo-dot"></span> Live preview — this could be you</div>
+    <h2 data-i18n="auth.signup.demo_title" class="demo-title">See what <em>Manna</em> sees</h2>
+    <p data-i18n="auth.signup.demo_sub" class="demo-sub">While you set up, take a look inside. Real dashboards, real depth — this is a live preview of the command center waiting for your data.</p>
 
     <div class="demo-dash">
       <div class="demo-dash-head">
-        <div class="t">📊 Command Center</div>
-        <span class="demo-live"><span class="demo-dot"></span> Live demo</span>
+        <div data-i18n="auth.signup.demo_command_center" class="t">📊 Command Center</div>
+        <span data-i18n="auth.signup.demo_live" class="demo-live"><span class="demo-dot"></span> Live demo</span>
       </div>
       <div class="demo-stats">
-        <div class="demo-stat"><div class="v" data-count="12480">0</div><div class="l">Emails sent</div><div class="d">▲ 18% this week</div></div>
-        <div class="demo-stat"><div class="v" data-count="24.6" data-dec="1">0</div><div class="l">Open rate</div><div class="d">▲ 3.1 pts</div></div>
-        <div class="demo-stat"><div class="v" data-count="1284">0</div><div class="l">Leads collected</div><div class="d">▲ 96 today</div></div>
-        <div class="demo-stat"><div class="v" data-count="312" data-dec="1">0</div><div class="l">ROI</div><div class="d">▲ 41 pts</div></div>
+        <div class="demo-stat"><div class="v" data-count="12480">0</div><div data-i18n="auth.signup.stat_emails_sent" class="l">Emails sent</div><div data-i18n="auth.signup.stat_emails_sent_delta" class="d">▲ 18% this week</div></div>
+        <div class="demo-stat"><div class="v" data-count="24.6" data-dec="1">0</div><div data-i18n="auth.signup.stat_open_rate" class="l">Open rate</div><div data-i18n="auth.signup.stat_open_rate_delta" class="d">▲ 3.1 pts</div></div>
+        <div class="demo-stat"><div class="v" data-count="1284">0</div><div data-i18n="auth.signup.stat_leads" class="l">Leads collected</div><div data-i18n="auth.signup.stat_leads_delta" class="d">▲ 96 today</div></div>
+        <div class="demo-stat"><div class="v" data-count="312" data-dec="1">0</div><div data-i18n="auth.signup.stat_roi" class="l">ROI</div><div data-i18n="auth.signup.stat_roi_delta" class="d">▲ 41 pts</div></div>
       </div>
       <div class="demo-charts">
-        <div class="demo-chart"><div class="ct">Email sends · 30 days</div><canvas id="demo-line"></canvas></div>
-        <div class="demo-chart"><div class="ct">Leads · per week</div><canvas id="demo-bars"></canvas></div>
+        <div class="demo-chart"><div data-i18n="auth.signup.chart_sends" class="ct">Email sends · 30 days</div><canvas id="demo-line"></canvas></div>
+        <div class="demo-chart"><div data-i18n="auth.signup.chart_leads" class="ct">Leads · per week</div><canvas id="demo-bars"></canvas></div>
       </div>
       <div class="demo-feed">
-        <div class="ft">Happening now</div>
+        <div data-i18n="auth.signup.feed_title" class="ft">Happening now</div>
         <div id="demo-feed-list"></div>
       </div>
     </div>
 
-    <div class="feat-kicker">Why Manna</div>
+    <div data-i18n="auth.signup.why_manna" class="feat-kicker">Why Manna</div>
     <div class="feat-stage" id="feat-stage"></div>
     <div class="feat-nav">
       <div class="feat-dots" id="feat-dots"></div>
       <div class="feat-count" id="feat-count">1 / 6</div>
       <div class="feat-arrow">
-        <button id="feat-prev" aria-label="Previous feature">‹</button>
-        <button id="feat-next" aria-label="Next feature">›</button>
+        <button data-i18n-aria="auth.signup.feat_prev.aria" id="feat-prev" aria-label="Previous feature">‹</button>
+        <button data-i18n-aria="auth.signup.feat_next.aria" id="feat-next" aria-label="Next feature">›</button>
       </div>
     </div>
   </aside>
 
-<div class="legal-footer"><a href="/terms">Terms</a><span aria-hidden="true">·</span><a href="/privacy">Privacy</a><span aria-hidden="true">·</span><a href="mailto:michael@faithshield.ai?subject=Manna%20support">Need help?</a></div>
+<div class="legal-footer"><a data-i18n="auth.shared.link_terms" href="/terms">Terms</a><span aria-hidden="true">·</span><a data-i18n="auth.shared.link_privacy" href="/privacy">Privacy</a><span aria-hidden="true">·</span><a data-i18n="auth.signup.link_help" href="mailto:michael@faithshield.ai?subject=Manna%20support">Need help?</a></div>
 </div>
 <script src="/js/auth.js"></script>
 <script src="/js/signup.js"></script>
 <script src="/js/demo-preview.js"></script>
 <script src="https://muse4.pythonanywhere.com/tracker.js" data-site="manna" data-endpoint="https://muse4.pythonanywhere.com/collect"></script>
+<script src="/js/i18n.js"></script>
 </body>
 </html>

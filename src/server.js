@@ -101,6 +101,21 @@ app.get('/onboarding', requireAuthPage, sendPage('onboarding.html'));
 app.get('/terms', sendPage('terms.html'));
 app.get('/privacy', sendPage('privacy.html'));
 
+// i18n dictionaries for static pages (dashboard gets server-injected dicts).
+// Single source of truth: <repo>/translations/<lang>.json
+const I18N_LANGS = ['en', 'es', 'fr', 'de', 'pt', 'tl', 'ro', 'id'];
+app.get('/i18n/:lang.json', (req, res) => {
+  const lang = String(req.params.lang || '').toLowerCase();
+  if (!/^[a-z]{2}$/.test(lang)) return res.status(400).json({ error: 'bad lang' });
+  const useLang = I18N_LANGS.includes(lang) ? lang : 'en';
+  const dir = path.join(__dirname, '..', 'translations') + path.sep;
+  const file = path.join(dir, useLang + '.json');
+  if (!path.resolve(file).startsWith(dir)) return res.status(400).json({ error: 'bad lang' });
+  res.set('Content-Type', 'application/json; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.sendFile(file, err => { if (err && !res.headersSent) res.status(404).json({ error: 'not found' }); });
+});
+
 // /app — the dashboard, auth-gated, per-tenant data injected at serve time.
 const { serveApp } = require('./app-serve');
 app.get('/app', requireAuthPage, (req, res) => serveApp(req, res));
