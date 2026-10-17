@@ -10,10 +10,10 @@
       email: document.getElementById('email').value.trim(),
     }).then(function () {
       // Always the same message — the API never reveals whether the email exists.
-      D2RM.showSuccess('ok', 'If that email is registered, a reset link is on its way. Check your inbox (and spam).');
+      D2RM.showSuccess('ok', MannaI18n.t('forgot.js.reset_sent'));
       btn.disabled = false;
     }).catch(function () {
-      D2RM.showError('err', 'Network error. Check your connection and try again.');
+      D2RM.showError('err', MannaI18n.t('dash.js.common.network_error'));
       btn.disabled = false;
     });
   });

@@ -102,13 +102,14 @@
   })();
 
   /* ---------- rotating activity feed ---------- */
+  /* i18n keys + params; text resolved at render time so the dictionary is loaded. */
   var feedItems = [
-    { icon: '📧', html: '<b>2,480 emails</b> sent to Warm list', time: '2m' },
-    { icon: '🎯', html: '<b>312 new leads</b> collected from YouTube', time: '9m' },
-    { icon: '📈', html: 'Open rate hit <b>26.4%</b> — best this month', time: '18m' },
-    { icon: '🤖', html: 'Co-pilot flagged <b>3 warm prospects</b> to follow up', time: '26m' },
-    { icon: '🔥', html: 'Influencer <b>@creator</b> drove 48 clicks', time: '41m' },
-    { icon: '💰', html: 'Campaign ROI at <b>312%</b> and climbing', time: '1h' }
+    { icon: '📧', key: 'demo.js.feed_emails_sent', params: { n: '2,480' }, time: '2m' },
+    { icon: '🎯', key: 'demo.js.feed_leads_collected', params: { n: '312' }, time: '9m' },
+    { icon: '📈', key: 'demo.js.feed_open_rate', params: { pct: '26.4%' }, time: '18m' },
+    { icon: '🤖', key: 'demo.js.feed_warm_flagged', params: { n: '3' }, time: '26m' },
+    { icon: '🔥', key: 'demo.js.feed_influencer_clicks', params: { handle: '@creator', n: '48' }, time: '41m' },
+    { icon: '💰', key: 'demo.js.feed_roi', params: { pct: '312%' }, time: '1h' }
   ];
   var feedEl = document.getElementById('demo-feed-list');
   var fi = 0;
@@ -120,7 +121,7 @@
   function addFeed(item) {
     var div = document.createElement('div');
     div.className = 'demo-feed-item';
-    div.innerHTML = '<span class="fi">' + item.icon + '</span><span>' + item.html + '</span><time>' + item.time + ' ago</time>';
+    div.innerHTML = '<span class="fi">' + item.icon + '</span><span>' + MannaI18n.t(item.key, item.params) + '</span><time>' + MannaI18n.t('demo.js.feed_ago', { time: item.time }) + '</time>';
     feedEl.insertBefore(div, feedEl.firstChild);
     while (feedEl.children.length > 4) feedEl.removeChild(feedEl.lastChild);
   }
@@ -131,19 +132,14 @@
   }, 6000);
 
   /* ---------- feature carousel ---------- */
+  /* i18n keys; text resolved at render time so the dictionary is loaded. */
   var features = [
-    { icon: '🤖', name: 'AI Co-Pilot', desc: 'Your dashboard reads itself to you. Ask anything about your numbers and get an answer in plain English — like a analyst on staff, minus the salary.',
-      only: 'Only in Manna' },
-    { icon: '🎯', name: 'Turnkey Lead Collection', desc: 'Type in keywords, get back real emails. YouTube channels, web directories — collected, deduped, and queued automatically. Agencies charge thousands for this.',
-      only: "They can't get it anywhere else" },
-    { icon: '📊', name: 'Big-Agency Analytics', desc: 'Open rates, click maps, geo heat, funnel stages, warm-lead scoring — the full depth the big agencies run on. At little-guy money.',
-      only: "They can't get it anywhere else" },
-    { icon: '🔥', name: 'Influencer Command', desc: 'Track every creator, affiliate, and podcast host in one place. See who drives clicks, who converts, and who deserves a bigger cut.',
-      only: 'Only in Manna' },
-    { icon: '📜', name: 'IP Registry', desc: 'Timestamped, hash-fingerprinted proof you owned it first. A chain-of-custody log for every asset you create — built for the exit.',
-      only: 'Only in Manna' },
-    { icon: '💰', name: 'ROI Tracking', desc: 'Every campaign traced to revenue. Know to the dollar what pays and what doesn\u2019t — then double down with confidence.',
-      only: "They can't get it anywhere else" }
+    { icon: '🤖', nameKey: 'demo.js.feature_copilot_name', descKey: 'demo.js.feature_copilot_desc', onlyKey: 'demo.js.feature_only_manna' },
+    { icon: '🎯', nameKey: 'demo.js.feature_leads_name', descKey: 'demo.js.feature_leads_desc', onlyKey: 'demo.js.feature_only_elsewhere' },
+    { icon: '📊', nameKey: 'demo.js.feature_analytics_name', descKey: 'demo.js.feature_analytics_desc', onlyKey: 'demo.js.feature_only_elsewhere' },
+    { icon: '🔥', nameKey: 'demo.js.feature_influencer_name', descKey: 'demo.js.feature_influencer_desc', onlyKey: 'demo.js.feature_only_manna' },
+    { icon: '📜', nameKey: 'demo.js.feature_ip_name', descKey: 'demo.js.feature_ip_desc', onlyKey: 'demo.js.feature_only_manna' },
+    { icon: '💰', nameKey: 'demo.js.feature_roi_name', descKey: 'demo.js.feature_roi_desc', onlyKey: 'demo.js.feature_only_elsewhere' }
   ];
   var stage = document.getElementById('feat-stage');
   var dotsWrap = document.getElementById('feat-dots');
@@ -153,13 +149,13 @@
       var card = document.createElement('div');
       card.className = 'feat-card' + (i === 0 ? ' active' : '');
       card.innerHTML = '<div class="feat-icon">' + f.icon + '</div>' +
-        '<h3 class="feat-name">' + f.name + '</h3>' +
-        '<p class="feat-desc">' + f.desc + '</p>' +
-        '<span class="feat-only">' + f.only + '</span>';
+        '<h3 class="feat-name">' + MannaI18n.t(f.nameKey) + '</h3>' +
+        '<p class="feat-desc">' + MannaI18n.t(f.descKey) + '</p>' +
+        '<span class="feat-only">' + MannaI18n.t(f.onlyKey) + '</span>';
       stage.appendChild(card);
       var dot = document.createElement('button');
       dot.className = 'feat-dot' + (i === 0 ? ' active' : '');
-      dot.setAttribute('aria-label', f.name);
+      dot.setAttribute('aria-label', MannaI18n.t(f.nameKey));
       dot.addEventListener('click', function () { go(i); restart(); });
       dotsWrap.appendChild(dot);
     });
@@ -169,7 +165,7 @@
     function render() {
       cards.forEach(function (c, i) { c.classList.toggle('active', i === cur); });
       dots.forEach(function (d, i) { d.classList.toggle('active', i === cur); });
-      if (countEl) countEl.textContent = (cur + 1) + ' / ' + features.length;
+      if (countEl) countEl.textContent = MannaI18n.t('demo.js.carousel_count', { n: cur + 1, total: features.length });
     }
     function go(i) { cur = (i + features.length) % features.length; render(); }
     function restart() { if (timer) clearInterval(timer); timer = setInterval(function () { go(cur + 1); }, 6000); }

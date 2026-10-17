@@ -33,26 +33,26 @@
   function renderJobs(jobs) {
     var box = document.getElementById('jobs');
     if (!jobs.length) {
-      box.innerHTML = '<p class="small">No jobs yet — create your first one above.</p>';
+      box.innerHTML = '<p class="small">' + MannaI18n.t('dash.js.leadfinder.no_jobs') + '</p>';
       return;
     }
     box.innerHTML = jobs.map(function (j) {
       var input = j.source === 'youtube'
         ? esc(j.keywords.join(', '))
         : j.source === 'aisearch'
-          ? '🤖 ' + esc(j.query || 'AI search')
-          : esc(j.seeds.slice(0, 3).join(', ') + (j.seeds.length > 3 ? ' …(+' + (j.seeds.length - 3) + ' more)' : ''));
+          ? '🤖 ' + esc(j.query || MannaI18n.t('dash.js.leads.ai_search_fallback'))
+          : esc(j.seeds.slice(0, 3).join(', ') + (j.seeds.length > 3 ? MannaI18n.t('dash.js.leads.more_seeds', { n: j.seeds.length - 3 }) : ''));
       var stats = (j.status === 'done')
-        ? '<span class="small"> · ' + j.found_count + ' emails found · <strong class="j-new">' + j.new_count + ' new</strong> added to your list</span>'
+        ? '<span class="small"> ' + MannaI18n.t('dash.js.leads.job_stats_done', { found: j.found_count, new: '<strong class="j-new">' + j.new_count + '</strong>' }) + '</span>'
         : '';
       var err = (j.status === 'failed' && j.error) ? '<div class="small j-err">' + esc(j.error) + '</div>' : '';
       var runBtn = (j.status === 'queued' || j.status === 'failed' || j.status === 'canceled')
-        ? '<button class="ghost" data-run="' + j.id + '">Run</button>' : '';
+        ? '<button class="ghost" data-run="' + j.id + '">' + MannaI18n.t('dash.js.common.btn_run') + '</button>' : '';
       var cancelBtn = (j.status === 'queued')
-        ? '<button class="ghost" data-cancel="' + j.id + '">Cancel</button>' : '';
+        ? '<button class="ghost" data-cancel="' + j.id + '">' + MannaI18n.t('dash.js.common.btn_cancel') + '</button>' : '';
       return '<div class="job"><div class="jh"><div><span class="jt">' + esc(j.source) + '</span> ' + badge(j.status) + stats + '</div>'
         + '<div class="row">' + runBtn + cancelBtn + '</div></div>'
-        + '<div class="jm">' + input + ' · max ' + j.max_results + ' · ' + esc(j.created_at || '') + '</div>' + err + '</div>';
+        + '<div class="jm">' + MannaI18n.t('dash.js.leads.job_meta', { input: input, max: j.max_results, created: esc(j.created_at || '') }) + '</div>' + err + '</div>';
     }).join('');
     box.querySelectorAll('[data-run]').forEach(function (b) {
       b.addEventListener('click', function () { runJob(b.getAttribute('data-run')); });
@@ -63,18 +63,18 @@
   }
 
   function cancelJob(id) {
-    if (!window.confirm('Cancel this lead collection job?')) return;
+    if (!window.confirm(MannaI18n.t('dash.js.leads.confirm_cancel'))) return;
     D2RM.clearAlerts();
     D2RM.api('POST', '/api/leads/jobs/' + id + '/cancel', {}).then(function (r) {
       D2RM.clearAlerts();
       if (r.json && r.json.ok) {
-        D2RM.showSuccess('ok', 'Job canceled.');
+        D2RM.showSuccess('ok', MannaI18n.t('dash.js.leads.job_canceled'));
       } else {
         D2RM.showError('err', D2RM.friendly(r.json && r.json.error));
       }
       loadJobs();
     }).catch(function () {
-      D2RM.showError('err', 'Network error — refresh to check the job status.');
+      D2RM.showError('err', MannaI18n.t('dash.js.leads.network_error_status'));
       loadJobs();
     });
   }
@@ -88,17 +88,17 @@
 
   function runJob(id) {
     D2RM.clearAlerts();
-    D2RM.showSuccess('ok', 'Job running — this can take a minute or two…');
+    D2RM.showSuccess('ok', MannaI18n.t('dash.js.leads.job_running'));
     D2RM.api('POST', '/api/leads/jobs/' + id + '/run', {}).then(function (r) {
       D2RM.clearAlerts();
       if (r.json && r.json.ok) {
-        D2RM.showSuccess('ok', 'Done: ' + r.json.found + ' emails found, ' + r.json.new + ' new leads added to your list.');
+        D2RM.showSuccess('ok', MannaI18n.t('dash.js.leads.job_done', { found: r.json.found, new: r.json.new }));
       } else {
         D2RM.showError('err', D2RM.friendly(r.json && r.json.error));
       }
       loadJobs();
     }).catch(function () {
-      D2RM.showError('err', 'Network error — the job may still be running. Refresh in a bit.');
+      D2RM.showError('err', MannaI18n.t('dash.js.leads.network_error_running'));
       loadJobs();
     });
   }
@@ -109,10 +109,10 @@
     D2RM.clearAlerts();
     if (r.json && r.json.ok) {
       var res = r.json.result || r.json;
-      var msg = 'Done: ' + (res.found || 0) + ' emails found, ' + (res.new || 0) + ' new leads added to your list.';
+      var msg = MannaI18n.t('dash.js.leads.job_done', { found: res.found || 0, new: res.new || 0 });
       if (res.parsed && res.parsed.business_type) {
-        msg = 'Searched for "' + res.parsed.business_type
-          + (res.parsed.location ? ' in ' + res.parsed.location : '') + '". ' + msg;
+        var where = res.parsed.location ? MannaI18n.t('dash.js.leads.searched_in', { location: res.parsed.location }) : '';
+        msg = MannaI18n.t('dash.js.leads.searched_for', { query: res.parsed.business_type + where }) + '. ' + msg;
       }
       D2RM.showSuccess('ok', msg);
     } else {
@@ -124,7 +124,7 @@
   function failRun(btn) {
     btn.disabled = false;
     document.getElementById('run-hint').classList.add('is-hidden');
-    D2RM.showError('err', 'Network error — the job may still be running. Refresh in a bit.');
+    D2RM.showError('err', MannaI18n.t('dash.js.leads.network_error_running'));
     loadJobs();
   }
 
@@ -138,7 +138,7 @@
     if (source === 'aisearch') {
       var q = document.getElementById('ai-query').value.trim();
       if (!q) {
-        D2RM.showError('err', 'Describe your ideal customer — e.g. "AV integrators in Texas".');
+        D2RM.showError('err', MannaI18n.t('dash.js.leads.err_ai_query'));
         return;
       }
       btn.disabled = true;
@@ -157,11 +157,11 @@
     if (source === 'youtube') payload.keywords = lines('keywords');
     else payload.seeds = lines('seeds');
     if (source === 'youtube' && !payload.keywords.length) {
-      D2RM.showError('err', 'Enter at least one keyword.');
+      D2RM.showError('err', MannaI18n.t('dash.js.leads.err_keyword'));
       return;
     }
     if (source === 'weblist' && !payload.seeds.length) {
-      D2RM.showError('err', 'Paste at least one URL.');
+      D2RM.showError('err', MannaI18n.t('dash.js.leads.err_url'));
       return;
     }
     btn.disabled = true;

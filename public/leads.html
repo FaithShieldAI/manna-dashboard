@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lead Collection — Manna</title>
+<title data-i18n="leads.meta_title">Lead Collection — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=2">
 <link rel="stylesheet" href="/css/leads.css?v=1">
 </head>
@@ -13,13 +13,14 @@
     <div class="brandmark">
       <img src="/manna-logo.webp" alt="Manna">
       <div>
-        <div class="ltitle">Lead Collection</div>
-        <div class="small">Turnkey lead gen — keywords in, emails out, straight into your list.</div>
+        <div data-i18n="leads.title" class="ltitle">Lead Collection</div>
+        <div data-i18n="leads.tagline" class="small">Turnkey lead gen — keywords in, emails out, straight into your list.</div>
       </div>
     </div>
     <div class="row">
-      <button class="ghost" id="back-dash">← Dashboard</button>
-      <button class="ghost" id="logout">Log out</button>
+      <button data-i18n="leads.back_dashboard" class="ghost" id="back-dash">← Dashboard</button>
+      <button data-i18n="leads.logout" class="ghost" id="logout">Log out</button>
+      <select data-lang-picker aria-label="Language" style="font-size:12px;padding:4px 8px;border-radius:6px;background:#14141c;color:#e8e6df;border:1px solid #33333f;cursor:pointer"></select>
     </div>
   </div>
 
@@ -27,19 +28,19 @@
   <div class="success" id="ok"></div>
 
   <div class="card wide fullw">
-    <div class="kicker">New job</div>
-    <h2 class="mt0">Collection job</h2>
+    <div data-i18n="leads.new_job_kicker" class="kicker">New job</div>
+    <h2 data-i18n="leads.job_title" class="mt0">Collection job</h2>
     <div class="grid2">
       <div>
-        <label for="source">Source</label>
+        <label data-i18n="leads.label_source" for="source">Source</label>
         <select id="source">
-          <option value="youtube">YouTube channel search — keywords → channel emails</option>
-          <option value="weblist">Seed URL list — paste pages → contact emails</option>
-          <option value="aisearch">AI search — describe your ideal customer → business emails</option>
+          <option data-i18n="leads.source_youtube" value="youtube">YouTube channel search — keywords → channel emails</option>
+          <option data-i18n="leads.source_weblist" value="weblist">Seed URL list — paste pages → contact emails</option>
+          <option data-i18n="leads.source_aisearch" value="aisearch">AI search — describe your ideal customer → business emails</option>
         </select>
       </div>
       <div>
-        <label for="maxr">Max leads per job</label>
+        <label data-i18n="leads.label_max" for="maxr">Max leads per job</label>
         <select id="maxr">
           <option value="10">10</option>
           <option value="25" selected>25</option>
@@ -49,29 +50,30 @@
       </div>
     </div>
     <div id="kw-block">
-      <label for="keywords">Keywords — one per line (your niche)</label>
-      <textarea id="keywords" placeholder="fitness coach&#10;sourdough baking&#10;indie game dev"></textarea>
-      <p class="hint">We search public YouTube channels matching each keyword and pull business emails from their about pages + linked sites. No login needed.</p>
+      <label data-i18n="leads.label_keywords" for="keywords">Keywords — one per line (your niche)</label>
+      <textarea data-i18n-ph="leads.keywords.placeholder" id="keywords" placeholder="fitness coach&#10;sourdough baking&#10;indie game dev"></textarea>
+      <p data-i18n="leads.hint_youtube" class="hint">We search public YouTube channels matching each keyword and pull business emails from their about pages + linked sites. No login needed.</p>
     </div>
     <div id="seed-block" class="is-hidden">
-      <label for="seeds">Seed URLs — one per line</label>
+      <label data-i18n="leads.label_seeds" for="seeds">Seed URLs — one per line</label>
       <textarea id="seeds" placeholder="https://example-creator.com&#10;https://directory.example/niche"></textarea>
-      <p class="hint">We fetch each page and extract public contact emails. Paste homepages, link-in-bio pages, or directories.</p>
+      <p data-i18n="leads.hint_weblist" class="hint">We fetch each page and extract public contact emails. Paste homepages, link-in-bio pages, or directories.</p>
     </div>
     <div id="ai-block" class="is-hidden">
-      <label for="ai-query">Describe your ideal customer</label>
-      <input type="text" id="ai-query" maxlength="200" placeholder="AV integrators in Texas" autocomplete="off">
-      <p class="hint">Plain English — e.g. "AV integrators in Texas", "coffee roasters near Portland". The AI searches the live web for matching businesses and pulls public contact emails into your list.</p>
+      <label data-i18n="leads.label_ai_query" for="ai-query">Describe your ideal customer</label>
+      <input data-i18n-ph="leads.ai_query.placeholder" type="text" id="ai-query" maxlength="200" placeholder="AV integrators in Texas" autocomplete="off">
+      <p data-i18n="leads.hint_aisearch" class="hint">Plain English — e.g. "AV integrators in Texas", "coffee roasters near Portland". The AI searches the live web for matching businesses and pulls public contact emails into your list.</p>
     </div>
-    <button class="primary mw320" id="run-job">Create &amp; run job</button>
-    <p class="hint is-hidden" id="run-hint">Running — this can take a minute or two. Please wait…</p>
+    <button data-i18n="leads.run_job" class="primary mw320" id="run-job">Create &amp; run job</button>
+    <p data-i18n="leads.running_hint" class="hint is-hidden" id="run-hint">Running — this can take a minute or two. Please wait…</p>
   </div>
 
-  <h2 class="mt28">Your jobs</h2>
-  <div id="jobs"><p class="small">Loading…</p></div>
-<div class="legal-footer"><a href="/terms">Terms</a><span aria-hidden="true">·</span><a href="/privacy">Privacy</a></div>
+  <h2 data-i18n="leads.jobs_title" class="mt28">Your jobs</h2>
+  <div id="jobs"><p data-i18n="leads.loading" class="small">Loading…</p></div>
+<div class="legal-footer"><a data-i18n="auth.shared.link_terms" href="/terms">Terms</a><span aria-hidden="true">·</span><a data-i18n="auth.shared.link_privacy" href="/privacy">Privacy</a></div>
 </div>
 <script src="/js/auth.js"></script>
 <script src="/js/leads.js"></script>
+<script src="/js/i18n.js"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your Dashboard — Manna</title>
+<title data-i18n="onboarding.meta_title">Your Dashboard — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=3">
 <link rel="stylesheet" href="/css/onboarding.css?v=4">
 </head>
@@ -13,7 +13,8 @@
   <!-- 1. Manna logo at the top -->
   <div class="brand-top">
     <img src="/manna-logo.webp" alt="Manna" class="brand-logo">
-    <div class="tagline">Big agency data, little guy money.</div>
+    <div data-i18n="auth.shared.tagline" class="tagline">Big agency data, little guy money.</div>
+    <div style="margin-top:10px"><select data-lang-picker aria-label="Language" style="font-size:12px;padding:4px 8px;border-radius:6px;background:#14141c;color:#e8e6df;border:1px solid #33333f;cursor:pointer"></select></div>
   </div>
 
   <!-- 2. AI instructor chat box directly under the logo -->
@@ -21,60 +22,60 @@
     <div class="instructor-head">🤖 <span class="scribe-name">Scribe</span><span class="prov" id="chat-prov"></span></div>
     <div class="chat-msgs" id="chat-msgs"></div>
     <form class="chat-form" id="chat-form">
-      <input id="chat-input" type="text" placeholder="Ask Scribe anything…" maxlength="2000" autocomplete="off">
-      <button type="submit">Send</button>
+      <input data-i18n-ph="onboarding.chat_input.placeholder" id="chat-input" type="text" placeholder="Ask Scribe anything…" maxlength="2000" autocomplete="off">
+      <button data-i18n="onboarding.chat_send" type="submit">Send</button>
     </form>
   </div>
 
   <div id="done-banner" class="is-hidden">
-    <h2>🎉 You're all set up!</h2>
-    <div class="ob-live-note">Your dashboard is live and collecting. Go make something.</div>
-    <a href="/app">Open my dashboard →</a>
+    <h2 data-i18n="onboarding.done_title">🎉 You're all set up!</h2>
+    <div data-i18n="onboarding.done_note" class="ob-live-note">Your dashboard is live and collecting. Go make something.</div>
+    <a data-i18n="onboarding.open_dashboard" href="/app">Open my dashboard →</a>
   </div>
 
   <!-- 3. Main navigation tabs — D2RM structure, gold branding -->
   <nav class="main-tabs" id="main-tabs">
-    <button class="main-tab active" data-tab="overview">📊 Overview</button>
-    <button class="main-tab" data-tab="email">📧 Email</button>
-    <button class="main-tab" data-tab="warm">🔥 Warm Leads</button>
-    <button class="main-tab" data-tab="conversions">✅ Conversions</button>
-    <button class="main-tab" data-tab="sites">🌐 Sites</button>
-    <button class="main-tab" data-tab="influencers">👥 Influencers</button>
-    <button class="main-tab" data-tab="social">📸 Social</button>
-    <button class="main-tab" data-tab="ipregistry">🔒 IP Registry</button>
+    <button data-i18n="onboarding.tab_overview" class="main-tab active" data-tab="overview">📊 Overview</button>
+    <button data-i18n="onboarding.tab_email" class="main-tab" data-tab="email">📧 Email</button>
+    <button data-i18n="onboarding.tab_warm" class="main-tab" data-tab="warm">🔥 Warm Leads</button>
+    <button data-i18n="onboarding.tab_conversions" class="main-tab" data-tab="conversions">✅ Conversions</button>
+    <button data-i18n="onboarding.tab_sites" class="main-tab" data-tab="sites">🌐 Sites</button>
+    <button data-i18n="onboarding.tab_influencers" class="main-tab" data-tab="influencers">👥 Influencers</button>
+    <button data-i18n="onboarding.tab_social" class="main-tab" data-tab="social">📸 Social</button>
+    <button data-i18n="onboarding.tab_ip" class="main-tab" data-tab="ipregistry">🔒 IP Registry</button>
   </nav>
 
     <!-- 4. Key Numbers — under the tabs -->
   <div class="card">
     <div class="card-header"><div>
-      <div class="card-title">📊 Key Numbers</div>
-      <div class="card-sub">your command center at a glance</div>
+      <div data-i18n="onboarding.kn_title" class="card-title">📊 Key Numbers</div>
+      <div data-i18n="onboarding.kn_sub" class="card-sub">your command center at a glance</div>
     </div></div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-blue">📧</span></div><div class="stat-label">Total sent</div><div class="stat-value" data-kn="sent">—</div><div class="stat-change" data-kn-sub="sent">no sends yet</div><div class="sharebar kn-bar"><div class="sharefill sfblue" data-kn-bar="sent"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-green">👁️</span></div><div class="stat-label">Opens</div><div class="stat-value kn-green" data-kn="opens">—</div><div class="stat-change" data-kn-sub="opens">open rate</div><div class="sharebar kn-bar"><div class="sharefill sfgreen" data-kn-bar="opens"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-gold">🖱️</span></div><div class="stat-label">Clicks</div><div class="stat-value kn-gold" data-kn="clicks">—</div><div class="stat-change" data-kn-sub="clicks">click rate</div><div class="sharebar kn-bar"><div class="sharefill sfgold" data-kn-bar="clicks"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-gold">🔥</span></div><div class="stat-label">Warm clickers</div><div class="stat-value kn-purple" data-kn="warm">—</div><div class="stat-change" data-kn-sub="warm">hottest retargeting leads</div><div class="sharebar kn-bar"><div class="sharefill sfpurple" data-kn-bar="warm"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-purple">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value" data-kn="influencers">—</div><div class="stat-change" data-kn-sub="influencers">across all categories</div><div class="sharebar kn-bar"><div class="sharefill sfpurple" data-kn-bar="influencers"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-blue">🌐</span></div><div class="stat-label">Sites tracked</div><div class="stat-value" data-kn="sites">—</div><div class="stat-change" data-kn-sub="sites">live analytics</div><div class="sharebar kn-bar"><div class="sharefill sfblue" data-kn-bar="sites"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-red">🔒</span></div><div class="stat-label">IP assets</div><div class="stat-value" data-kn="ip">—</div><div class="stat-change" data-kn-sub="ip">in the registry</div><div class="sharebar kn-bar"><div class="sharefill sfgold" data-kn-bar="ip"></div></div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-lime">📸</span></div><div class="stat-label">Social accounts</div><div class="stat-value" data-kn="social">—</div><div class="stat-change" data-kn-sub="social">connected</div><div class="sharebar kn-bar"><div class="sharefill sfgreen" data-kn-bar="social"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-blue">📧</span></div><div data-i18n="onboarding.kn_sent" class="stat-label">Total sent</div><div class="stat-value" data-kn="sent">—</div><div data-i18n="onboarding.kn_sub_sent" class="stat-change" data-kn-sub="sent">no sends yet</div><div class="sharebar kn-bar"><div class="sharefill sfblue" data-kn-bar="sent"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-green">👁️</span></div><div data-i18n="onboarding.kn_opens" class="stat-label">Opens</div><div class="stat-value kn-green" data-kn="opens">—</div><div data-i18n="onboarding.kn_sub_opens" class="stat-change" data-kn-sub="opens">open rate</div><div class="sharebar kn-bar"><div class="sharefill sfgreen" data-kn-bar="opens"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-gold">🖱️</span></div><div data-i18n="onboarding.kn_clicks" class="stat-label">Clicks</div><div class="stat-value kn-gold" data-kn="clicks">—</div><div data-i18n="onboarding.kn_sub_clicks" class="stat-change" data-kn-sub="clicks">click rate</div><div class="sharebar kn-bar"><div class="sharefill sfgold" data-kn-bar="clicks"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-gold">🔥</span></div><div data-i18n="onboarding.kn_warm" class="stat-label">Warm clickers</div><div class="stat-value kn-purple" data-kn="warm">—</div><div data-i18n="onboarding.kn_sub_warm" class="stat-change" data-kn-sub="warm">hottest retargeting leads</div><div class="sharebar kn-bar"><div class="sharefill sfpurple" data-kn-bar="warm"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-purple">👥</span></div><div data-i18n="onboarding.kn_influencers" class="stat-label">Influencers</div><div class="stat-value" data-kn="influencers">—</div><div data-i18n="onboarding.kn_sub_influencers" class="stat-change" data-kn-sub="influencers">across all categories</div><div class="sharebar kn-bar"><div class="sharefill sfpurple" data-kn-bar="influencers"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-blue">🌐</span></div><div data-i18n="onboarding.kn_sites" class="stat-label">Sites tracked</div><div class="stat-value" data-kn="sites">—</div><div data-i18n="onboarding.kn_sub_sites" class="stat-change" data-kn-sub="sites">live analytics</div><div class="sharebar kn-bar"><div class="sharefill sfblue" data-kn-bar="sites"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-red">🔒</span></div><div data-i18n="onboarding.kn_ip" class="stat-label">IP assets</div><div class="stat-value" data-kn="ip">—</div><div data-i18n="onboarding.kn_sub_ip" class="stat-change" data-kn-sub="ip">in the registry</div><div class="sharebar kn-bar"><div class="sharefill sfgold" data-kn-bar="ip"></div></div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon sic-lime">📸</span></div><div data-i18n="onboarding.kn_social" class="stat-label">Social accounts</div><div class="stat-value" data-kn="social">—</div><div data-i18n="onboarding.kn_sub_social" class="stat-change" data-kn-sub="social">connected</div><div class="sharebar kn-bar"><div class="sharefill sfgreen" data-kn-bar="social"></div></div></div>
     </div>
   </div>
 
   <!-- 5. Your Goals — underneath Key Numbers -->
   <div class="card goals-card">
     <div class="card-header"><div>
-      <div class="card-title">🎯 Your Goals</div>
-      <div class="card-sub">round-number targets · live progress</div>
+      <div data-i18n="onboarding.goals_title" class="card-title">🎯 Your Goals</div>
+      <div data-i18n="onboarding.goals_sub" class="card-sub">round-number targets · live progress</div>
     </div></div>
     <div class="stats-grid goals">
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📥</span></div><div class="stat-label">Email Collection</div><div class="stat-value">— <span class="stat-target">/ 10,000 emails</span></div><div class="sharebar"><div class="sharefill sfgreen"></div></div><div class="goal-funnel">🎯 funnel: sent → opens → clicks → signups</div><div class="goal-now">📍 now: no emails collected yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">👥</span></div><div class="stat-label">Influencers</div><div class="stat-value">— <span class="stat-target">/ 100 affiliates</span></div><div class="sharebar"><div class="sharefill sfpurple"></div></div><div class="goal-funnel">🎯 funnel: collected → vetted → signed up</div><div class="goal-now">📍 now: no influencers yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🧲</span></div><div class="stat-label">Leads</div><div class="stat-value">— <span class="stat-target">/ 1,000 leads</span></div><div class="sharebar"><div class="sharefill sfgold"></div></div><div class="goal-funnel">🎯 funnel: searched → collected → contacted</div><div class="goal-now">📍 now: no leads yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🌐</span></div><div class="stat-label">Sites</div><div class="stat-value">— <span class="stat-target">/ 2 projects</span></div><div class="sharebar"><div class="sharefill sfblue"></div></div><div class="goal-funnel">🎯 funnel: added → tracking → converting</div><div class="goal-now">📍 now: no sites tracked yet</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📸</span></div><div class="stat-label">Social</div><div class="stat-value">— <span class="stat-target">/ 4 accounts</span></div><div class="sharebar"><div class="sharefill sflime"></div></div><div class="goal-funnel">🎯 funnel: connected → posting → growing</div><div class="goal-now">📍 now: no social accounts connected</div></div>
-      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🔒</span></div><div class="stat-label">IP Registry</div><div class="stat-value">— <span class="stat-target">assets</span></div><div class="sharebar"><div class="sharefill sfred"></div></div><div class="goal-funnel">🎯 funnel: created → hashed → registered</div><div class="goal-now">📍 now: no IP assets registered yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📥</span></div><div data-i18n="onboarding.goal_email_label" class="stat-label">Email Collection</div><div class="stat-value">— <span data-i18n="onboarding.goal_email_target" class="stat-target">/ 10,000 emails</span></div><div class="sharebar"><div class="sharefill sfgreen"></div></div><div data-i18n="onboarding.goal_email_funnel" class="goal-funnel">🎯 funnel: sent → opens → clicks → signups</div><div data-i18n="onboarding.goal_email_now" class="goal-now">📍 now: no emails collected yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">👥</span></div><div data-i18n="onboarding.goal_inf_label" class="stat-label">Influencers</div><div class="stat-value">— <span data-i18n="onboarding.goal_inf_target" class="stat-target">/ 100 affiliates</span></div><div class="sharebar"><div class="sharefill sfpurple"></div></div><div data-i18n="onboarding.goal_inf_funnel" class="goal-funnel">🎯 funnel: collected → vetted → signed up</div><div data-i18n="onboarding.goal_inf_now" class="goal-now">📍 now: no influencers yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🧲</span></div><div data-i18n="onboarding.goal_leads_label" class="stat-label">Leads</div><div class="stat-value">— <span data-i18n="onboarding.goal_leads_target" class="stat-target">/ 1,000 leads</span></div><div class="sharebar"><div class="sharefill sfgold"></div></div><div data-i18n="onboarding.goal_leads_funnel" class="goal-funnel">🎯 funnel: searched → collected → contacted</div><div data-i18n="onboarding.goal_leads_now" class="goal-now">📍 now: no leads yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🌐</span></div><div data-i18n="onboarding.goal_sites_label" class="stat-label">Sites</div><div class="stat-value">— <span data-i18n="onboarding.goal_sites_target" class="stat-target">/ 2 projects</span></div><div class="sharebar"><div class="sharefill sfblue"></div></div><div data-i18n="onboarding.goal_sites_funnel" class="goal-funnel">🎯 funnel: added → tracking → converting</div><div data-i18n="onboarding.goal_sites_now" class="goal-now">📍 now: no sites tracked yet</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">📸</span></div><div data-i18n="onboarding.goal_social_label" class="stat-label">Social</div><div class="stat-value">— <span data-i18n="onboarding.goal_social_target" class="stat-target">/ 4 accounts</span></div><div class="sharebar"><div class="sharefill sflime"></div></div><div data-i18n="onboarding.goal_social_funnel" class="goal-funnel">🎯 funnel: connected → posting → growing</div><div data-i18n="onboarding.goal_social_now" class="goal-now">📍 now: no social accounts connected</div></div>
+      <div class="stat-card"><div class="stat-top"><span class="stat-icon">🔒</span></div><div data-i18n="onboarding.goal_ip_label" class="stat-label">IP Registry</div><div class="stat-value">— <span data-i18n="onboarding.goal_ip_target" class="stat-target">assets</span></div><div class="sharebar"><div class="sharefill sfred"></div></div><div data-i18n="onboarding.goal_ip_funnel" class="goal-funnel">🎯 funnel: created → hashed → registered</div><div data-i18n="onboarding.goal_ip_now" class="goal-now">📍 now: no IP assets registered yet</div></div>
     </div>
   </div>
 
@@ -82,36 +83,36 @@
   <div class="main-tab-panel" id="panel-overview">
     <div class="card top-card">
       <div class="card-header"><div>
-        <div class="card-title">⭐ Top Performer</div>
-        <div class="card-sub">best campaign · top clicked link</div>
+        <div data-i18n="onboarding.top_title" class="card-title">⭐ Top Performer</div>
+        <div data-i18n="onboarding.top_sub" class="card-sub">best campaign · top clicked link</div>
       </div></div>
-      <div class="empty">No campaigns yet — your top performer will appear here once you send.</div>
+      <div data-i18n="onboarding.top_empty" class="empty">No campaigns yet — your top performer will appear here once you send.</div>
     </div>
   </div>
 
   <!-- ============ TAB: EMAIL ============ -->
   <div class="main-tab-panel is-hidden" id="panel-email">
     <div class="range-tabs">
-      <span class="range-label">Range:</span>
-      <button class="range-tab active">7d</button>
-      <button class="range-tab">30d</button>
-      <button class="range-tab">90d</button>
-      <button class="range-tab">All</button>
+      <span data-i18n="onboarding.range_label" class="range-label">Range:</span>
+      <button data-i18n="onboarding.range_7d" class="range-tab active">7d</button>
+      <button data-i18n="onboarding.range_30d" class="range-tab">30d</button>
+      <button data-i18n="onboarding.range_90d" class="range-tab">90d</button>
+      <button data-i18n="onboarding.range_all" class="range-tab">All</button>
     </div>
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">📧 Email Campaigns</div>
-        <div class="card-sub">sends · opens · clicks</div>
+        <div data-i18n="onboarding.email_title" class="card-title">📧 Email Campaigns</div>
+        <div data-i18n="onboarding.email_sub" class="card-sub">sends · opens · clicks</div>
       </div></div>
-      <div class="empty">No campaigns yet</div>
-      <div class="empty-hint">Trial includes dashboard + lead collection — sending unlocks on paid plans.</div>
+      <div data-i18n="onboarding.email_empty" class="empty">No campaigns yet</div>
+      <div data-i18n="onboarding.email_trial_note" class="empty-hint">Trial includes dashboard + lead collection — sending unlocks on paid plans.</div>
     </div>
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">Collection funnel</div>
-        <div class="card-sub">site → email capture</div>
+        <div data-i18n="onboarding.funnel_title" class="card-title">Collection funnel</div>
+        <div data-i18n="onboarding.funnel_sub" class="card-sub">site → email capture</div>
       </div></div>
-      <div class="empty">No funnel data yet — add a site below in the setup checklist to start collecting.</div>
+      <div data-i18n="onboarding.funnel_empty" class="empty">No funnel data yet — add a site below in the setup checklist to start collecting.</div>
     </div>
   </div>
 
@@ -119,10 +120,10 @@
   <div class="main-tab-panel is-hidden" id="panel-warm">
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">🔥 Warm clickers</div>
-        <div class="card-sub">hottest retargeting leads</div>
+        <div data-i18n="onboarding.warm_title" class="card-title">🔥 Warm clickers</div>
+        <div data-i18n="onboarding.kn_sub_warm" class="card-sub">hottest retargeting leads</div>
       </div></div>
-      <div class="empty">No warm clickers yet — they appear once subscribers start clicking your links.</div>
+      <div data-i18n="onboarding.warm_empty" class="empty">No warm clickers yet — they appear once subscribers start clicking your links.</div>
     </div>
   </div>
 
@@ -130,10 +131,10 @@
   <div class="main-tab-panel is-hidden" id="panel-conversions">
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">✅ Conversions</div>
-        <div class="card-sub">signups · purchases · goals hit</div>
+        <div data-i18n="onboarding.conv_title" class="card-title">✅ Conversions</div>
+        <div data-i18n="onboarding.conv_sub" class="card-sub">signups · purchases · goals hit</div>
       </div></div>
-      <div class="empty">No conversions yet — connect a site and they will track here automatically.</div>
+      <div data-i18n="onboarding.conv_empty" class="empty">No conversions yet — connect a site and they will track here automatically.</div>
     </div>
   </div>
 
@@ -141,10 +142,10 @@
   <div class="main-tab-panel is-hidden" id="panel-sites">
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">🌐 Sites tracked</div>
-        <div class="card-sub">live analytics per project</div>
+        <div data-i18n="onboarding.sites_title" class="card-title">🌐 Sites tracked</div>
+        <div data-i18n="onboarding.sites_sub" class="card-sub">live analytics per project</div>
       </div></div>
-      <div class="empty">No sites tracked yet — add your first site below in the setup checklist.</div>
+      <div data-i18n="onboarding.sites_empty" class="empty">No sites tracked yet — add your first site below in the setup checklist.</div>
     </div>
   </div>
 
@@ -152,10 +153,10 @@
   <div class="main-tab-panel is-hidden" id="panel-influencers">
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">👥 Influencers</div>
-        <div class="card-sub">collected · vetted · signed up</div>
+        <div data-i18n="onboarding.inf_title" class="card-title">👥 Influencers</div>
+        <div data-i18n="onboarding.inf_sub" class="card-sub">collected · vetted · signed up</div>
       </div></div>
-      <div class="empty">No influencers yet — run your first lead search below to start collecting.</div>
+      <div data-i18n="onboarding.inf_empty" class="empty">No influencers yet — run your first lead search below to start collecting.</div>
     </div>
   </div>
 
@@ -163,10 +164,10 @@
   <div class="main-tab-panel is-hidden" id="panel-social">
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">📸 Social accounts</div>
-        <div class="card-sub">connected profiles</div>
+        <div data-i18n="onboarding.social_title" class="card-title">📸 Social accounts</div>
+        <div data-i18n="onboarding.social_sub" class="card-sub">connected profiles</div>
       </div></div>
-      <div class="empty">No social accounts connected — connect one below in the setup checklist.</div>
+      <div data-i18n="onboarding.social_empty" class="empty">No social accounts connected — connect one below in the setup checklist.</div>
     </div>
   </div>
 
@@ -174,28 +175,29 @@
   <div class="main-tab-panel is-hidden" id="panel-ipregistry">
     <div class="card">
       <div class="card-header"><div>
-        <div class="card-title">🔒 IP Registry</div>
-        <div class="card-sub">proof-of-ownership assets</div>
+        <div data-i18n="onboarding.ip_title" class="card-title">🔒 IP Registry</div>
+        <div data-i18n="onboarding.ip_sub" class="card-sub">proof-of-ownership assets</div>
       </div></div>
-      <div class="empty">No IP assets registered yet.</div>
+      <div data-i18n="onboarding.ip_empty" class="empty">No IP assets registered yet.</div>
     </div>
   </div>
 
   <!-- 5. The 5-step setup checklist, inside the dashboard frame -->
-  <div class="section-title">✅ Setup checklist</div>
+  <div data-i18n="onboarding.checklist_title" class="section-title">✅ Setup checklist</div>
   <div class="ob-progress"><progress id="progress-bar" max="100" value="0"></progress></div>
   <div class="ob-progress-label" id="progress-label"></div>
   <div id="steps"></div>
 
   <div class="ob-foot">
-    <a href="/app">Open my dashboard →</a>
-    <a href="#" id="restart-link">Restart setup</a>
-    <a href="#" id="dismiss-link">Skip setup entirely</a>
+    <a data-i18n="onboarding.open_dashboard" href="/app">Open my dashboard →</a>
+    <a data-i18n="onboarding.restart" href="#" id="restart-link">Restart setup</a>
+    <a data-i18n="onboarding.skip_setup" href="#" id="dismiss-link">Skip setup entirely</a>
     <a href="/terms">Terms</a>
     <a href="/privacy">Privacy</a>
   </div>
 </div>
 <script src="/js/onboarding-tabs.js?v=3"></script>
 <script src="/js/onboarding.js?v=4"></script>
+<script src="/js/i18n.js"></script>
 </body>
 </html>

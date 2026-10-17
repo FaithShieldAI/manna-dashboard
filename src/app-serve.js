@@ -114,7 +114,42 @@ const TRANSFORM_TARGETS = [
     pattern: '</body>',
     breaks: 'Boot script (goals re-render + logout handler) never injected.',
   },
+  {
+    name: 'i18n-loader',
+    kind: 'string',
+    pattern: '<script src="/js/i18n.js"></script>',
+    breaks: 'i18n dictionary injection target missing; dashboard stays English-only.',
+  },
 ];
+
+// --- i18n (transform #7) ----------------------------------------------------
+// Resolves the dashboard language per request and injects the translation
+// dictionary + loader script before </head>. Dictionaries live in
+// <repo>/translations/<lang>.json (876 keys each, 8 languages).
+const I18N_SUPPORTED = ['en', 'es', 'fr', 'de', 'pt', 'tl', 'ro', 'id'];
+const i18nDictCache = {}; // lang -> { dict, mtimeMs }
+
+function resolveI18nLang(req) {
+  const q = String((req.query && req.query.lang) || '').toLowerCase();
+  if (I18N_SUPPORTED.includes(q)) return q;
+  const ck = /(?:^|;\s*)manna_lang=([a-z]{2})/i.exec(req.headers.cookie || '');
+  if (ck && I18N_SUPPORTED.includes(ck[1].toLowerCase())) return ck[1].toLowerCase();
+  const al = String(req.headers['accept-language'] || '').slice(0, 2).toLowerCase();
+  if (I18N_SUPPORTED.includes(al)) return al;
+  return 'en';
+}
+
+function loadI18nDict(lang) {
+  try {
+    const p = path.join(__dirname, '..', 'translations', lang + '.json');
+    const st = fs.statSync(p);
+    const hit = i18nDictCache[lang];
+    if (hit && hit.mtimeMs === st.mtimeMs) return hit.dict;
+    const dict = JSON.parse(fs.readFileSync(p, 'utf8'));
+    i18nDictCache[lang] = { dict, mtimeMs: st.mtimeMs };
+    return dict;
+  } catch (e) { return {}; }
+}
 
 function targetMatches(html, t) {
   // NOTE: patterns carry no /g flag, so regex .test() is stateless here.
@@ -225,6 +260,16 @@ function serveApp(req, res) {
     + '<a href="/leads" style="color:var(--gold);text-decoration:none;font-size:13px">🎯 Leads</a>'
     + '<a href="#" id="d2rm-logout" style="color:var(--text2);text-decoration:none;font-size:13px">Log out</a>';
   html = html.replace('<div class="nav-right">', '<div class="nav-right">' + chip);
+
+  // 7. i18n: inject translation dictionary BEFORE the loader script.
+  // i18n.js picks up window.__MANNA_I18N__ synchronously — no fetch race.
+  const dashLang = resolveI18nLang(req);
+  const dashDict = loadI18nDict(dashLang);
+  const dashFallback = dashLang === 'en' ? {} : loadI18nDict('en');
+  const i18nInject = '<script>window.__MANNA_I18N__='
+    + JSON.stringify({ lang: dashLang, dict: dashDict, fallback: dashFallback }).replace(/</g, '\\u003c')
+    + ';</script><script src="/js/i18n.js"></script>';
+  html = html.replace('<script src="/js/i18n.js"></script>', i18nInject);
 
   // 6. Boot script: goals re-render + logout.
   // (The AI instructor panel is built into the template itself; the old

@@ -48,13 +48,13 @@
   fetch('/api/assistant/status', { headers: Hget() })
     .then(function (r) { return r.json(); })
     .then(function (j) {
-      if (j && j.ok) document.getElementById('chat-prov').textContent = j.provider === 'Muse' ? 'powered by Muse' : 'insights engine';
+      if (j && j.ok) document.getElementById('chat-prov').textContent = j.provider === 'Muse' ? MannaI18n.t('dash.js.scribe.powered_claude') : MannaI18n.t('dash.js.scribe.insights_engine');
     }).catch(function () {});
 
   function greet() {
     if (greeted) return;
     greeted = true;
-    addMsg('What do you want to do first, or do you want me to suggest?', 'bot');
+    addMsg(MannaI18n.t('dash.js.scribe.greeting'), 'bot');
   }
 
   formEl.addEventListener('submit', function (e) {
@@ -63,7 +63,7 @@
     if (!text) return;
     inputEl.value = '';
     addMsg(text, 'user');
-    var typing = addMsg('thinking\u2026', 'bot typing');
+    var typing = addMsg(MannaI18n.t('dash.js.common.thinking'), 'bot typing');
     api('POST', '/api/assistant/chat', { message: text, history: history.slice(-10) })
       .then(function (r) {
         typing.remove();
@@ -72,19 +72,27 @@
           history.push({ role: 'user', content: text });
           history.push({ role: 'assistant', content: r.json.reply });
         } else {
-          addMsg('Sorry \u2014 I hit an error. Try again in a moment.', 'bot');
+          addMsg(MannaI18n.t('dash.js.common.assistant_error'), 'bot');
         }
       })
-      .catch(function () { typing.remove(); addMsg('Network error. Check your connection.', 'bot'); });
+      .catch(function () { typing.remove(); addMsg(MannaI18n.t('dash.js.onboarding.network_error_short'), 'bot'); });
   });
 
   // ------------------------------------------------------------------ steps
   var PLATFORMS = ['instagram', 'tiktok', 'youtube', 'x', 'facebook'];
+  /* i18n keys for the platform option labels (replaces code-side capitalization). */
+  var PLATFORM_LABELS = {
+    instagram: 'dash.js.onboarding.platform_instagram',
+    tiktok: 'dash.js.onboarding.platform_tiktok',
+    youtube: 'dash.js.onboarding.platform_youtube',
+    x: 'dash.js.onboarding.platform_x',
+    facebook: 'dash.js.onboarding.platform_facebook',
+  };
 
   function render(status) {
     var ob = status.onboarding;
     barEl.value = ob.progress_pct;
-    labelEl.textContent = ob.progress_pct + '% complete';
+    labelEl.textContent = MannaI18n.t('dash.js.onboarding.progress', { pct: ob.progress_pct });
     bannerEl.classList.toggle('is-hidden', !ob.is_complete);
     stepsEl.innerHTML = '';
     ob.steps.forEach(function (s, i) {
@@ -134,7 +142,7 @@
       if (step.id === 'starter_content') { renderInstalledTemplates(body); return; }
       var p = document.createElement('p');
       p.className = 'ob-done';
-      p.textContent = '✓ Done';
+      p.textContent = MannaI18n.t('dash.js.onboarding.step_done');
       body.appendChild(p);
       return;
     }
@@ -148,9 +156,9 @@
   function renderWelcome(body) {
     var p = document.createElement('p');
     p.className = 'ob-p';
-    p.textContent = 'This dashboard is your marketing command center: it tracks your sites, email, socials, and goals — plus it collects leads and includes an AI co-pilot. Setup takes about 10 minutes. Let\u2019s go.';
+    p.textContent = MannaI18n.t('dash.js.onboarding.welcome_text');
     var btn = document.createElement('button');
-    btn.textContent = 'Start setup →';
+    btn.textContent = MannaI18n.t('dash.js.onboarding.start_setup');
     btn.addEventListener('click', function () {
       btn.disabled = true;
       api('POST', '/api/onboarding/welcome', {}).then(refresh).catch(function () { btn.disabled = false; });
@@ -169,21 +177,21 @@
     var sel = document.createElement('select');
     PLATFORMS.forEach(function (pl) {
       var o = document.createElement('option');
-      o.value = pl; o.textContent = pl.charAt(0).toUpperCase() + pl.slice(1);
+      o.value = pl; o.textContent = MannaI18n.t(PLATFORM_LABELS[pl]);
       sel.appendChild(o);
     });
     var handle = document.createElement('input');
-    handle.type = 'text'; handle.placeholder = 'handle (without @)'; handle.maxLength = 80;
+    handle.type = 'text'; handle.placeholder = MannaI18n.t('dash.js.onboarding.social_handle_ph'); handle.maxLength = 80;
     var token = document.createElement('input');
-    token.type = 'text'; token.placeholder = 'API token (optional)'; handle.maxLength = 80;
+    token.type = 'text'; token.placeholder = MannaI18n.t('dash.js.onboarding.social_token_ph'); handle.maxLength = 80;
     token.maxLength = 4000;
     var add = document.createElement('button');
-    add.textContent = 'Connect';
+    add.textContent = MannaI18n.t('dash.js.onboarding.social_connect');
     row.appendChild(sel); row.appendChild(handle); row.appendChild(token); row.appendChild(add);
     body.appendChild(row);
     var hint = document.createElement('p');
     hint.className = 'ob-hint';
-    hint.textContent = 'Just the handle is enough to start — a token unlocks live stats later.';
+    hint.textContent = MannaI18n.t('dash.js.onboarding.social_hint');
     body.appendChild(hint);
 
     function load() {
@@ -195,7 +203,7 @@
           pill.innerHTML = esc(s.platform) + ' / @' + esc(s.handle) + (s.has_token ? ' 🔑' : '');
           var x = document.createElement('button');
           x.textContent = '✕';
-          x.title = 'Disconnect';
+          x.title = MannaI18n.t('dash.js.onboarding.social_disconnect');
           x.addEventListener('click', function () {
             api('DELETE', '/api/onboarding/socials/' + encodeURIComponent(s.platform)).then(function () { load(); refresh(false); });
           });
@@ -205,7 +213,7 @@
       });
     }
     add.addEventListener('click', function () {
-      if (!handle.value.trim()) { alertBox(body, 'err', 'Enter a handle first.'); return; }
+      if (!handle.value.trim()) { alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.err_handle')); return; }
       add.disabled = true;
       api('POST', '/api/onboarding/socials', {
         platform: sel.value, handle: handle.value.trim(),
@@ -214,12 +222,12 @@
         add.disabled = false;
         if (r.json && r.json.ok) {
           handle.value = ''; token.value = '';
-          alertBox(body, 'ok', 'Connected! 🎉');
+          alertBox(body, 'ok', MannaI18n.t('dash.js.onboarding.social_connected'));
           load(); refresh(false);
         } else {
-          alertBox(body, 'err', 'Could not connect: ' + ((r.json && r.json.error) || 'error'));
+          alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.err_connect', { error: (r.json && r.json.error) || 'error' }));
         }
-      }).catch(function () { add.disabled = false; alertBox(body, 'err', 'Network error.'); });
+      }).catch(function () { add.disabled = false; alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.network_error_bare')); });
     });
     load();
   }
@@ -228,10 +236,10 @@
     var box = document.createElement('div');
     body.appendChild(box);
     var installBtn = document.createElement('button');
-    installBtn.textContent = 'Install selected';
+    installBtn.textContent = MannaI18n.t('dash.js.onboarding.tpl_install_selected');
     installBtn.className = 'ob-btn-gap';
     var allBtn = document.createElement('button');
-    allBtn.textContent = 'Install all';
+    allBtn.textContent = MannaI18n.t('dash.js.onboarding.tpl_install_all');
     allBtn.className = 'ghost';
     body.appendChild(installBtn);
     body.appendChild(allBtn);
@@ -245,12 +253,12 @@
 
       var h = document.createElement('h4');
       h.className = 'ob-h';
-      h.textContent = 'Email templates';
+      h.textContent = MannaI18n.t('dash.js.onboarding.tpl_email_title');
       box.appendChild(h);
       lib.email.forEach(function (t) { box.appendChild(tplRow('e:' + t.key, t.name, t.subject, installed)); });
       var h2 = document.createElement('h4');
       h2.className = 'ob-h';
-      h2.textContent = 'Social templates';
+      h2.textContent = MannaI18n.t('dash.js.onboarding.tpl_social_title');
       box.appendChild(h2);
       lib.social.forEach(function (t) { box.appendChild(tplRow('s:' + t.key, t.name, t.platform, installed)); });
 
@@ -265,7 +273,7 @@
       }
       installBtn.addEventListener('click', function () {
         var s = selected();
-        if (!s.email.length && !s.social.length) { alertBox(body, 'err', 'Pick at least one template.'); return; }
+        if (!s.email.length && !s.social.length) { alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.tpl_err_none')); return; }
         installBtn.disabled = true;
         api('POST', '/api/onboarding/templates/install', s).then(function (rr) {
           installBtn.disabled = false;
@@ -273,7 +281,7 @@
             /* Re-render: the step flips to done and shows installed templates
                as clickable links into the Templates section. */
             refresh(false);
-          } else alertBox(body, 'err', 'Install failed.');
+          } else alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.tpl_err_install'));
         }).catch(function () { installBtn.disabled = false; });
       });
       allBtn.addEventListener('click', function () {
@@ -284,7 +292,7 @@
             /* Re-render: the step flips to done and shows installed templates
                as clickable links into the Templates section. */
             refresh(false);
-          } else alertBox(body, 'err', 'Install failed.');
+          } else alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.tpl_err_install'));
         }).catch(function () { allBtn.disabled = false; });
       });
     });
@@ -297,7 +305,7 @@
       cb.type = 'checkbox'; cb.value = value;
       if (installed[value]) { cb.checked = true; cb.disabled = true; }
       var txt = document.createElement('span');
-      txt.innerHTML = '<span class="tname">' + esc(name) + '</span><br><span class="tsub">' + esc(sub) + (installed[value] ? ' — installed ✓' : '') + '</span>';
+      txt.innerHTML = '<span class="tname">' + esc(name) + '</span><br><span class="tsub">' + esc(sub) + (installed[value] ? ' ' + MannaI18n.t('dash.js.onboarding.tpl_installed_suffix') : '') + '</span>';
       lab.appendChild(cb); lab.appendChild(txt);
       d.appendChild(lab);
       return d;
@@ -314,8 +322,10 @@
       var ok = document.createElement('div');
       ok.className = 'alert ok';
       ok.textContent = installed.length
-        ? '\u2713 ' + installed.length + ' email template' + (installed.length === 1 ? '' : 's') + ' installed \u2014 find ' + (installed.length === 1 ? 'it' : 'them') + ' here:'
-        : '\u2713 Templates installed.';
+        ? (installed.length === 1
+          ? MannaI18n.t('dash.js.onboarding.tpl_installed_one', { n: installed.length })
+          : MannaI18n.t('dash.js.onboarding.tpl_installed_many', { n: installed.length }))
+        : MannaI18n.t('dash.js.onboarding.tpl_installed_generic');
       body.appendChild(ok);
       var list = document.createElement('div');
       list.className = 'tpl-installed';
@@ -330,12 +340,12 @@
       var bar = document.createElement('div');
       bar.className = 'step-actions';
       var open = document.createElement('button');
-      open.textContent = 'Open Templates section \u2192';
+      open.textContent = MannaI18n.t('dash.js.onboarding.tpl_open');
       open.addEventListener('click', function () { window.location.href = '/app#templates'; });
       bar.appendChild(open);
       var more = document.createElement('button');
       more.className = 'ghost';
-      more.textContent = 'Install more';
+      more.textContent = MannaI18n.t('dash.js.onboarding.tpl_install_more');
       more.addEventListener('click', function () { body.innerHTML = ''; renderTemplates(body); });
       bar.appendChild(more);
       body.appendChild(bar);
@@ -345,68 +355,76 @@
   function renderLeadJob(body) {
     var p = document.createElement('p');
     p.className = 'ob-p';
-    p.textContent = 'Enter 2–3 keywords for your niche — the collector finds public channels and pulls contact emails straight into your dashboard.';
+    p.textContent = MannaI18n.t('dash.js.onboarding.lead_text');
     var row = document.createElement('div');
     row.className = 'row';
     var kw = document.createElement('input');
-    kw.type = 'text'; kw.placeholder = 'keywords, comma separated (e.g. fitness coach, meal prep)';
+    kw.type = 'text'; kw.placeholder = MannaI18n.t('dash.js.onboarding.lead_kw_ph');
     var go = document.createElement('button');
-    go.textContent = 'Run lead search';
+    go.textContent = MannaI18n.t('dash.js.onboarding.lead_run');
     row.appendChild(kw); row.appendChild(go);
     var link = document.createElement('p');
     link.className = 'ob-linkline';
-    link.innerHTML = 'Or open the <a href="/app#leads" class="ob-goldlink">Leads tab</a> for seed URLs and job history.';
+    link.innerHTML = MannaI18n.t('dash.js.onboarding.lead_linkline', { leads_tab: '<a href="/app#leads" class="ob-goldlink">' + MannaI18n.t('dash.js.onboarding.lead_link_text') + '</a>' });
     body.appendChild(p); body.appendChild(row); body.appendChild(link);
     go.addEventListener('click', function () {
       var keywords = kw.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-      if (!keywords.length) { alertBox(body, 'err', 'Enter at least one keyword.'); return; }
+      if (!keywords.length) { alertBox(body, 'err', MannaI18n.t('dash.js.leads.err_keyword')); return; }
       go.disabled = true;
-      go.textContent = 'Searching…';
+      go.textContent = MannaI18n.t('dash.js.onboarding.lead_searching');
       api('POST', '/api/leads/jobs', { source: 'youtube', keywords: keywords.slice(0, 5), auto_run: true })
         .then(function (r) {
-          go.disabled = false; go.textContent = 'Run lead search';
+          go.disabled = false; go.textContent = MannaI18n.t('dash.js.onboarding.lead_run');
           if (r.json && r.json.ok) {
             var n = (r.json.result && r.json.result.new) || 0;
-            alertBox(body, 'ok', 'Search complete — ' + n + ' new leads added to your dashboard!');
+            alertBox(body, 'ok', MannaI18n.t('dash.js.onboarding.lead_done', { n: n }));
             refresh(false);
           } else {
-            alertBox(body, 'err', 'Search failed: ' + ((r.json && r.json.error) || 'error'));
+            alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.lead_failed', { error: (r.json && r.json.error) || 'error' }));
           }
         })
-        .catch(function () { go.disabled = false; go.textContent = 'Run lead search'; alertBox(body, 'err', 'Network error.'); });
+        .catch(function () { go.disabled = false; go.textContent = MannaI18n.t('dash.js.onboarding.lead_run'); alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.network_error_bare')); });
     });
   }
 
   function renderCampaign(body) {
     var p = document.createElement('p');
     p.className = 'ob-p';
-    p.textContent = 'Name your first campaign so every send is tracked from day one.';
+    p.textContent = MannaI18n.t('dash.js.onboarding.campaign_text');
     var row = document.createElement('div');
     row.className = 'row';
     var name = document.createElement('input');
-    name.type = 'text'; name.placeholder = 'Campaign name (e.g. November launch)'; name.maxLength = 120;
+    name.type = 'text'; name.placeholder = MannaI18n.t('dash.js.onboarding.campaign_name_ph'); name.maxLength = 120;
     var prov = document.createElement('select');
+    /* i18n keys for the provider option labels (replaces code-side uppercasing). */
+    var PROVIDER_LABELS = {
+      ses: 'dash.js.onboarding.provider_ses',
+      brevo: 'dash.js.onboarding.provider_brevo',
+      kit: 'dash.js.onboarding.provider_kit',
+      mailerlite: 'dash.js.onboarding.provider_mailerlite',
+      other: 'dash.js.onboarding.provider_other',
+    };
     ['ses', 'brevo', 'kit', 'mailerlite', 'other'].forEach(function (v) {
       var o = document.createElement('option');
-      o.value = v; o.textContent = v.toUpperCase();
+      o.value = v; o.textContent = MannaI18n.t(PROVIDER_LABELS[v]);
       prov.appendChild(o);
     });
     var go = document.createElement('button');
-    go.textContent = 'Create campaign';
+    go.textContent = MannaI18n.t('dash.js.onboarding.campaign_create');
     row.appendChild(name); row.appendChild(prov); row.appendChild(go);
     body.appendChild(p); body.appendChild(row);
     go.addEventListener('click', function () {
-      if (!name.value.trim()) { alertBox(body, 'err', 'Give the campaign a name.'); return; }
+      if (!name.value.trim()) { alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.campaign_err_name')); return; }
       go.disabled = true;
       api('POST', '/api/email/campaigns', { name: name.value.trim(), provider: prov.value })
         .then(function (r) {
           go.disabled = false;
           if (r.json && r.json.ok) {
-            alertBox(body, 'ok', 'Campaign created. Log sends against it from the Email tab.');
+            alertBox(body, 'ok', MannaI18n.t('dash.js.onboarding.campaign_created'));
             refresh(false);
-          } else alertBox(body, 'err', 'Could not create campaign.');
+          } else alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.campaign_err_create'));
         })
-        .catch(function () { go.disabled = false; alertBox(body, 'err', 'Network error.'); });
+        .catch(function () { go.disabled = false; alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.network_error_bare')); });
     });
   }
 
@@ -431,14 +449,14 @@
         social:      j.counts.socialAccounts,
       };
       var subs = {
-        sent:        vals.sent ? fmt(vals.sent) + ' sent all time' : 'no sends yet',
-        opens:       vals.sent ? j.email.openRate + '% open rate' : 'open rate',
-        clicks:      vals.sent ? j.email.clickRate + '% click rate' : 'click rate',
-        warm:        vals.warm ? fmt(vals.warm) + ' all time' : 'hottest retargeting leads',
-        influencers: vals.influencers ? 'across all categories' : 'across all categories',
-        sites:       vals.sites ? fmt(vals.sites) + ' tracked' : 'live analytics',
-        ip:          vals.ip ? fmt(vals.ip) + ' registered' : 'in the registry',
-        social:      vals.social ? fmt(vals.social) + ' connected' : 'connected',
+        sent:        vals.sent ? MannaI18n.t('dash.js.onboarding.sub_sent', { n: fmt(vals.sent) }) : MannaI18n.t('dash.js.common.no_sends_yet'),
+        opens:       vals.sent ? MannaI18n.t('dash.js.common.open_rate_pct', { rate: j.email.openRate }) : MannaI18n.t('dash.js.common.open_rate'),
+        clicks:      vals.sent ? MannaI18n.t('dash.js.common.click_rate_pct', { rate: j.email.clickRate }) : MannaI18n.t('dash.js.common.click_rate'),
+        warm:        vals.warm ? MannaI18n.t('dash.js.onboarding.sub_warm', { n: fmt(vals.warm) }) : MannaI18n.t('dash.js.onboarding.sub_warm_empty'),
+        influencers: MannaI18n.t('dash.js.onboarding.sub_influencers'),
+        sites:       vals.sites ? MannaI18n.t('dash.js.onboarding.sub_sites', { n: fmt(vals.sites) }) : MannaI18n.t('dash.js.onboarding.sub_sites_empty'),
+        ip:          vals.ip ? MannaI18n.t('dash.js.onboarding.sub_ip', { n: fmt(vals.ip) }) : MannaI18n.t('dash.js.onboarding.sub_ip_empty'),
+        social:      vals.social ? MannaI18n.t('dash.js.onboarding.sub_social', { n: fmt(vals.social) }) : MannaI18n.t('dash.js.onboarding.sub_social_empty'),
       };
       /* Color graph bars: each bar shows the metric relative to the largest
          Key Number, so the grid reads as a visual graph like D2RM's. */
@@ -469,7 +487,7 @@
 
   document.getElementById('dismiss-link').addEventListener('click', function (e) {
     e.preventDefault();
-    if (!confirm('Skip the guided setup? You can restart it anytime.')) return;
+    if (!confirm(MannaI18n.t('dash.js.onboarding.confirm_skip'))) return;
     api('POST', '/api/onboarding/dismiss', {}).then(refresh);
   });
   document.getElementById('restart-link').addEventListener('click', function (e) {

@@ -3,26 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Forgot password — Manna</title>
+<title data-i18n="auth.forgot.meta_title">Forgot password — Manna</title>
 <link rel="stylesheet" href="/css/auth.css?v=2">
 </head>
 <body>
 <div class="card">
+      <div style="text-align:right;margin-bottom:4px"><select data-lang-picker aria-label="Language" style="font-size:12px;padding:4px 8px;border-radius:6px;background:#14141c;color:#e8e6df;border:1px solid #33333f;cursor:pointer"></select></div>
   <div class="brand"><img src="/manna-logo.webp" alt="Manna" class="brand-logo"></div>
-  <div class="tagline">Big agency data, little guy money.</div>
-  <h1>Reset password</h1>
-  <p class="sub">Enter your account email and we'll send you a reset link.</p>
+  <div data-i18n="auth.shared.tagline" class="tagline">Big agency data, little guy money.</div>
+  <h1 data-i18n="auth.forgot.title">Reset password</h1>
+  <p data-i18n="auth.forgot.sub" class="sub">Enter your account email and we'll send you a reset link.</p>
   <div class="error" id="err"></div>
   <div class="success" id="ok"></div>
   <form id="forgot-form">
-    <label for="email">Email</label>
+    <label data-i18n="auth.shared.label_email" for="email">Email</label>
     <input type="email" id="email" required autocomplete="username">
-    <button class="primary" type="submit" id="submit">Send reset link</button>
+    <button data-i18n="auth.forgot.submit" class="primary" type="submit" id="submit">Send reset link</button>
   </form>
-  <div class="links"><a href="/login">Back to log in</a></div>
-<div class="legal-footer"><a href="/terms">Terms</a><span aria-hidden="true">·</span><a href="/privacy">Privacy</a></div>
+  <div class="links"><a data-i18n="auth.shared.link_back_login" href="/login">Back to log in</a></div>
+<div class="legal-footer"><a data-i18n="auth.shared.link_terms" href="/terms">Terms</a><span aria-hidden="true">·</span><a data-i18n="auth.shared.link_privacy" href="/privacy">Privacy</a></div>
 </div>
 <script src="/js/auth.js"></script>
 <script src="/js/forgot.js"></script>
+<script src="/js/i18n.js"></script>
 </body>
 </html>
