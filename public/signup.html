@@ -50,7 +50,7 @@
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required autocomplete="new-password" minlength="12">
         <p class="hint">At least 12 characters.</p>
-        <button class="primary" type="submit" id="submit">Start my free trial</button>
+        <button class="primary" type="submit" id="submit" data-track="manna_signup">Start my free trial</button>
       </form>
       <div class="links"><a href="/login">Already have an account? Log in</a></div>
     </div>
@@ -100,5 +100,6 @@
 <script src="/js/auth.js"></script>
 <script src="/js/signup.js"></script>
 <script src="/js/demo-preview.js"></script>
+<script src="https://muse4.pythonanywhere.com/tracker.js" data-site="manna" data-endpoint="https://muse4.pythonanywhere.com/collect"></script>
 </body>
 </html>
