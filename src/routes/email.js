@@ -76,6 +76,12 @@ router.post('/campaigns', (req, res) => {
 router.post('/log-send', (req, res) => {
   // Trial users get 100 free emails (fishhook — enough to test the full
   // flow). Paid plans get their full quota. (Michael, 2026-10-15)
+  // Whitelisted emails (partners) bypass all limits. (Michael, 2026-10-18)
+  const { isWhitelisted } = require('../lib/whitelist');
+  const userEmail = req.user && req.user.email;
+  if (isWhitelisted(userEmail)) {
+    return res.json({ ok: true, whitelisted: true, logged: parseInt(req.body && req.body.count, 10) || 0 });
+  }
   const subStatus = req.tenant.subscription_status;
   const isTrial = subStatus !== 'active';
   const plan = getPlan(req.tenant.plan) || getPlan('starter');
