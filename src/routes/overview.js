@@ -55,4 +55,45 @@ router.get('/', (req, res) => {
   });
 });
 
+/**
+ * GET /api/overview/traffic — first-party visit + signup tracking.
+ * Answers: how many visits, which pages work, how many signups, which
+ * landing page converted. Owners/admins see all tenants (the three
+ * partners); everyone else sees their own tenant.
+ */
+router.get('/traffic', (req, res) => {
+  const role = (req.user && req.user.role) || 'viewer';
+  const allTenants = role === 'owner' || role === 'admin';
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+
+  const visits = req.tdb.visitStats(days, allTenants);
+  const pages = req.tdb.topPages(days, allTenants, 20);
+  const signups = req.tdb.signupStats(days, allTenants);
+  const recent = req.tdb.recentSignups(allTenants, 20);
+
+  const totalVisits = visits.reduce((a, r) => a + r.visitors, 0);
+  const totalPageviews = visits.reduce((a, r) => a + r.pageviews, 0);
+  const totalSignups = signups.reduce((a, r) => a + r.signups, 0);
+
+  res.json({
+    ok: true, days, allTenants,
+    summary: {
+      visitors: totalVisits,
+      pageviews: totalPageviews,
+      signups: totalSignups,
+      conversionPct: totalVisits > 0 ? +((100 * totalSignups / totalVisits).toFixed(2)) : 0,
+    },
+    byDay: visits,
+    topPages: pages,
+    signupsByDay: signups,
+    recentSignups: recent.map(s => ({
+      email: s.email,
+      name: s.display_name,
+      landingPage: s.landing_path,
+      referrer: s.referrer,
+      at: s.created_at,
+    })),
+  });
+});
+
 module.exports = router;

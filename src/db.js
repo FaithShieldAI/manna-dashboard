@@ -137,6 +137,50 @@ function forTenant(tenantId) {
         ORDER BY day DESC LIMIT ?`).all(t, siteId, days);
     },
 
+    // -- first-party visit tracking ----------------------------------------
+    // Visits to our own pages (all tenants when admin, else own tenant).
+    visitStats(days, allTenants) {
+      return db.prepare(`
+        SELECT date(created_at) AS day,
+               COUNT(*) AS pageviews,
+               COUNT(DISTINCT ip_hash) AS visitors,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM site_visits
+        WHERE date(created_at) >= date('now', '-' || ? || ' days')
+        ${allTenants ? '' : 'AND (tenant_id = ? OR tenant_id IS NULL)'}
+        GROUP BY day ORDER BY day DESC`).all(...(allTenants ? [days] : [days, t]));
+    },
+    topPages(days, allTenants, limit) {
+      return db.prepare(`
+        SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip_hash) AS visitors
+        FROM site_visits
+        WHERE date(created_at) >= date('now', '-' || ? || ' days')
+        ${allTenants ? '' : 'AND (tenant_id = ? OR tenant_id IS NULL)'}
+        GROUP BY path ORDER BY views DESC LIMIT ?`)
+        .all(...(allTenants ? [days, limit] : [days, t, limit]));
+    },
+    signupStats(days, allTenants) {
+      return db.prepare(`
+        SELECT date(s.created_at) AS day,
+               COUNT(*) AS signups,
+               COUNT(s.landing_path) AS attributed,
+               s.landing_path AS top_landing
+        FROM signup_events s
+        WHERE date(s.created_at) >= date('now', '-' || ? || ' days')
+        ${allTenants ? '' : 'AND s.tenant_id = ?'}
+        GROUP BY day ORDER BY day DESC`)
+        .all(...(allTenants ? [days] : [days, t]));
+    },
+    recentSignups(allTenants, limit) {
+      return db.prepare(`
+        SELECT s.created_at, s.landing_path, s.referrer, u.email, u.display_name
+        FROM signup_events s
+        JOIN users u ON u.id = s.user_id
+        ${allTenants ? '' : 'WHERE s.tenant_id = ?'}
+        ORDER BY s.id DESC LIMIT ?`)
+        .all(...(allTenants ? [limit] : [t, limit]));
+    },
+
     // -- email ------------------------------------------------------------
     emailSnapshots() {
       return db.prepare(

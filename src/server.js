@@ -47,6 +47,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// First-party visit tracking: logs page views to site_visits so we know
+// which landing pages work and can attribute signups. Server-side, so ad
+// blockers can't touch it. See src/middleware/visitTracking.js.
+const { visitTracking } = require('./middleware/visitTracking');
+app.use(visitTracking(() => db));
+
 // --- frontend ---------------------------------------------------------------
 // Static assets (CSS/JS/wordmarks). Auth pages use external files only so
 // they can carry a strict Content-Security-Policy.
