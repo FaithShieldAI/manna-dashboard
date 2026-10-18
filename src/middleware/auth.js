@@ -24,6 +24,14 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
   req.user = verified.user;
+  // Whitelisted partners (Michael's rule 2026-10-18) get full visibility:
+  // treat as admin so they see all tenants' data, like owners do.
+  try {
+    const { isWhitelisted } = require('../lib/whitelist');
+    if (isWhitelisted(verified.user.email) && req.user.role !== 'owner') {
+      req.user = { ...verified.user, role: 'admin' };
+    }
+  } catch (e) { /* whitelist is additive; never break auth */ }
   req.tenant = tenant;
   // Lazy-require to avoid circular import (db.js doesn't import middleware).
   req.tdb = require('../db').forTenant(tenant.id);
@@ -49,6 +57,13 @@ function requireAuthPage(req, res, next) {
     return res.redirect('/login');
   }
   req.user = verified.user;
+  // Whitelisted partners get full visibility (same as API auth).
+  try {
+    const { isWhitelisted } = require('../lib/whitelist');
+    if (isWhitelisted(verified.user.email) && req.user.role !== 'owner') {
+      req.user = { ...verified.user, role: 'admin' };
+    }
+  } catch (e) { /* additive only */ }
   req.tenant = tenant;
   // Lazy-require to avoid circular import (db.js doesn't import middleware).
   req.tdb = require('../db').forTenant(tenant.id);
