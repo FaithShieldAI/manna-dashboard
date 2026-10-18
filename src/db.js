@@ -187,10 +187,14 @@ function forTenant(tenantId) {
         'SELECT window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang_json, captured_at FROM email_snapshots WHERE tenant_id = ?'
       ).all(t);
     },
-    emailCampaigns(limit = 50) {
-      return db.prepare(
-        'SELECT id, name, provider, sent, opens, clicks, unsubs, bounces, sent_at, cost_cents, revenue_cents FROM email_campaigns WHERE tenant_id = ? ORDER BY sent_at DESC LIMIT ?'
-      ).all(t, limit);
+    emailCampaigns(limit = 50, { product, language } = {}) {
+      let sql = 'SELECT id, name, provider, product, language, sent, opens, clicks, unsubs, bounces, sent_at, cost_cents, revenue_cents FROM email_campaigns WHERE tenant_id = ?';
+      const params = [t];
+      if (product) { sql += ' AND product = ?'; params.push(product); }
+      if (language) { sql += ' AND language = ?'; params.push(language); }
+      sql += ' ORDER BY sent_at DESC LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params);
     },
 
     // -- funnels ----------------------------------------------------------
@@ -388,11 +392,16 @@ function forTenant(tenantId) {
         SELECT template_key, name, subject, body_html, body_text, category, is_starter
         FROM email_templates WHERE tenant_id = ? AND template_key = ?`).get(t, key);
     },
-    previewEmailTemplates() {
-      return db.prepare(`
-        SELECT template_key, name, subject, category, is_starter,
+    previewEmailTemplates({ product, language } = {}) {
+      let sql = `
+        SELECT template_key, name, subject, category, is_starter, product, language,
                SUBSTR(body_text, 1, 160) AS preview
-        FROM email_templates WHERE tenant_id = ? ORDER BY id`).all(t);
+        FROM email_templates WHERE tenant_id = ?`;
+      const params = [t];
+      if (product) { sql += ' AND product = ?'; params.push(product); }
+      if (language) { sql += ' AND language = ?'; params.push(language); }
+      sql += ' ORDER BY id';
+      return db.prepare(sql).all(...params);
     },
     installEmailTemplate({ templateKey, name, subject, bodyHtml, bodyText, category, isStarter }) {
       return db.prepare(`
@@ -414,10 +423,10 @@ function forTenant(tenantId) {
         ON CONFLICT (tenant_id, template_key) DO NOTHING`)
         .run(t, templateKey, name, platform || 'all', content);
     },
-    createEmailCampaign({ name, provider }) {
+    createEmailCampaign({ name, provider, product, language }) {
       return db.prepare(`
-        INSERT INTO email_campaigns (tenant_id, name, provider)
-        VALUES (?, ?, ?)`).run(t, name, provider || null);
+        INSERT INTO email_campaigns (tenant_id, name, provider, product, language)
+        VALUES (?, ?, ?, ?, ?)`).run(t, name, provider || null, product || 'manna', language || 'en');
     },
 
     // -- IP registry ------------------------------------------------------
