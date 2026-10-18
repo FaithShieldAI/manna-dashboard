@@ -187,11 +187,12 @@ function forTenant(tenantId) {
         'SELECT window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang_json, captured_at FROM email_snapshots WHERE tenant_id = ?'
       ).all(t);
     },
-    emailCampaigns(limit = 50, { product, language } = {}) {
-      let sql = 'SELECT id, name, provider, product, language, sent, opens, clicks, unsubs, bounces, sent_at, cost_cents, revenue_cents FROM email_campaigns WHERE tenant_id = ?';
+    emailCampaigns(limit = 50, { product, language, audience } = {}) {
+      let sql = 'SELECT id, name, provider, product, language, audience, sent, opens, clicks, unsubs, bounces, sent_at, cost_cents, revenue_cents FROM email_campaigns WHERE tenant_id = ?';
       const params = [t];
       if (product) { sql += ' AND product = ?'; params.push(product); }
       if (language) { sql += ' AND language = ?'; params.push(language); }
+      if (audience) { sql += ' AND audience = ?'; params.push(audience); }
       sql += ' ORDER BY sent_at DESC LIMIT ?';
       params.push(limit);
       return db.prepare(sql).all(...params);
@@ -423,10 +424,12 @@ function forTenant(tenantId) {
         ON CONFLICT (tenant_id, template_key) DO NOTHING`)
         .run(t, templateKey, name, platform || 'all', content);
     },
-    createEmailCampaign({ name, provider, product, language }) {
+    createEmailCampaign({ name, provider, product, language, audience }) {
+      const validAudiences = ['pastor', 'influencer', 'church', 'school', 'individual', 'podcast', 'organization'];
+      const aud = validAudiences.includes(audience) ? audience : 'individual';
       return db.prepare(`
-        INSERT INTO email_campaigns (tenant_id, name, provider, product, language)
-        VALUES (?, ?, ?, ?, ?)`).run(t, name, provider || null, product || 'manna', language || 'en');
+        INSERT INTO email_campaigns (tenant_id, name, provider, product, language, audience)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(t, name, provider || null, product || 'manna', language || 'en', aud);
     },
 
     // -- IP registry ------------------------------------------------------
