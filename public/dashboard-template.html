@@ -254,6 +254,7 @@
     <button data-i18n="dash.tabs.influencers" class="main-tab" data-tab="influencers">&#128101; Influencers</button>
     <button data-i18n="dash.tabs.vetted" class="main-tab" data-tab="vetted">&#9989; Vetted</button>
     <button data-i18n="dash.tabs.social" class="main-tab" data-tab="social">&#128248; Social</button>
+    <button class="main-tab" data-tab="content">&#127916; Content Library</button>
     <button data-i18n="dash.tabs.ip_registry" class="main-tab" data-tab="ipregistry">&#128274; IP Registry</button>
     <button data-i18n="dash.tabs.billing" class="main-tab" data-tab="billing">&#128179; Billing</button>
   </nav>
@@ -609,6 +610,50 @@
   </div>
 
   </div><!-- /panel-social -->
+
+  <!-- ============ TAB: CONTENT LIBRARY ============ -->
+  <div class="main-tab-panel" id="panel-content" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div class="card-title">&#127916; Content Library</div>
+      <div class="card-sub">every video, organized by product and language</div>
+    </div></div>
+    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
+      <select id="content-product" style="padding:0.5rem">
+        <option value="">All products</option>
+        <option value="faithshield">FaithShield AI</option>
+        <option value="armorbearer">Armor Bearer</option>
+        <option value="manna">Manna AI</option>
+      </select>
+      <select id="content-language" style="padding:0.5rem">
+        <option value="">All languages</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="pt">Português</option>
+        <option value="tl">Tagalog</option>
+        <option value="id">Bahasa Indonesia</option>
+        <option value="ro">Română</option>
+      </select>
+    </div>
+    <div id="content-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
+      <div class="empty">Loading videos…</div>
+    </div>
+  </div>
+
+  <!-- video player modal -->
+  <div id="content-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center">
+    <div style="max-width:480px;width:92%">
+      <video id="content-player" controls style="width:100%;border-radius:8px"></video>
+      <div style="text-align:center;margin-top:0.75rem">
+        <button id="content-close" style="padding:0.5rem 1.5rem;cursor:pointer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /panel-content -->
 
   <!-- ============ TAB: IP REGISTRY ============ -->
   <div class="main-tab-panel" id="panel-ipregistry" style="display:none">
@@ -1893,5 +1938,6 @@ document.querySelectorAll('.main-tab').forEach(function(b){
   }
 });
 </script>
+<script src="/js/content.js"></script>
 </body>
 </html>
