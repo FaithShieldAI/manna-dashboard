@@ -182,6 +182,7 @@ api.use(csrfCheck);
 api.use(apiLimiter);
 
 api.use('/overview', require('./routes/overview'));
+api.use('/content', require('./routes/content'));
 api.use('/sites', require('./routes/sites'));
 api.use('/email', require('./routes/email'));
 api.use('/funnels', require('./routes/funnels'));
