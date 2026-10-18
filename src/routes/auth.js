@@ -110,6 +110,31 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // Signup attribution: link the new account back to its visit session so
+    // we know which landing page converted. Fire-and-forget, never breaks
+    // registration.
+    try {
+      const { SESSION_COOKIE } = require('../middleware/visitTracking');
+      const sessionId = req.cookies && req.cookies[SESSION_COOKIE];
+      let landingPath = null;
+      if (sessionId) {
+        const v = db.prepare(
+          'SELECT path FROM site_visits WHERE session_id = ? ORDER BY id ASC LIMIT 1'
+        ).get(sessionId);
+        if (v) landingPath = v.path;
+      }
+      db.prepare(`
+        INSERT INTO signup_events (tenant_id, user_id, session_id, landing_path, referrer)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        created.tenantId, created.userId,
+        sessionId || null, landingPath,
+        (req.get('referer') || '').slice(0, 500)
+      );
+    } catch (e) {
+      console.error('[auth/register] signup attribution failed:', e.message);
+    }
+
     // Email verification token (Phase 1: returned in dev only; Phase 2: emailed).
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
