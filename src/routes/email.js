@@ -39,20 +39,20 @@ router.get('/windows', (req, res) => {
 
 router.get('/campaigns', (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
-  const { product, language } = req.query;
-  const campaigns = req.tdb.emailCampaigns(limit, { product, language }).map(c => ({
+  const { product, language, audience } = req.query;
+  const campaigns = req.tdb.emailCampaigns(limit, { product, language, audience }).map(c => ({
     ...c,
     ...roi(c.cost_cents, c.revenue_cents),
   }));
   res.json({ ok: true, campaigns });
 });
 
-// POST /api/email/campaigns { name, provider?, product?, language? }
+// POST /api/email/campaigns { name, provider?, product?, language?, audience? }
 // Creates a campaign row so the customer can track it from day one
 // (onboarding step: "set up your first campaign"). Sends are logged
 // separately via /log-send.
 router.post('/campaigns', (req, res) => {
-  const { name, provider, product, language } = req.body || {};
+  const { name, provider, product, language, audience } = req.body || {};
   const n = String(name || '').trim();
   if (n.length < 1 || n.length > 120) {
     return res.status(400).json({ ok: false, error: 'invalid_name' });
@@ -64,7 +64,7 @@ router.post('/campaigns', (req, res) => {
   const validProducts = ['faithshield', 'armorbearer', 'manna'];
   const prod = validProducts.includes(product) ? product : 'manna';
   const lang = String(language || 'en').slice(0, 5);
-  const r = req.tdb.createEmailCampaign({ name: n, provider: p, product: prod, language: lang });
+  const r = req.tdb.createEmailCampaign({ name: n, provider: p, product: prod, language: lang, audience });
   const created = req.tdb.emailCampaigns(200).find(c => c.id === Number(r.lastInsertRowid));
   res.status(201).json({ ok: true, campaign: created ? { ...created, ...roi(created.cost_cents, created.revenue_cents) } : null });
 });
