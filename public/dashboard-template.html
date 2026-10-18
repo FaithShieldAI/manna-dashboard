@@ -619,27 +619,11 @@
       <div class="card-title">&#127916; Content Library</div>
       <div class="card-sub">every video, organized by product and language</div>
     </div></div>
-    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
-      <select id="content-product" style="padding:0.5rem">
-        <option value="">All products</option>
-        <option value="faithshield">FaithShield AI</option>
-        <option value="armorbearer">Armor Bearer</option>
-        <option value="manna">Manna AI</option>
-      </select>
-      <select id="content-language" style="padding:0.5rem">
-        <option value="">All languages</option>
-        <option value="en">English</option>
-        <option value="es">Español</option>
-        <option value="fr">Français</option>
-        <option value="de">Deutsch</option>
-        <option value="pt">Português</option>
-        <option value="tl">Tagalog</option>
-        <option value="id">Bahasa Indonesia</option>
-        <option value="ro">Română</option>
-      </select>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap" id="content-product-tabs">
+      <div class="empty">Loading repositories…</div>
     </div>
     <div id="content-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
-      <div class="empty">Loading videos…</div>
+      <div class="empty">Select a product above.</div>
     </div>
   </div>
 
