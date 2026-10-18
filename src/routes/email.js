@@ -39,19 +39,20 @@ router.get('/windows', (req, res) => {
 
 router.get('/campaigns', (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
-  const campaigns = req.tdb.emailCampaigns(limit).map(c => ({
+  const { product, language } = req.query;
+  const campaigns = req.tdb.emailCampaigns(limit, { product, language }).map(c => ({
     ...c,
     ...roi(c.cost_cents, c.revenue_cents),
   }));
   res.json({ ok: true, campaigns });
 });
 
-// POST /api/email/campaigns { name, provider? }
+// POST /api/email/campaigns { name, provider?, product?, language? }
 // Creates a campaign row so the customer can track it from day one
 // (onboarding step: "set up your first campaign"). Sends are logged
 // separately via /log-send.
 router.post('/campaigns', (req, res) => {
-  const { name, provider } = req.body || {};
+  const { name, provider, product, language } = req.body || {};
   const n = String(name || '').trim();
   if (n.length < 1 || n.length > 120) {
     return res.status(400).json({ ok: false, error: 'invalid_name' });
@@ -60,7 +61,10 @@ router.post('/campaigns', (req, res) => {
   if (provider !== undefined && provider !== null && String(provider).trim() !== '') {
     p = String(provider).trim().slice(0, 40);
   }
-  const r = req.tdb.createEmailCampaign({ name: n, provider: p });
+  const validProducts = ['faithshield', 'armorbearer', 'manna'];
+  const prod = validProducts.includes(product) ? product : 'manna';
+  const lang = String(language || 'en').slice(0, 5);
+  const r = req.tdb.createEmailCampaign({ name: n, provider: p, product: prod, language: lang });
   const created = req.tdb.emailCampaigns(200).find(c => c.id === Number(r.lastInsertRowid));
   res.status(201).json({ ok: true, campaign: created ? { ...created, ...roi(created.cost_cents, created.revenue_cents) } : null });
 });
@@ -117,11 +121,14 @@ router.post('/log-send', (req, res) => {
 // GET /api/email/templates — installed email templates for this tenant
 // (installed via onboarding; tenant-scoped by req.tdb)
 router.get('/templates', (req, res) => {
-  const rows = req.tdb.previewEmailTemplates().map(t => ({
+  const { product, language } = req.query;
+  const rows = req.tdb.previewEmailTemplates({ product, language }).map(t => ({
     template_key: t.template_key,
     name: t.name,
     subject: t.subject,
     category: t.category,
+    product: t.product,
+    language: t.language,
     is_starter: !!t.is_starter,
     preview: t.preview || '',
   }));
