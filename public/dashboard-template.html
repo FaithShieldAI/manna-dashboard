@@ -393,6 +393,19 @@
     </table></div>
   </div>
 
+  <!-- ============ EMAIL: VISUAL SEND LOG ============ -->
+  <!-- Michael 2026-10-18: every ad/email sent gets a visual log entry —
+       large readable thumbnail, timestamp, and who was targeted. -->
+  <div class="card" id="sendlog-card">
+    <div class="card-header"><div>
+      <div class="card-title">&#128247; Send Log</div>
+      <div class="card-sub">every send, visually — what went out, when, and to whom</div>
+    </div></div>
+    <div id="sendlog-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:4px 2px;">
+      <div class="empty-state"><div class="empty-icon">&#128247;</div><div class="empty-title">No sends logged yet</div></div>
+    </div>
+  </div>
+
   <!-- ============ EMAIL: TEMPLATES ============ -->
   <div class="card" id="templates-card">
     <div class="card-header"><div>
@@ -1090,6 +1103,41 @@ document.querySelectorAll('.range-tab').forEach(function(b){
       return '<tr><td class="subj">'+esc(c.name)+'</td><td>'+esc(c.provider||'\u2014')+'</td>'
         + '<td class="n">'+num(c.sent)+'</td><td class="n">'+num(c.opens)+'</td><td class="n">'+num(c.clicks)+'</td>'
         + '<td class="n">'+roiHtml+'</td></tr>';
+    }).join('');
+  }).catch(function(){});
+})();
+
+/* ---------- visual send log (Michael 2026-10-18) ---------- */
+(function(){
+  fetch('/api/email/campaigns?limit=50', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    var rows = (j && j.ok && j.campaigns) || [];
+    var grid = document.getElementById('sendlog-grid');
+    if (!grid) return;
+    var sent = rows.filter(function(c){ return (Number(c.sent) || 0) > 0 || c.sent_at; });
+    if (!sent.length) return; /* empty state already in HTML */
+    grid.innerHTML = sent.map(function(c){
+      var when = c.sent_at ? new Date(c.sent_at).toLocaleString() : (c.created_at ? new Date(c.created_at).toLocaleString() : '—');
+      var tpl = c.template_key ? esc(c.template_key) : '<span style="opacity:.5">no template logged</span>';
+      var tgt = c.target_description ? esc(c.target_description)
+        : (c.audience ? esc(c.audience) : '<span style="opacity:.5">target unknown</span>');
+      // 1" readable thumbnail: template preview if we have a key, else a styled placeholder
+      var thumb;
+      if (c.template_key) {
+        thumb = '<iframe src="/api/email/templates/' + encodeURIComponent(c.template_key) + '/preview" '
+          + 'style="width:200px;height:260px;border:1px solid var(--border);border-radius:8px;background:#fff;pointer-events:none;transform:scale(1);transform-origin:top left;" '
+          + 'loading="lazy" title="' + esc(c.template_key) + '"></iframe>';
+      } else {
+        thumb = '<div style="width:200px;height:260px;border:1px dashed var(--border);border-radius:8px;'
+          + 'display:flex;align-items:center;justify-content:center;opacity:.5;font-size:13px;">no preview</div>';
+      }
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--card-bg);">'
+        + thumb
+        + '<div style="margin-top:8px;font-weight:600;font-size:14px;">' + esc(c.name) + '</div>'
+        + '<div style="font-size:12px;opacity:.75;margin-top:2px;">&#128336; ' + esc(when) + '</div>'
+        + '<div style="font-size:12px;opacity:.75;">&#127919; ' + tgt + '</div>'
+        + '<div style="font-size:12px;opacity:.75;">&#9998; ' + tpl + '</div>'
+        + '<div style="font-size:12px;margin-top:4px;">' + num(c.sent) + ' sent &middot; ' + num(c.opens) + ' opens &middot; ' + num(c.clicks) + ' clicks</div>'
+        + '</div>';
     }).join('');
   }).catch(function(){});
 })();

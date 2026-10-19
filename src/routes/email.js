@@ -47,12 +47,12 @@ router.get('/campaigns', (req, res) => {
   res.json({ ok: true, campaigns });
 });
 
-// POST /api/email/campaigns { name, provider?, product?, language?, audience? }
+// POST /api/email/campaigns { name, provider?, product?, language?, audience?, template_key?, target_description? }
 // Creates a campaign row so the customer can track it from day one
 // (onboarding step: "set up your first campaign"). Sends are logged
 // separately via /log-send.
 router.post('/campaigns', (req, res) => {
-  const { name, provider, product, language, audience } = req.body || {};
+  const { name, provider, product, language, audience, template_key, target_description } = req.body || {};
   const n = String(name || '').trim();
   if (n.length < 1 || n.length > 120) {
     return res.status(400).json({ ok: false, error: 'invalid_name' });
@@ -64,7 +64,9 @@ router.post('/campaigns', (req, res) => {
   const validProducts = ['faithshield', 'armorbearer', 'manna'];
   const prod = validProducts.includes(product) ? product : 'manna';
   const lang = String(language || 'en').slice(0, 5);
-  const r = req.tdb.createEmailCampaign({ name: n, provider: p, product: prod, language: lang, audience });
+  const r = req.tdb.createEmailCampaign({ name: n, provider: p, product: prod, language: lang, audience,
+    template_key: String(template_key || '').slice(0, 80) || null,
+    target_description: String(target_description || '').slice(0, 200) || null });
   const created = req.tdb.emailCampaigns(200).find(c => c.id === Number(r.lastInsertRowid));
   res.status(201).json({ ok: true, campaign: created ? { ...created, ...roi(created.cost_cents, created.revenue_cents) } : null });
 });
@@ -161,6 +163,23 @@ router.get('/templates/:key', (req, res) => {
       is_starter: !!t.is_starter,
     },
   });
+});
+
+// GET /api/email/templates/:key/preview — renders the template HTML for the
+// visual send log thumbnail (Michael 2026-10-18).
+router.get('/templates/:key/preview', (req, res) => {
+  const key = String(req.params.key || '').slice(0, 80);
+  if (!/^[a-zA-Z0-9_-]+$/.test(key)) {
+    return res.status(400).send('invalid key');
+  }
+  const t = req.tdb.getEmailTemplate(key);
+  if (!t || !t.body_html) return res.status(404).send('not found');
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  // Strip scripts for safe iframe embedding; shrink to thumbnail scale via CSS.
+  const safe = String(t.body_html).replace(/<script[\s\S]*?<\/script>/gi, '');
+  res.send('<!DOCTYPE html><html><head><meta name="viewport" content="width=600">'
+    + '<style>body{margin:0;transform:scale(.33);transform-origin:top left;width:600px;}</style>'
+    + '</head><body>' + safe + '</body></html>');
 });
 
 module.exports = router;
