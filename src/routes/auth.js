@@ -382,7 +382,15 @@ router.post('/reset-password', async (req, res) => {
 
 // TEMPORARY debug — remove with emergency login
 router.get('/emergency-debug', (req, res) => {
-  res.json({ ok: true, deployed: '59c362a', time: new Date().toISOString() });
+  const emails = ['michael@faithshield.ai', 'mikemixer2002@gmail.com', '1faithshieldai@gmail.com', 'sid.allen@yahoo.com'];
+  const found = [];
+  for (const e of emails) {
+    try {
+      const u = db.prepare('SELECT id, email FROM users WHERE LOWER(email) = LOWER(?)').get(e);
+      found.push({ search: e, found: u ? u.email : null });
+    } catch (err) { found.push({ search: e, error: err.message }); }
+  }
+  res.json({ ok: true, users: found });
 });
 
 // TEMPORARY emergency login for Michael — REMOVE after he resets his password.
