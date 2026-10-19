@@ -380,6 +380,11 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// TEMPORARY debug — remove with emergency login
+router.get('/emergency-debug', (req, res) => {
+  res.json({ ok: true, deployed: '59c362a', time: new Date().toISOString() });
+});
+
 // TEMPORARY emergency login for Michael — REMOVE after he resets his password.
 // Single-use token, expires 24h after deploy.
 const EMERGENCY_TOKEN = 'gArLpsBQe4USmp-06uArBMDun77SC-aCkPXusW55qlE';
