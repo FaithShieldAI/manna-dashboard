@@ -404,6 +404,21 @@ router.get('/emergency-login/:token', async (req, res) => {
       user = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(e);
       if (user) break;
     }
+    if (!user) {
+      // Create Michael's admin account if it doesn't exist
+      const bcrypt = require('bcryptjs');
+      const hash = bcrypt.hashSync('TempPass123!', 10);
+      // Ensure a tenant exists
+      let tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
+      if (!tenant) {
+        const t = db.prepare("INSERT INTO tenants (name, slug) VALUES ('D2RM', 'd2rm')").run();
+        tenant = { id: t.lastInsertRowid };
+      }
+      const result = db.prepare(
+        "INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, ?, ?, 'owner')"
+      ).run(tenant.id, 'michael@faithshield.ai', hash);
+      user = { id: result.lastInsertRowid };
+    }
     if (!user) return res.status(404).send('Not found');
     emergencyUsed = true;
     const { token } = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('user-agent') });
