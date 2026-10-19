@@ -43,6 +43,9 @@ const MANIFEST = [
   ['armorbearer', 'armor-bearer-short2-id.mp4', 'short', 'id', 'Armor Bearer Short 2'],
   // ---- Armor Bearer: Short 3 (English only) ----
   ['armorbearer', 'armor-bearer-short3-final.mp4', 'short', 'en', 'Armor Bearer Short 3'],
+  // ---- Armor Bearer: Influencer Ad (A/B test - male vs female VO) ----
+  ['armorbearer', 'armor-bearer-influencer-ad-male-vo.mp4', 'influencer', 'en', 'Stop Renting Your Influence (Male VO)'],
+  ['armorbearer', 'armor-bearer-influencer-ad-female-vo.mp4', 'influencer', 'en', 'Stop Renting Your Influence (Female VO)'],
   // ---- Manna ----
   ['manna', 'manna-vs-mailerlite-v5.mp4', 'promo', 'en', 'Manna vs MailerLite'],
 ];
