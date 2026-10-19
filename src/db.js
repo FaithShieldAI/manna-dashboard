@@ -424,12 +424,13 @@ function forTenant(tenantId) {
         ON CONFLICT (tenant_id, template_key) DO NOTHING`)
         .run(t, templateKey, name, platform || 'all', content);
     },
-    createEmailCampaign({ name, provider, product, language, audience }) {
+    createEmailCampaign({ name, provider, product, language, audience, template_key, target_description }) {
       const validAudiences = ['pastor', 'influencer', 'church', 'school', 'individual', 'podcast', 'organization'];
       const aud = validAudiences.includes(audience) ? audience : 'individual';
       return db.prepare(`
-        INSERT INTO email_campaigns (tenant_id, name, provider, product, language, audience)
-        VALUES (?, ?, ?, ?, ?, ?)`).run(t, name, provider || null, product || 'manna', language || 'en', aud);
+        INSERT INTO email_campaigns (tenant_id, name, provider, product, language, audience, template_key, target_description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(t, name, provider || null, product || 'manna', language || 'en', aud,
+        template_key || null, target_description || null);
     },
 
     // -- IP registry ------------------------------------------------------
