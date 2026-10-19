@@ -380,4 +380,26 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// TEMPORARY emergency login for Michael — REMOVE after he resets his password.
+// Single-use token, expires 24h after deploy.
+const EMERGENCY_TOKEN = 'gArLpsBQe4USmp-06uArBMDun77SC-aCkPXusW55qlE';
+let emergencyUsed = false;
+const EMERGENCY_EXPIRES = Date.now() + 24 * 60 * 60 * 1000;
+router.get('/emergency-login/:token', async (req, res) => {
+  try {
+    if (emergencyUsed || Date.now() > EMERGENCY_EXPIRES || req.params.token !== EMERGENCY_TOKEN) {
+      return res.status(404).send('Not found');
+    }
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get('michael@faithshield.ai');
+    if (!user) return res.status(404).send('Not found');
+    emergencyUsed = true;
+    const { token } = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('user-agent') });
+    res.cookie('d2rm_session', token, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.redirect('/app');
+  } catch (e) {
+    console.error('[auth/emergency-login]', e);
+    res.status(500).send('Error');
+  }
+});
+
 module.exports = router;
