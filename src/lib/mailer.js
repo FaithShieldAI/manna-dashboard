@@ -7,8 +7,15 @@
  *
  * - SES mode: AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + SES_FROM_EMAIL
  *   are all set  -> sends via @aws-sdk/client-ses (SendEmail).
- * - Stub mode: any of the above missing -> logs + records to an in-memory
+ * - Brevo fallback mode: when SES is missing OR a SES send fails, and
+ *   BREVO_API_KEY is set -> sends via Brevo's transactional SMTP API.
+ *   (Brevo free tier: 300 emails/day — plenty for password resets.)
+ * - Stub mode: neither configured -> logs + records to an in-memory
  *   outbox (visible in dev/test). Zero emails sent.
+ *
+ * Provider chain in sendMail(): SES -> Brevo -> stub.
+ * A provider failure is logged loudly and the next provider is tried,
+ * so a single broken provider never silently eats transactional mail.
  *
  * API (all async):
  *   sendMail({ to, subject, text, html }) -> { ok, stubbed, id }
@@ -33,6 +40,19 @@ let sesClient = null; // lazily created, resettable for tests
 
 function isSesConfigured() {
   return config.sesConfigured === true;
+}
+
+function isBrevoConfigured() {
+  return Boolean(process.env.BREVO_API_KEY);
+}
+
+/** No secrets — safe to log at boot. e.g. "ses+brevo", "brevo", "stub". */
+function describeProvider() {
+  const parts = [];
+  if (isSesConfigured()) parts.push('ses');
+  if (isBrevoConfigured()) parts.push('brevo');
+  if (parts.length === 0) parts.push('stub');
+  return parts.join('+');
 }
 
 function getSesClient() {
@@ -102,11 +122,67 @@ function sendViaStub({ to, subject, text, html }) {
   return { ok: true, stubbed: true, id: msg.id };
 }
 
+/**
+ * Brevo transactional fallback (https://api.brevo.com/v3/smtp/email).
+ * Env: BREVO_API_KEY (required), BREVO_FROM_EMAIL (optional, falls back
+ * to SES_FROM_EMAIL). Free tier = 300 emails/day.
+ */
+async function sendViaBrevo({ to, subject, text, html }) {
+  const fromEmail = process.env.BREVO_FROM_EMAIL || config.sesFromEmail;
+  if (!fromEmail) throw new Error('[mailer:brevo] no from-address (set BREVO_FROM_EMAIL or SES_FROM_EMAIL)');
+  const payload = {
+    sender: { email: fromEmail },
+    to: [{ email: to }],
+    subject,
+    textContent: text || '',
+    ...(html ? { htmlContent: html } : {}),
+  };
+  const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => '');
+    throw new Error(`[mailer:brevo] HTTP ${resp.status}: ${String(errText).slice(0, 200)}`);
+  }
+  const data = await resp.json().catch(() => ({}));
+  const msg = recordOutbox({
+    id: data.messageId || `brevo-${Date.now()}`,
+    to, subject, text, html, stubbed: false,
+  });
+  // eslint-disable-next-line no-console
+  console.log(`[mailer:brevo] to=${to} subject="${subject}" messageId=${msg.id}`);
+  return { ok: true, stubbed: false, id: msg.id, provider: 'brevo' };
+}
+
 async function sendMail({ to, subject, text, html }) {
   if (!to || !subject) throw new Error('sendMail: to and subject are required');
+  // 1) SES when configured — but never let one broken provider eat the mail.
   if (isSesConfigured()) {
-    return sendViaSes({ to, subject, text, html });
+    try {
+      return await sendViaSes({ to, subject, text, html });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(`[mailer] SES send failed for to=${to}: ${e.message} — trying fallback`);
+    }
   }
+  // 2) Brevo transactional fallback when configured.
+  if (isBrevoConfigured()) {
+    try {
+      return await sendViaBrevo({ to, subject, text, html });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(`[mailer] Brevo send failed for to=${to}: ${e.message} — falling back to stub`);
+    }
+  }
+  // 3) Stub: logs + in-memory outbox, zero emails sent.
+  // eslint-disable-next-line no-console
+  console.error(`[mailer] NO working provider for to=${to} subject="${subject}" — stubbed (check SES/Brevo config)`);
   return sendViaStub({ to, subject, text, html });
 }
 
@@ -146,5 +222,7 @@ module.exports = {
   verificationEmail,
   passwordResetEmail,
   isSesConfigured,
+  isBrevoConfigured,
+  describeProvider,
   _resetSesClient,
 };
