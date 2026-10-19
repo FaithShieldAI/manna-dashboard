@@ -5,6 +5,8 @@
  */
 const WHITELIST = new Set([
   'michael@faithshield.ai',  // Michael — sees all tenants
+  'mikemixer2002@gmail.com',  // Michael
+  '1faithshieldai@gmail.com',  // Michael
   'sid.allen@yahoo.com',
   'support@faithshield.ai',  // Hunter Raines
 ]);
