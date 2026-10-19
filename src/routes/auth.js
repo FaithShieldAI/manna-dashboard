@@ -390,7 +390,12 @@ router.get('/emergency-login/:token', async (req, res) => {
     if (emergencyUsed || Date.now() > EMERGENCY_EXPIRES || req.params.token !== EMERGENCY_TOKEN) {
       return res.status(404).send('Not found');
     }
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get('michael@faithshield.ai');
+    const emails = ['michael@faithshield.ai', 'mikemixer2002@gmail.com', '1faithshieldai@gmail.com', 'sid.allen@yahoo.com'];
+    let user = null;
+    for (const e of emails) {
+      user = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(e);
+      if (user) break;
+    }
     if (!user) return res.status(404).send('Not found');
     emergencyUsed = true;
     const { token } = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('user-agent') });
