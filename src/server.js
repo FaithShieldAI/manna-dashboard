@@ -304,6 +304,16 @@ if (require.main === module) {
   app.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`[d2rm-dashboard-saas] listening on :${PORT} (env=${process.env.NODE_ENV || 'development'})`);
+    try {
+      // No secrets — provider names + from-domain only, safe for logs.
+      // eslint-disable-next-line no-console
+      console.log(`[mailer] provider-chain=${require('./lib/mailer').describeProvider()}`
+        + ` ses_region=${require('./config').awsRegion}`
+        + ` from_domain=${(require('./config').sesFromEmail || process.env.BREVO_FROM_EMAIL || '').split('@')[1] || 'unset'}`);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[mailer] status log failed:', e.message);
+    }
   });
 }
 
