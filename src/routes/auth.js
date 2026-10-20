@@ -480,12 +480,30 @@ router.post('/migration-import/:token', express.json({ limit: '50mb' }), (req, r
     
     const results = {};
     
-    // Tables to migrate (skip tenants, users, sessions - handle separately)
+    // Tables to migrate (skip sessions, password_reset_tokens, email_verification_tokens - ephemeral)
+    // content_items handled separately via video loader; users/tenants handled below
     const tables = {
       'email_campaigns': ['name', 'provider', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'sent_at', 'created_at', 'cost_cents', 'revenue_cents', 'product', 'language', 'audience', 'template_key', 'target_description'],
       'email_snapshots': ['window_key', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'warm_total', 'warm_by_lang_json', 'captured_at'],
       'goals': null, // get columns dynamically
       'site_visits': null,
+      'sites': null,
+      'site_daily_metrics': null,
+      'site_events': null,
+      'signup_events': null,
+      'funnels': null,
+      'funnel_stages': null,
+      'influencers': null,
+      'ip_assets': null,
+      'social_accounts': null,
+      'connected_socials': null,
+      'email_templates': null,
+      'social_templates': null,
+      'collection_jobs': null,
+      'tenant_onboarding': null,
+      'tenant_usage': null,
+      'content_items': null,
+      'content_postings': null,
     };
     
     for (const [table, cols] of Object.entries(tables)) {

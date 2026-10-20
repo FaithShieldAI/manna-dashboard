@@ -19,7 +19,24 @@
     <label data-i18n="auth.shared.label_email" for="email">Email</label>
     <input type="email" id="email" name="email" required autocomplete="username">
     <label data-i18n="auth.shared.label_password" for="password">Password</label>
-    <input type="password" id="password" name="password" required autocomplete="current-password">
+    <div style="position:relative">
+      <input type="password" id="password" name="password" required autocomplete="current-password" style="padding-right:40px;width:100%;box-sizing:border-box">
+      <button type="button" id="toggle-password" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:4px;color:#888">👁</button>
+    </div>
+    <script>
+    (function(){
+      var btn = document.getElementById('toggle-password');
+      var pw = document.getElementById('password');
+      if (btn && pw) {
+        btn.addEventListener('click', function(){
+          var show = pw.type === 'password';
+          pw.type = show ? 'text' : 'password';
+          btn.textContent = show ? '🙈' : '👁';
+          btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+      }
+    })();
+    </script>
     <button data-i18n="auth.login.submit" class="primary" type="submit" id="submit">Log in</button>
   </form>
   <div class="links">
