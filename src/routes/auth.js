@@ -430,4 +430,36 @@ router.get('/emergency-login/:token', async (req, res) => {
   }
 });
 
+// TEMPORARY: export tenant data for migration — REMOVE after migration
+router.get('/migration-export/:token', (req, res) => {
+  try {
+    if (req.params.token !== EMERGENCY_TOKEN) return res.status(404).send('Not found');
+    
+    const tables = ['tenants', 'users', 'sites', 'site_daily_metrics', 'site_events',
+      'site_visits', 'signup_events', 'email_snapshots', 'email_campaigns',
+      'funnels', 'funnel_stages', 'influencers', 'ip_assets', 'social_accounts',
+      'goals', 'tenant_usage', 'collection_jobs', 'tenant_onboarding',
+      'connected_socials', 'email_templates', 'social_templates',
+      'content_items', 'content_postings'];
+    
+    const result = {};
+    for (const t of tables) {
+      try {
+        // Check if table exists
+        const exists = db.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+        ).get(t);
+        if (!exists) { result[t] = { skipped: 'no table' }; continue; }
+        const rows = db.prepare(`SELECT * FROM ${t}`).all();
+        result[t] = rows;
+      } catch (e) {
+        result[t] = { error: e.message };
+      }
+    }
+    res.json({ ok: true, exported_at: new Date().toISOString(), data: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 module.exports = router;
