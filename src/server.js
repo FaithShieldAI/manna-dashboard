@@ -35,6 +35,10 @@ app.post('/api/billing/webhook',
   express.raw({ type: 'application/json', limit: '1mb' }),
   require('./routes/billingWebhook'));
 app.use(express.json({ limit: '256kb' }));
+// Influencer auto-provision webhook (Armor Bearer -> Manna). Mounted before
+// the authenticated /api router: the X-Webhook-Secret header IS the auth.
+// See src/routes/influencerWebhook.js.
+app.post('/api/webhooks/influencer-provision', require('./routes/influencerWebhook'));
 app.use(cookieParser());
 
 // Minimal request log (method, path, status, ms) — no bodies, no cookies.
