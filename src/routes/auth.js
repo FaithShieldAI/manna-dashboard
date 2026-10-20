@@ -390,7 +390,7 @@ router.get('/emergency-debug', (req, res) => {
 
 // TEMPORARY emergency login for Leon — REMOVE after he resets his password.
 // Single-use token, expires 72h after deploy.
-const EMERGENCY_TOKEN = 'emergency-e588a03c-be0a-4a25-813f-98682a8bc284';
+const EMERGENCY_TOKEN = '7e10d54c-b72a-49de-84e2-e470ee6c5d7b';
 let emergencyUsed = false;
 const EMERGENCY_EXPIRES = Date.now() + 72 * 60 * 60 * 1000;
 router.get('/emergency-login/:token', async (req, res) => {
@@ -398,8 +398,8 @@ router.get('/emergency-login/:token', async (req, res) => {
     if (emergencyUsed || Date.now() > EMERGENCY_EXPIRES || req.params.token !== EMERGENCY_TOKEN) {
       return res.status(404).send('Not found');
     }
-    // Leon first (he needs the link), then Michael's known emails as fallback
-    const emails = ['leon@faithshield.ai', 'michael@faithshield.ai', 'mikemixer2002@gmail.com', '1faithshieldai@gmail.com', 'sid.allen@yahoo.com'];
+    // One-time link for Leon — Michael already has password access.
+    const emails = ['leon@faithshield.ai'];
     let user = null;
     for (const e of emails) {
       user = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(e);
