@@ -546,4 +546,68 @@ router.post('/migration-import/:token', express.json({ limit: '50mb' }), (req, r
   }
 });
 
+// TEMPORARY: cleanup duplicates and ensure users — REMOVE after migration
+router.post('/migration-cleanup/:token', express.json(), (req, res) => {
+  try {
+    if (req.params.token !== EMERGENCY_TOKEN) return res.status(404).send('Not found');
+    
+    const results = {};
+    
+    // Delete duplicate campaigns (keep lowest IDs)
+    try {
+      const dupes = db.prepare(`
+        DELETE FROM email_campaigns WHERE id IN (
+          SELECT id FROM email_campaigns 
+          WHERE (name, sent) IN (
+            SELECT name, sent FROM email_campaigns 
+            GROUP BY name, sent HAVING COUNT(*) > 1
+          )
+          AND id NOT IN (
+            SELECT MIN(id) FROM email_campaigns GROUP BY name, sent
+          )
+        )
+      `).run();
+      results['deduped_campaigns'] = { deleted: dupes.changes };
+    } catch (e) {
+      results['deduped_campaigns'] = { error: e.message };
+    }
+    
+    // Ensure Michael exists
+    try {
+      const michael = db.prepare("SELECT id FROM users WHERE LOWER(email) = 'michael@faithshield.ai'").get();
+      if (!michael) {
+        const tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
+        const bcrypt = require('bcryptjs');
+        const hash = bcrypt.hashSync('TempPass123!', 10);
+        db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, 'michael@faithshield.ai', ?, 'owner')").run(tenant.id, hash);
+        results['michael'] = { created: true };
+      } else {
+        results['michael'] = { exists: true };
+      }
+    } catch (e) {
+      results['michael'] = { error: e.message };
+    }
+    
+    // Ensure Leon exists
+    try {
+      const leon = db.prepare("SELECT id FROM users WHERE LOWER(email) = 'leon@faithshield.ai'").get();
+      if (!leon) {
+        const tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
+        const bcrypt = require('bcryptjs');
+        const hash = bcrypt.hashSync('TempPass123!', 10);
+        db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, 'leon@faithshield.ai', ?, 'owner')").run(tenant.id, hash);
+        results['leon'] = { created: true };
+      } else {
+        results['leon'] = { exists: true };
+      }
+    } catch (e) {
+      results['leon'] = { error: e.message };
+    }
+    
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 module.exports = router;
