@@ -445,7 +445,6 @@ router.get('/migration-export/:token', (req, res) => {
     const result = {};
     for (const t of tables) {
       try {
-        // Check if table exists
         const exists = db.prepare(
           "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
         ).get(t);
@@ -457,6 +456,91 @@ router.get('/migration-export/:token', (req, res) => {
       }
     }
     res.json({ ok: true, exported_at: new Date().toISOString(), data: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// TEMPORARY: import migrated data — REMOVE after migration
+router.post('/migration-import/:token', express.json({ limit: '50mb' }), (req, res) => {
+  try {
+    if (req.params.token !== EMERGENCY_TOKEN) return res.status(404).send('Not found');
+    
+    const importData = req.body.data;
+    if (!importData) return res.status(400).json({ ok: false, error: 'No data' });
+    
+    // Get or create the production tenant
+    let tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
+    if (!tenant) {
+      const t = db.prepare("INSERT INTO tenants (name, slug) VALUES ('D2RM', 'd2rm')").run();
+      tenant = { id: t.lastInsertRowid };
+    }
+    const newTenantId = tenant.id;
+    const oldTenantId = 1; // staging tenant id
+    
+    const results = {};
+    
+    // Tables to migrate (skip tenants, users, sessions - handle separately)
+    const tables = {
+      'email_campaigns': ['name', 'provider', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'sent_at', 'created_at', 'cost_cents', 'revenue_cents', 'product', 'language', 'audience', 'template_key', 'target_description'],
+      'email_snapshots': ['window_key', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'warm_total', 'warm_by_lang_json', 'captured_at'],
+      'goals': null, // get columns dynamically
+      'site_visits': null,
+    };
+    
+    for (const [table, cols] of Object.entries(tables)) {
+      try {
+        const rows = importData[table];
+        if (!rows || !Array.isArray(rows) || rows.length === 0) {
+          results[table] = { skipped: 'no data' };
+          continue;
+        }
+        
+        // Get actual columns from the table
+        const tableInfo = db.prepare(`PRAGMA table_info(${table})`).all();
+        const actualCols = tableInfo.map(c => c.name).filter(c => c !== 'id');
+        
+        let imported = 0;
+        for (const row of rows) {
+          // Build insert with tenant_id mapped
+          const insertCols = [];
+          const values = [];
+          for (const col of actualCols) {
+            if (col === 'tenant_id') {
+              insertCols.push(col);
+              values.push(newTenantId);
+            } else if (row[col] !== undefined) {
+              insertCols.push(col);
+              values.push(row[col]);
+            }
+          }
+          if (insertCols.length === 0) continue;
+          const placeholders = insertCols.map(() => '?').join(',');
+          db.prepare(`INSERT INTO ${table} (${insertCols.join(',')}) VALUES (${placeholders})`).run(...values);
+          imported++;
+        }
+        results[table] = { imported };
+      } catch (e) {
+        results[table] = { error: e.message };
+      }
+    }
+    
+    // Ensure Leon has an account
+    try {
+      const leonExists = db.prepare("SELECT id FROM users WHERE LOWER(email) = 'leon@faithshield.ai'").get();
+      if (!leonExists) {
+        const bcrypt = require('bcryptjs');
+        const hash = bcrypt.hashSync('TempPass123!', 10);
+        db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, 'leon@faithshield.ai', ?, 'owner')").run(newTenantId, hash);
+        results['leon_user'] = { created: true };
+      } else {
+        results['leon_user'] = { exists: true };
+      }
+    } catch (e) {
+      results['leon_user'] = { error: e.message };
+    }
+    
+    res.json({ ok: true, tenant_id: newTenantId, results });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
