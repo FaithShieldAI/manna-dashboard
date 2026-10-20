@@ -230,7 +230,7 @@ function forTenant(tenantId) {
 
     // -- influencers ------------------------------------------------------
     influencers({ category, status, limit = 200 } = {}) {
-      let sql = 'SELECT id, handle, platform, email, tier, category, status, notes, source, emails_sent, emails_opened, emails_clicked, last_emailed_at, created_at FROM influencers WHERE tenant_id = ?';
+      let sql = 'SELECT id, handle, platform, email, tier, category, status, notes, source, emails_queued, emails_sent, emails_opened, emails_clicked, last_emailed_at, created_at FROM influencers WHERE tenant_id = ?';
       const params = [t];
       if (category) { sql += ' AND category = ?'; params.push(category); }
       if (status) { sql += ' AND status = ?'; params.push(status); }
