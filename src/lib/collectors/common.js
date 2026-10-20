@@ -77,4 +77,26 @@ function visibleText(html) {
   return String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');
 }
 
-module.exports = { validEmail, extractEmails, fetchText, visibleText, sleep, UA };
+/**
+ * Strip already-known emails from an email list.
+ *
+ * `known` accepts a Set of lowercased emails (e.g. `tdb.influencerEmails()`)
+ * or a plain array — it is normalized to a Set internally.
+ *
+ * NEW-unique fix (2026-10-20, worker D): collectors call this on each
+ * candidate lead BEFORE the collection cap is applied, so leads whose
+ * emails are all already in the tenant's store never consume cap slots
+ * and the cap fills with NEW uniques. (Previously collection filled the
+ * cap with total-found, then routes/leads.js ingestLeads deduped by email —
+ * so known emails silently wasted most of the cap.)
+ */
+function excludeKnownEmails(emails, known) {
+  const list = Array.isArray(emails) ? emails : [];
+  const set = known instanceof Set
+    ? known
+    : new Set((Array.isArray(known) ? known : []).map(e => String(e || '').toLowerCase()));
+  if (set.size === 0) return list.slice();
+  return list.filter(e => !set.has(String(e || '').toLowerCase()));
+}
+
+module.exports = { validEmail, extractEmails, fetchText, visibleText, sleep, UA, excludeKnownEmails };

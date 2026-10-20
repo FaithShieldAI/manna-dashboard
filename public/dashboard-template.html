@@ -247,6 +247,7 @@
   <nav class="main-tabs" id="main-tabs">
     <button data-i18n="dash.tabs.overview" class="main-tab active" data-tab="overview">&#128202; Overview</button>
     <button data-i18n="dash.tabs.email" class="main-tab" data-tab="email">&#128231; Email</button>
+    <button class="main-tab" data-tab="drips">&#128260; Drips</button>
     <button data-i18n="dash.tabs.warm_leads" class="main-tab" data-tab="warm">&#128293; Warm Leads</button>
     <button data-i18n="dash.tabs.leads" class="main-tab" data-tab="leads">&#127919; Leads</button>
     <button data-i18n="dash.tabs.conversions" class="main-tab" data-tab="conversions">&#9989; Conversions</button>
@@ -255,6 +256,7 @@
     <button data-i18n="dash.tabs.vetted" class="main-tab" data-tab="vetted">&#9989; Vetted</button>
     <button data-i18n="dash.tabs.social" class="main-tab" data-tab="social">&#128248; Social</button>
     <button class="main-tab" data-tab="content">&#127916; Content Library</button>
+    <button class="main-tab" data-tab="engagement">&#11088; Engagement</button>
     <button data-i18n="dash.tabs.ip_registry" class="main-tab" data-tab="ipregistry">&#128274; IP Registry</button>
     <button data-i18n="dash.tabs.billing" class="main-tab" data-tab="billing">&#128179; Billing</button>
   </nav>
@@ -421,6 +423,11 @@
   </div>
 
   </div><!-- /panel-email -->
+
+  <!-- ============ TAB: DRIPS ============ -->
+  <div class="main-tab-panel" id="panel-drips" style="display:none">
+    <div id="drips-app"></div>
+  </div><!-- /panel-drips -->
 
   <!-- ============ TAB: WARM LEADS ============ -->
   <div class="main-tab-panel" id="panel-warm" style="display:none">
@@ -651,6 +658,11 @@
   </div>
 
   </div><!-- /panel-content -->
+
+  <!-- ============ TAB: ENGAGEMENT ============ -->
+  <div class="main-tab-panel" id="panel-engagement" style="display:none">
+    <div id="engagement-panel"></div>
+  </div><!-- /panel-engagement -->
 
   <!-- ============ TAB: IP REGISTRY ============ -->
   <div class="main-tab-panel" id="panel-ipregistry" style="display:none">
@@ -1971,5 +1983,17 @@ document.querySelectorAll('.main-tab').forEach(function(b){
 });
 </script>
 <script src="/js/content.js"></script>
+<script src="/js/drips.js"></script>
+<script src="/js/engagement.js"></script>
+<script>
+// Auto-init tab modules when their panels are shown
+document.querySelectorAll('.main-tab').forEach(function(b){
+  b.addEventListener('click', function(){
+    var tab = b.getAttribute('data-tab');
+    if (tab === 'drips' && window.D2RMDrips) window.D2RMDrips.init('drips-app');
+    if (tab === 'engagement' && window.EngagementUI) window.EngagementUI.init('engagement-panel');
+  });
+});
+</script>
 </body>
 </html>

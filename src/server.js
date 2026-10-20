@@ -185,6 +185,8 @@ api.use('/overview', require('./routes/overview'));
 api.use('/content', require('./routes/content'));
 api.use('/sites', require('./routes/sites'));
 api.use('/email', require('./routes/email'));
+api.use('/drips', require('./routes/drips'));
+api.use('/engagement', require('./routes/engagement'));
 api.use('/funnels', require('./routes/funnels'));
 api.use('/influencers', require('./routes/influencers'));
 api.use('/vetted', require('./routes/vetted'));

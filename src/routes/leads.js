@@ -125,13 +125,19 @@ async function runJob(tdb, job) {
 
     let leads;
     let parsed = null;
+    // NEW-unique fix (2026-10-20, worker D): the tenant's already-known
+    // emails are passed into each collector so they are EXCLUDED from the
+    // candidate set BEFORE the collection cap is applied — the cap fills
+    // with NEW uniques instead of total-found that later dedupes down to
+    // nothing. ingestLeads keeps its own dedupe as a safety net.
+    const known = tdb.influencerEmails();
     if (job.source === 'youtube') {
-      leads = await youtube.collect({ keywords, maxPerKeyword: 8, maxLeads: maxResults, noDelay: false });
+      leads = await youtube.collect({ keywords, maxPerKeyword: 8, maxLeads: maxResults, noDelay: false, knownEmails: known });
     } else if (job.source === 'weblist') {
-      const raw = await weblist.collect({ seeds });
+      const raw = await weblist.collect({ seeds, knownEmails: known });
       leads = raw.slice(0, maxResults);
     } else if (job.source === 'aisearch') {
-      const res = await aisearch.collect({ query: job.query_text, maxLeads: maxResults, noDelay: false });
+      const res = await aisearch.collect({ query: job.query_text, maxLeads: maxResults, noDelay: false, knownEmails: known });
       leads = res.leads;
       parsed = res.parsed;
     } else {
