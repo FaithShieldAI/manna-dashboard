@@ -23,7 +23,7 @@
  * collect() is injectable (opts.fetch) so tests run without network.
  */
 
-const { fetchText, extractEmails, visibleText, sleep } = require('./common');
+const { fetchText, extractEmails, visibleText, sleep, excludeKnownEmails } = require('./common');
 
 const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = process.env.ASSISTANT_MODEL || 'claude-haiku-4-5';
@@ -281,10 +281,10 @@ async function enrichSite(site, opts = {}) {
 
 /**
  * Run an AI-search collection pass.
- * opts: { query, parsed, maxLeads=25, onProgress, noDelay, fetch, skipClaude }
+ * opts: { query, parsed, maxLeads=25, onProgress, noDelay, fetch, skipClaude, knownEmails }
  * Returns { leads, parsed }.
  */
-async function collect({ query, parsed, maxLeads = 25, onProgress, noDelay = false, fetch, skipClaude } = {}) {
+async function collect({ query, parsed, maxLeads = 25, onProgress, noDelay = false, fetch, skipClaude, knownEmails } = {}) {
   const p = parsed || await parseQuery(query, { fetch, skipClaude });
   const base = [p.business_type, p.location].filter(Boolean).join(' ').trim() || String(query || '').trim();
   const queries = [base, `${base} contact email`.trim()].slice(0, MAX_SEARCH_QUERIES);
@@ -316,7 +316,13 @@ async function collect({ query, parsed, maxLeads = 25, onProgress, noDelay = fal
   for (let i = 0; i < sites.length && leads.length < cap; i++) {
     progress('enrich', i, sites.length, `Checking ${sites[i].host}…`);
     const lead = await enrichSite(sites[i], { fetch });
-    if (lead) leads.push({ ...lead, location: p.location, source: 'ai-search' });
+    if (lead) {
+      // NEW-unique fix (2026-10-20): drop already-known emails BEFORE the
+      // cap is applied, so the cap fills with NEW uniques instead of
+      // total-found that later dedupes down to nothing.
+      const fresh = excludeKnownEmails(lead.emails, knownEmails);
+      if (fresh.length > 0) leads.push({ ...lead, emails: fresh, location: p.location, source: 'ai-search' });
+    }
     if (!noDelay) await sleep(SITE_DELAY_MS + Math.random() * 400);
   }
   progress('done', sites.length, sites.length,

@@ -7,9 +7,13 @@
  *        limits: { projects, emails_per_month, price_label },
  *        usage:  { projects_used, emails_sent_this_month, emails_remaining },
  *        stripe: { configured, has_subscription } }
- * POST /api/billing/checkout  { plan: 'starter'|'pro' }
+ * POST /api/billing/checkout  { plan: 'starter'|'pro'|'heavy10'|'heavy30' }
  *   -> { ok, url }  (Stripe Checkout Session URL; 400 on bad plan,
  *                    503 when Stripe is not configured)
+ *   Checkout uses the SALE Stripe price when its env var is set —
+ *   see priceIdForPlan() in src/lib/stripe.js.
+ *   'influencer' (free for life, assigned manually/API-side) and 'agency'
+ *   (invite-only) are never purchasable self-serve.
  * POST /api/billing/portal
  *   -> { ok, url }  (Stripe Customer Portal session; 404 when the tenant
  *                    has no Stripe customer yet)
@@ -18,7 +22,7 @@
  * it must skip auth/CSRF and receive the raw body for signature verification.
  */
 const express = require('express');
-const { getPlan, PUBLIC_PLANS } = require('../lib/plans');
+const { getPlan, PUBLIC_PLANS, hasFeature } = require('../lib/plans');
 const { currentMonthKey } = require('../lib/plans');
 const mailer = require('../lib/mailer');
 const stripeLib = require('../lib/stripe');
@@ -51,6 +55,11 @@ router.get('/', (req, res) => {
       special_offer: !!p.special_offer,
       projects: p.projects,
       emails_per_month: p.emails_per_month,
+      videos_per_month: p.videos_per_month || null,
+      // Feature gates (see hasFeature() in src/lib/plans.js) so the UI can
+      // show/hide video + social features per plan without hardcoding keys.
+      has_video: hasFeature(p.key, 'video'),
+      has_social: hasFeature(p.key, 'social'),
     })),
     tagline: 'Big agency data, little guy money.',
     subscription_status: req.tenant.subscription_status,
@@ -79,7 +88,12 @@ router.get('/', (req, res) => {
 /**
  * Create a Stripe Checkout Session for a plan upgrade/downgrade.
  * Price IDs are server-side only (env vars) — the client only names the plan.
+ * Purchasable plans are derived from src/lib/plans.js (public + priced > 0),
+ * so a new advertised tier is sellable without touching this route.
+ * 'influencer' (price_cents 0) and 'agency' (price_cents null) can never
+ * be purchased self-serve.
  */
+const PURCHASABLE_PLANS = PUBLIC_PLANS.filter(p => p.price_cents != null && p.price_cents > 0).map(p => p.key);
 router.post('/checkout', async (req, res) => {
   try {
     const stripe = stripeLib.getStripe();
@@ -87,9 +101,10 @@ router.post('/checkout', async (req, res) => {
       return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
     }
     const planKey = String((req.body && req.body.plan) || '').toLowerCase();
-    if (planKey !== 'starter' && planKey !== 'pro') {
-      return res.status(400).json({ ok: false, error: 'invalid_plan', valid: ['starter', 'pro'] });
+    if (!PURCHASABLE_PLANS.includes(planKey)) {
+      return res.status(400).json({ ok: false, error: 'invalid_plan', valid: PURCHASABLE_PLANS });
     }
+    // priceIdForPlan prefers the SALE price ID when its env var is set.
     const priceId = stripeLib.priceIdForPlan(planKey);
     if (!priceId) {
       return res.status(503).json({ ok: false, error: 'price_not_configured', plan: planKey });

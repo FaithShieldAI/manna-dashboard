@@ -11,7 +11,7 @@
  * Returns: [{ url, title, emails: [...] }]
  */
 
-const { fetchText, extractEmails, visibleText, sleep } = require('./common');
+const { fetchText, extractEmails, visibleText, sleep, excludeKnownEmails } = require('./common');
 
 function pageTitle(html) {
   if (!html) return '';
@@ -42,15 +42,19 @@ async function collectUrl(url, opts = {}) {
 
 /**
  * Run a seed-URL collection pass.
- * opts: { seeds=[...], noDelay, fetch, onProgress }
+ * opts: { seeds=[...], noDelay, fetch, onProgress, knownEmails }
  */
-async function collect({ seeds, onProgress, ...opts } = {}) {
+async function collect({ seeds, onProgress, knownEmails, ...opts } = {}) {
   const urls = [...new Set((seeds || []).map(normalizeUrl).filter(Boolean))].slice(0, 25); // cap 25/job
   const leads = [];
   for (let i = 0; i < urls.length; i++) {
     if (onProgress) onProgress({ stage: 'fetch', url: urls[i], done: i, total: urls.length });
     const lead = await collectUrl(urls[i], opts);
-    if (lead.emails.length > 0) leads.push(lead);
+    // NEW-unique fix (2026-10-20): drop already-known emails from the
+    // candidate set BEFORE the downstream cap is applied, so the cap
+    // fills with NEW uniques.
+    const fresh = excludeKnownEmails(lead.emails, knownEmails);
+    if (fresh.length > 0) leads.push({ ...lead, emails: fresh });
     if (!opts.noDelay) await sleep(900 + Math.random() * 700);
     if (onProgress) onProgress({ stage: 'fetch', url: urls[i], done: i + 1, total: urls.length });
   }

@@ -7,9 +7,18 @@
  * stripe_not_configured instead of crashing).
  *
  * Price IDs come from env vars — never from client input:
- *   STRIPE_PRICE_STARTER  -> plans.js 'starter'
- *   STRIPE_PRICE_PRO      -> plans.js 'pro'
- * ('agency' is invite-only and can never be purchased self-serve.)
+ *   STRIPE_PRICE_STARTER (+ _SALE)  -> plans.js 'starter' ($29.99 sale / $49.99 regular)
+ *   STRIPE_PRICE_PRO (+ _SALE)      -> plans.js 'pro' ($69.99 sale / $99.99 regular)
+ *   STRIPE_PRICE_HEAVY10 (+ _SALE)  -> plans.js 'heavy10' ($99/mo)
+ *   STRIPE_PRICE_HEAVY30 (+ _SALE)  -> plans.js 'heavy30' ($189/mo)
+ * ('agency' is invite-only and 'influencer' is a free-for-life perk — both
+ *  can never be purchased self-serve, so they have no price ID mapping.)
+ *
+ * When a SALE price env var is set, it takes precedence over the regular
+ * price ID for checkout — sale prices map back to the same plan key.
+ * Create the sale Price objects in the Stripe Dashboard and set the
+ * corresponding _SALE env var to put a tier on sale; unset it to sell at
+ * the regular price.
  */
 
 let stripeInstance = null;
@@ -30,19 +39,43 @@ function webhookSecret() {
   return process.env.STRIPE_WEBHOOK_SECRET || null;
 }
 
-/** Map a Stripe price ID back to our plan key. Returns null if unknown. */
+/**
+ * Map a Stripe price ID back to our plan key — including SALE price IDs.
+ * Returns null if unknown.
+ */
 function planForPriceId(priceId) {
   if (!priceId) return null;
-  if (priceId === process.env.STRIPE_PRICE_STARTER) return 'starter';
-  if (priceId === process.env.STRIPE_PRICE_PRO) return 'pro';
+  const mapping = {
+    starter: [process.env.STRIPE_PRICE_STARTER, process.env.STRIPE_PRICE_STARTER_SALE],
+    pro: [process.env.STRIPE_PRICE_PRO, process.env.STRIPE_PRICE_PRO_SALE],
+    heavy10: [process.env.STRIPE_PRICE_HEAVY10, process.env.STRIPE_PRICE_HEAVY10_SALE],
+    heavy30: [process.env.STRIPE_PRICE_HEAVY30, process.env.STRIPE_PRICE_HEAVY30_SALE],
+  };
+  for (const [planKey, ids] of Object.entries(mapping)) {
+    if (ids.some(id => id && id === priceId)) return planKey;
+  }
   return null;
 }
 
-/** Our plan key -> configured Stripe price ID. Null if unconfigured. */
+/**
+ * Our plan key -> configured Stripe price ID.
+ * Prefers the SALE price ID when set; falls back to the regular price ID.
+ * Null if unconfigured.
+ */
 function priceIdForPlan(planKey) {
-  if (planKey === 'starter') return process.env.STRIPE_PRICE_STARTER || null;
-  if (planKey === 'pro') return process.env.STRIPE_PRICE_PRO || null;
-  return null; // agency and anything else: not purchasable self-serve
+  const regular = {
+    starter: process.env.STRIPE_PRICE_STARTER,
+    pro: process.env.STRIPE_PRICE_PRO,
+    heavy10: process.env.STRIPE_PRICE_HEAVY10,
+    heavy30: process.env.STRIPE_PRICE_HEAVY30,
+  }[planKey] || null;
+  const sale = {
+    starter: process.env.STRIPE_PRICE_STARTER_SALE,
+    pro: process.env.STRIPE_PRICE_PRO_SALE,
+    heavy10: process.env.STRIPE_PRICE_HEAVY10_SALE,
+    heavy30: process.env.STRIPE_PRICE_HEAVY30_SALE,
+  }[planKey] || null;
+  return sale || regular || null; // agency and anything else: not purchasable self-serve
 }
 
 module.exports = { getStripe, isConfigured, webhookSecret, planForPriceId, priceIdForPlan };

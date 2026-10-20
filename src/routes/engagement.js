@@ -1,0 +1,257 @@
+'use strict';
+/**
+ * Engagement API — Star of the Day, A/B testing, social posting tracking.
+ *
+ * GET  /api/engagement/star            (today's star: computed + snapshotted)
+ * POST /api/engagement/star/:id/adapt  {name?} (duplicate the winning
+ *                                       campaign as a new draft for the
+ *                                       user to edit)
+ * POST /api/engagement/ab              {name, variant_a_template,
+ *                                       variant_b_template, split_pct}
+ * GET  /api/engagement/ab
+ * POST /api/engagement/ab/:id/winner   {variant: 'a'|'b'}
+ * POST /api/engagement/social          {platform, post_url, content_item_id?,
+ *                                       posted_at?, likes?, shares?,
+ *                                       comments?, clicks?}
+ * GET  /api/engagement/social
+ * PUT  /api/engagement/social/:id/metrics {likes, shares, comments, clicks}
+ *
+ * Everything is tenant-scoped via req.tenant.id (never db-wide).
+ * Mounted by the coordinator (server.js) — do NOT self-mount here.
+ */
+const express = require('express');
+const { db } = require('../db');
+
+const router = express.Router();
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+const CAMPAIGN_COLS = 'id, name, provider, product, language, audience, template_key, target_description, sent, opens, clicks, unsubs, bounces, sent_at';
+
+function campaignById(t, id) {
+  return db.prepare(
+    `SELECT ${CAMPAIGN_COLS} FROM email_campaigns WHERE tenant_id = ? AND id = ?`
+  ).get(t, id);
+}
+
+// --- Star of the Day -------------------------------------------------------
+
+router.get('/star', (req, res) => {
+  const t = req.tenant.id;
+  const date = todayKey();
+  let star = db.prepare(
+    'SELECT id, date, campaign_id, score, created_at FROM star_of_day WHERE tenant_id = ? AND date = ?'
+  ).get(t, date);
+  if (!star) {
+    // Score = clicks*3 + opens (Michael's engagement weighting); only
+    // campaigns that actually sent anything qualify.
+    const best = db.prepare(
+      `SELECT ${CAMPAIGN_COLS} FROM email_campaigns
+       WHERE tenant_id = ? AND sent > 0
+       ORDER BY (clicks * 3 + opens) DESC, id DESC LIMIT 1`
+    ).get(t);
+    if (!best) {
+      return res.json({ ok: true, star: null, reason: 'no_campaigns_with_sends' });
+    }
+    const score = (best.clicks || 0) * 3 + (best.opens || 0);
+    const r = db.prepare(
+      'INSERT INTO star_of_day (tenant_id, date, campaign_id, score) VALUES (?, ?, ?, ?)'
+    ).run(t, date, best.id, score);
+    star = {
+      id: Number(r.lastInsertRowid),
+      date,
+      campaign_id: best.id,
+      score,
+      created_at: new Date().toISOString(),
+      campaign: best,
+    };
+    return res.json({ ok: true, star, computed: true });
+  }
+  star.campaign = campaignById(t, star.campaign_id);
+  res.json({ ok: true, star, computed: false });
+});
+
+// POST /star/:id/adapt {name?} — duplicate-and-adapt: copies the star's
+// campaign row as a NEW draft (zeroed counters, no sent_at) so the user
+// edits it before sending. (Michael 2026-10-16: user EDITS before send.)
+router.post('/star/:id/adapt', (req, res) => {
+  const t = req.tenant.id;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+  const star = db.prepare(
+    'SELECT campaign_id FROM star_of_day WHERE tenant_id = ? AND id = ?'
+  ).get(t, id);
+  if (!star || !star.campaign_id) {
+    return res.status(404).json({ ok: false, error: 'star_not_found' });
+  }
+  const src = db.prepare(
+    `SELECT name, provider, product, language, audience, template_key, target_description
+     FROM email_campaigns WHERE tenant_id = ? AND id = ?`
+  ).get(t, star.campaign_id);
+  if (!src) {
+    return res.status(404).json({ ok: false, error: 'campaign_not_found' });
+  }
+  const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
+  const newName = name || `${String(src.name || '').slice(0, 108)} (adapted)`;
+  const r = db.prepare(
+    `INSERT INTO email_campaigns
+       (tenant_id, name, provider, product, language, audience, template_key, target_description,
+        sent, opens, clicks, unsubs, bounces, sent_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, NULL)`
+  ).run(t, newName, src.provider, src.product, src.language, src.audience,
+    src.template_key, src.target_description);
+  res.status(201).json({ ok: true, campaign: campaignById(t, Number(r.lastInsertRowid)) });
+});
+
+// --- A/B testing ------------------------------------------------------------
+
+router.post('/ab', (req, res) => {
+  const t = req.tenant.id;
+  const { name, variant_a_template, variant_b_template, split_pct } = req.body || {};
+  const n = String(name || '').trim();
+  if (n.length < 1 || n.length > 120) {
+    return res.status(400).json({ ok: false, error: 'invalid_name' });
+  }
+  const split = Math.min(Math.max(parseInt(split_pct, 10) || 50, 1), 99);
+  const r = db.prepare(
+    `INSERT INTO ab_tests (tenant_id, name, variant_a_template, variant_b_template, split_pct, status)
+     VALUES (?, ?, ?, ?, ?, 'draft')`
+  ).run(t, n,
+    String(variant_a_template || '').slice(0, 80) || null,
+    String(variant_b_template || '').slice(0, 80) || null,
+    split);
+  res.status(201).json({
+    ok: true,
+    test: db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, r.lastInsertRowid),
+  });
+});
+
+router.get('/ab', (req, res) => {
+  const t = req.tenant.id;
+  const tests = db.prepare(
+    'SELECT * FROM ab_tests WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100'
+  ).all(t);
+  res.json({ ok: true, tests });
+});
+
+router.post('/ab/:id/winner', (req, res) => {
+  const t = req.tenant.id;
+  const id = parseInt(req.params.id, 10);
+  const variant = String((req.body && req.body.variant) || '').trim().toLowerCase();
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+  if (variant !== 'a' && variant !== 'b') {
+    return res.status(400).json({ ok: false, error: 'invalid_variant' });
+  }
+  const test = db.prepare('SELECT id FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
+  if (!test) {
+    return res.status(404).json({ ok: false, error: 'test_not_found' });
+  }
+  db.prepare(
+    `UPDATE ab_tests SET winner = ?, status = 'done' WHERE tenant_id = ? AND id = ?`
+  ).run(variant, t, id);
+  res.json({
+    ok: true,
+    test: db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id),
+  });
+});
+
+// --- Social posting tracking ------------------------------------------------
+
+const PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'telegram', 'rumble', 'truthsocial'];
+
+function toNonNegInt(v, fallback = 0) {
+  const n = parseInt(v, 10);
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
+router.post('/social', (req, res) => {
+  const t = req.tenant.id;
+  const { platform, post_url, content_item_id, posted_at, likes, shares, comments, clicks } = req.body || {};
+  const p = String(platform || '').trim().toLowerCase();
+  if (!PLATFORMS.includes(p)) {
+    return res.status(400).json({ ok: false, error: 'invalid_platform' });
+  }
+  const url = String(post_url || '').trim();
+  if (!/^https?:\/\//i.test(url) || url.length > 2000) {
+    return res.status(400).json({ ok: false, error: 'invalid_post_url' });
+  }
+  let cid = null;
+  if (content_item_id !== undefined && content_item_id !== null && content_item_id !== '') {
+    cid = parseInt(content_item_id, 10);
+    if (!Number.isInteger(cid) || cid < 1) {
+      return res.status(400).json({ ok: false, error: 'invalid_content_item' });
+    }
+    // The linked content item must belong to this tenant (attribution).
+    const item = db.prepare('SELECT id FROM content_items WHERE tenant_id = ? AND id = ?').get(t, cid);
+    if (!item) {
+      return res.status(400).json({ ok: false, error: 'invalid_content_item' });
+    }
+  }
+  let posted = new Date().toISOString();
+  if (posted_at !== undefined && posted_at !== null && String(posted_at).trim() !== '') {
+    const d = new Date(String(posted_at));
+    if (Number.isNaN(d.getTime())) {
+      return res.status(400).json({ ok: false, error: 'invalid_posted_at' });
+    }
+    posted = d.toISOString();
+  }
+  const r = db.prepare(
+    `INSERT INTO social_postings
+       (tenant_id, platform, post_url, content_item_id, posted_at, likes, shares, comments, clicks)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(t, p, url, cid, posted,
+    toNonNegInt(likes), toNonNegInt(shares), toNonNegInt(comments), toNonNegInt(clicks));
+  res.status(201).json({
+    ok: true,
+    posting: db.prepare('SELECT * FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, r.lastInsertRowid),
+  });
+});
+
+router.get('/social', (req, res) => {
+  const t = req.tenant.id;
+  const { platform } = req.query;
+  let sql = `SELECT s.*, c.title AS content_title
+             FROM social_postings s LEFT JOIN content_items c ON c.id = s.content_item_id
+             WHERE s.tenant_id = ?`;
+  const params = [t];
+  if (platform) {
+    const p = String(platform).trim().toLowerCase();
+    if (!PLATFORMS.includes(p)) {
+      return res.status(400).json({ ok: false, error: 'invalid_platform' });
+    }
+    sql += ' AND s.platform = ?';
+    params.push(p);
+  }
+  sql += ' ORDER BY s.posted_at DESC LIMIT 200';
+  res.json({ ok: true, postings: db.prepare(sql).all(...params) });
+});
+
+router.put('/social/:id/metrics', (req, res) => {
+  const t = req.tenant.id;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+  const posting = db.prepare('SELECT id FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, id);
+  if (!posting) {
+    return res.status(404).json({ ok: false, error: 'posting_not_found' });
+  }
+  const { likes, shares, comments, clicks } = req.body || {};
+  db.prepare(
+    `UPDATE social_postings
+     SET likes = ?, shares = ?, comments = ?, clicks = ?
+     WHERE tenant_id = ? AND id = ?`
+  ).run(toNonNegInt(likes), toNonNegInt(shares), toNonNegInt(comments), toNonNegInt(clicks), t, id);
+  res.json({
+    ok: true,
+    posting: db.prepare('SELECT * FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, id),
+  });
+});
+
+module.exports = router;

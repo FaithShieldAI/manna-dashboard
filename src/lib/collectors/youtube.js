@@ -15,7 +15,7 @@
  * Returns: [{ channel_id, name, handle, subscribers, emails: [...] }]
  */
 
-const { fetchText, extractEmails, visibleText, sleep } = require('./common');
+const { fetchText, extractEmails, visibleText, sleep, excludeKnownEmails } = require('./common');
 
 const SEARCH_DELAY_MS = 1500;
 const ABOUT_DELAY_MS = 1200;
@@ -126,7 +126,7 @@ async function getChannelLeads(channel, opts = {}) {
  * Stops early once maxLeads leads with emails are found.
  * onProgress({ stage, keyword, done, total }) — optional progress callback.
  */
-async function collect({ keywords, maxPerKeyword = 10, maxLeads = 25, onProgress, ...opts } = {}) {
+async function collect({ keywords, maxPerKeyword = 10, maxLeads = 25, onProgress, knownEmails, ...opts } = {}) {
   const leads = [];
   const kws = (keywords || []).slice(0, 5); // hard cap: 5 keywords/job
   for (let i = 0; i < kws.length; i++) {
@@ -136,8 +136,14 @@ async function collect({ keywords, maxPerKeyword = 10, maxLeads = 25, onProgress
     for (const ch of channels) {
       const lead = await getChannelLeads(ch, opts);
       if (lead.emails.length > 0) {
-        leads.push({ ...lead, keyword: kw });
-        if (leads.length >= maxLeads) return leads;
+        // NEW-unique fix (2026-10-20): drop already-known emails BEFORE the
+        // cap is applied — leads with no new emails never consume a slot,
+        // so maxLeads fills with NEW uniques.
+        const fresh = excludeKnownEmails(lead.emails, knownEmails);
+        if (fresh.length > 0) {
+          leads.push({ ...lead, emails: fresh, keyword: kw });
+          if (leads.length >= maxLeads) return leads;
+        }
       }
     }
     if (onProgress) onProgress({ stage: 'search', keyword: kw, done: i + 1, total: kws.length });

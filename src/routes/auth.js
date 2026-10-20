@@ -19,7 +19,7 @@ router.use(authLimiter);
 
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const MIN_PASSWORD_LEN = 12;
-const PLANS = ['starter', 'pro', 'agency'];
+const PLANS = ['starter', 'pro', 'heavy10', 'heavy30', 'agency', 'influencer'];
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const mailer = require('../lib/mailer');
@@ -59,7 +59,11 @@ router.post('/register', async (req, res) => {
     if (typeof pw !== 'string' || pw.length < MIN_PASSWORD_LEN || pw.length > 128) {
       return res.status(400).json({ ok: false, error: 'password_too_short', minLength: MIN_PASSWORD_LEN });
     }
-    const cleanPlan = PLANS.includes(plan) ? plan : (plan === undefined ? 'starter' : null);
+    // Self-serve registration may only pick purchasable plans. 'influencer'
+    // (Armor Bearer free-for-life) and 'agency' (invite-only) are assigned
+    // server-side / by admin — never via public signup.
+    const SELF_SERVE_PLANS = ['starter', 'pro', 'heavy10', 'heavy30'];
+    const cleanPlan = SELF_SERVE_PLANS.includes(plan) ? plan : (plan === undefined ? 'starter' : null);
     if (cleanPlan === null) {
       return res.status(400).json({ ok: false, error: 'invalid_plan', valid: PLANS });
     }
