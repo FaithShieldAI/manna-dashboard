@@ -28,7 +28,7 @@
  * Concurrency: single-flight via a lock row in a worker_locks table
  * (created on first run). A stale lock (>15 min) is taken over.
  */
-const { db, transaction } = require('../db');
+const { db, transaction, migrate } = require('../db');
 const { sendMail } = require('../lib/mailer');
 const { getPlan, currentMonthKey } = require('../lib/plans');
 
@@ -257,6 +257,9 @@ async function main() {
     return;
   }
   try {
+    // The server runs migrations on boot; the cron worker must do the same
+    // so drip tables exist even when the server has never started this DB.
+    migrate();
     const due = getDueEnrollments(tenantFilter);
     log(`found ${due.length} due enrollment(s)${tenantFilter ? ` for tenant ${tenantFilter}` : ''}`);
     const counts = { sent: 0, retry: 0, failed: 0, skipped_quota: 0 };
