@@ -13,20 +13,35 @@ const FUNNEL_KEY_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  const funnels = req.tdb.funnels().map(f => ({
-    key: f.funnel_key,
-    name: f.name,
-    emoji: f.emoji,
-    subtitle: f.subtitle,
-    ...roi(f.cost_cents, f.revenue_cents),
-    stages: f.stages.map(s => ({
+  const funnels = req.tdb.funnels().map(f => {
+    const stages = f.stages.map(s => ({
       key: s.stage_key,
       label: s.label,
       current: s.current_value,
       goal: s.goal_value,
       pct: s.goal_value > 0 ? +(100 * s.current_value / s.goal_value).toFixed(1) : null,
-    })),
-  }));
+      // conversion vs the previous stage (stage 0 has none)
+      conversion_from_prev: null,
+    }));
+    for (let i = 1; i < stages.length; i++) {
+      const prev = stages[i - 1].current;
+      stages[i].conversion_from_prev = prev > 0
+        ? +(100 * stages[i].current / prev).toFixed(1)
+        : null;
+    }
+    return {
+      key: f.funnel_key,
+      name: f.name,
+      emoji: f.emoji,
+      subtitle: f.subtitle,
+      ...roi(f.cost_cents, f.revenue_cents),
+      stages,
+      // overall: last stage vs first stage
+      overall_conversion: stages.length > 1 && stages[0].current > 0
+        ? +(100 * stages[stages.length - 1].current / stages[0].current).toFixed(2)
+        : null,
+    };
+  });
   res.json({ ok: true, funnels });
 });
 

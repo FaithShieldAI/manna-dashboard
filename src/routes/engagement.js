@@ -10,6 +10,10 @@
  *                                       variant_b_template, split_pct}
  * GET  /api/engagement/ab
  * POST /api/engagement/ab/:id/winner   {variant: 'a'|'b'}
+ * POST /api/engagement/ab/:id/results {sent_a, sent_b, opens_a, opens_b,
+ *                                       clicks_a, clicks_b} (auto-declares
+ *                                       winner when auto_apply is on)
+ * PATCH /api/engagement/ab/:id/auto-apply {auto_apply: bool}
  * POST /api/engagement/social          {platform, post_url, content_item_id?,
  *                                       posted_at?, likes?, shares?,
  *                                       comments?, clicks?}
@@ -153,12 +157,90 @@ router.post('/ab/:id/winner', (req, res) => {
     return res.status(404).json({ ok: false, error: 'test_not_found' });
   }
   db.prepare(
-    `UPDATE ab_tests SET winner = ?, status = 'done' WHERE tenant_id = ? AND id = ?`
-  ).run(variant, t, id);
+    `UPDATE ab_tests SET winner = ?, status = 'done', decided_at = ?
+     WHERE tenant_id = ? AND id = ?`
+  ).run(variant, new Date().toISOString(), t, id);
   res.json({
     ok: true,
     test: db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id),
   });
+});
+
+// POST /ab/:id/results {sent_a, sent_b, opens_a, opens_b, clicks_a, clicks_b}
+// Records per-variant performance. When auto_apply is on and one variant has
+// a strictly better click rate with >= 100 sends per side, the winner is
+// declared automatically (status -> done).
+function nonNegInt(v) {
+  const n = parseInt(v, 10);
+  return Number.isInteger(n) && n >= 0 ? n : 0;
+}
+
+router.post('/ab/:id/results', (req, res) => {
+  const t = req.tenant.id;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+  const test = db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
+  if (!test) {
+    return res.status(404).json({ ok: false, error: 'test_not_found' });
+  }
+  if (test.status === 'done') {
+    return res.status(400).json({ ok: false, error: 'test_already_done' });
+  }
+  const b = req.body || {};
+  const vals = {
+    sent_a: nonNegInt(b.sent_a), sent_b: nonNegInt(b.sent_b),
+    opens_a: nonNegInt(b.opens_a), opens_b: nonNegInt(b.opens_b),
+    clicks_a: nonNegInt(b.clicks_a), clicks_b: nonNegInt(b.clicks_b),
+  };
+  db.prepare(
+    `UPDATE ab_tests
+     SET sent_a = ?, sent_b = ?, opens_a = ?, opens_b = ?, clicks_a = ?, clicks_b = ?,
+         status = CASE WHEN status = 'draft' THEN 'running' ELSE status END
+     WHERE tenant_id = ? AND id = ?`
+  ).run(vals.sent_a, vals.sent_b, vals.opens_a, vals.opens_b, vals.clicks_a, vals.clicks_b, t, id);
+
+  // Auto-apply: click-rate winner with a minimum sample.
+  let autoWinner = null;
+  if (test.auto_apply) {
+    const rateA = vals.sent_a >= 100 ? vals.clicks_a / vals.sent_a : -1;
+    const rateB = vals.sent_b >= 100 ? vals.clicks_b / vals.sent_b : -1;
+    if (rateA >= 0 && rateB >= 0 && rateA !== rateB) {
+      autoWinner = rateA > rateB ? 'a' : 'b';
+      db.prepare(
+        `UPDATE ab_tests SET winner = ?, status = 'done', decided_at = ?
+         WHERE tenant_id = ? AND id = ?`
+      ).run(autoWinner, new Date().toISOString(), t, id);
+    }
+  }
+  const updated = db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
+  const rate = (c, s) => (s > 0 ? +(100 * c / s).toFixed(2) : 0);
+  res.json({
+    ok: true,
+    test: updated,
+    auto_winner: autoWinner,
+    rates: {
+      a: { sent: updated.sent_a, open_rate: rate(updated.opens_a, updated.sent_a), click_rate: rate(updated.clicks_a, updated.sent_a) },
+      b: { sent: updated.sent_b, open_rate: rate(updated.opens_b, updated.sent_b), click_rate: rate(updated.clicks_b, updated.sent_b) },
+    },
+  });
+});
+
+// PATCH /ab/:id/auto-apply {auto_apply: true|false}
+router.patch('/ab/:id/auto-apply', (req, res) => {
+  const t = req.tenant.id;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+  const test = db.prepare('SELECT id FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
+  if (!test) {
+    return res.status(404).json({ ok: false, error: 'test_not_found' });
+  }
+  const flag = req.body && req.body.auto_apply ? 1 : 0;
+  db.prepare('UPDATE ab_tests SET auto_apply = ? WHERE tenant_id = ? AND id = ?').run(flag, t, id);
+  res.json({ ok: true, test: db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id) });
 });
 
 // --- Social posting tracking ------------------------------------------------
