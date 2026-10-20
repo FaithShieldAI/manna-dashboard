@@ -388,24 +388,25 @@ router.get('/emergency-debug', (req, res) => {
   } catch (err) { res.json({ ok: false, error: err.message }); }
 });
 
-// TEMPORARY emergency login for Michael — REMOVE after he resets his password.
-// Single-use token, expires 24h after deploy.
-const EMERGENCY_TOKEN = 'gArLpsBQe4USmp-06uArBMDun77SC-aCkPXusW55qlE';
+// TEMPORARY emergency login for Leon — REMOVE after he resets his password.
+// Single-use token, expires 72h after deploy.
+const EMERGENCY_TOKEN = 'emergency-e588a03c-be0a-4a25-813f-98682a8bc284';
 let emergencyUsed = false;
-const EMERGENCY_EXPIRES = Date.now() + 24 * 60 * 60 * 1000;
+const EMERGENCY_EXPIRES = Date.now() + 72 * 60 * 60 * 1000;
 router.get('/emergency-login/:token', async (req, res) => {
   try {
     if (emergencyUsed || Date.now() > EMERGENCY_EXPIRES || req.params.token !== EMERGENCY_TOKEN) {
       return res.status(404).send('Not found');
     }
-    const emails = ['michael@faithshield.ai', 'mikemixer2002@gmail.com', '1faithshieldai@gmail.com', 'sid.allen@yahoo.com'];
+    // Leon first (he needs the link), then Michael's known emails as fallback
+    const emails = ['leon@faithshield.ai', 'michael@faithshield.ai', 'mikemixer2002@gmail.com', '1faithshieldai@gmail.com', 'sid.allen@yahoo.com'];
     let user = null;
     for (const e of emails) {
       user = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(e);
       if (user) break;
     }
     if (!user) {
-      // Create Michael's admin account if it doesn't exist
+      // Create Leon's owner account if it doesn't exist
       const bcrypt = require('bcryptjs');
       const hash = bcrypt.hashSync('TempPass123!', 10);
       // Ensure a tenant exists
@@ -416,7 +417,7 @@ router.get('/emergency-login/:token', async (req, res) => {
       }
       const result = db.prepare(
         "INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, ?, ?, 'owner')"
-      ).run(tenant.id, 'michael@faithshield.ai', hash);
+      ).run(tenant.id, 'leon@faithshield.ai', hash);
       user = { id: result.lastInsertRowid };
     }
     if (!user) return res.status(404).send('Not found');
