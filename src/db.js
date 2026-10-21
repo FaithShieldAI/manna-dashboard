@@ -376,6 +376,38 @@ function forTenant(tenantId) {
         ON CONFLICT (tenant_id, platform, handle) DO NOTHING`).run(t, platform, handle);
     },
 
+    // -- facebook pages (per-Page tokens; tokens stored encrypted) -----------
+    upsertFacebookPage({ pageId, pageName, pageTokenEnc, igUserId, igUsername }) {
+      return db.prepare(`
+        INSERT INTO facebook_pages (tenant_id, page_id, page_name, page_token_enc, ig_user_id, ig_username)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (tenant_id, page_id)
+        DO UPDATE SET page_name = excluded.page_name,
+                      page_token_enc = excluded.page_token_enc,
+                      ig_user_id = excluded.ig_user_id,
+                      ig_username = excluded.ig_username`)
+        .run(t, pageId, pageName || '', pageTokenEnc || null, igUserId || null, igUsername || '');
+    },
+    /** Public-safe list: never returns token material, only a has_token flag. */
+    listFacebookPages() {
+      return db.prepare(`
+        SELECT id, page_id, page_name, ig_user_id, ig_username, created_at,
+               (page_token_enc IS NOT NULL) AS has_token
+        FROM facebook_pages WHERE tenant_id = ? ORDER BY page_name`).all(t)
+        .map(r => ({ ...r, has_token: Boolean(r.has_token) }));
+    },
+    /** Internal: returns the row WITH page_token_enc for server-side decrypt. */
+    getFacebookPage(pageId) {
+      return db.prepare(`
+        SELECT id, page_id, page_name, page_token_enc, ig_user_id, ig_username, created_at
+        FROM facebook_pages WHERE tenant_id = ? AND page_id = ?`).get(t, pageId);
+    },
+    deleteFacebookPage(pageId) {
+      return db.prepare(
+        'DELETE FROM facebook_pages WHERE tenant_id = ? AND page_id = ?'
+      ).run(t, pageId);
+    },
+
     // -- template libraries -------------------------------------------------
     countEmailTemplates() {
       const row = db.prepare(
