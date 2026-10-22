@@ -8,7 +8,6 @@ const WHITELIST = new Set([
   'mikemixer2002@gmail.com',  // Michael
   '1faithshieldai@gmail.com',  // Michael
   'sid.allen@yahoo.com',
-  'support@faithshield.ai',  // Hunter Raines
 ]);
 
 function isWhitelisted(email) {
