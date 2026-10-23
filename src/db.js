@@ -436,13 +436,13 @@ function forTenant(tenantId) {
       sql += ' ORDER BY id';
       return db.prepare(sql).all(...params);
     },
-    installEmailTemplate({ templateKey, name, subject, bodyHtml, bodyText, category, isStarter }) {
+    installEmailTemplate({ templateKey, name, subject, bodyHtml, bodyText, category, isStarter, product, language }) {
       return db.prepare(`
-        INSERT INTO email_templates (tenant_id, template_key, name, subject, body_html, body_text, category, is_starter)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO email_templates (tenant_id, template_key, name, subject, body_html, body_text, category, is_starter, product, language)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (tenant_id, template_key) DO NOTHING`)
         .run(t, templateKey, name, subject || '', bodyHtml || '', bodyText || '',
-          category || null, isStarter ? 1 : 0);
+          category || null, isStarter ? 1 : 0, product || 'manna', language || 'en');
     },
     listSocialTemplates() {
       return db.prepare(`
