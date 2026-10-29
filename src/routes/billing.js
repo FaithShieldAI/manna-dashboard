@@ -55,6 +55,7 @@ router.get('/', (req, res) => {
       special_offer: !!p.special_offer,
       projects: p.projects,
       emails_per_month: p.emails_per_month,
+      seats_included: p.seats_included, // owner's login included on every plan (2026-10-29)
       videos_per_month: p.videos_per_month || null,
       // Feature gates (see hasFeature() in src/lib/plans.js) so the UI can
       // show/hide video + social features per plan without hardcoding keys.

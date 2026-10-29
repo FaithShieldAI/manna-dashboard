@@ -17,6 +17,7 @@
  */
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 const { setupTestEnv, startServer } = require('./helpers');
 
 process.env.INFLUENCER_WEBHOOK_SECRET = 'arsenal-test-secret';
@@ -168,4 +169,27 @@ test('provisioning webhook seeds the new tenant; replay inserts nothing', async 
 
   const bad = await provision('arsenal-hook2@example.com', 'wrong-secret');
   assert.equal(bad.status, 401);
+});
+
+test('missing seed file degrades gracefully: empty seed, no throw (packaging-miss guard)', () => {
+  // Regression for the 2026-10-29 production ENOENT: .dockerignore kept
+  // data/seed/arsenal-seed.json out of the Docker image, and loadSeedData
+  // threw, breaking seeding. A missing file must now return an empty
+  // seed (with a loud warning) so signup/webhook flows never break.
+  const missing = path.join(__dirname, 'no-such-arsenal-seed.json');
+  const data = arsenal.loadSeedData(missing);
+  assert.equal(data.total, 0);
+  assert.deepEqual(data.rows, []);
+
+  // seedArsenalForTenant against the missing file is a no-op, not a crash.
+  const tid = makeTenant('arsenal-missing', 'influencer');
+  const r = arsenal.seedArsenalForTenant(db, tid, { seedPath: missing });
+  assert.equal(r.inserted, 0);
+  assert.equal(r.adopted, 0);
+  assert.equal(r.total, 0);
+  assert.equal(countWhere(tid, '1=1'), 0);
+
+  // The empty fallback is NOT cached as the real seed: the default path
+  // still loads the full file afterwards.
+  assert.equal(arsenal.loadSeedData().total, 13871);
 });
