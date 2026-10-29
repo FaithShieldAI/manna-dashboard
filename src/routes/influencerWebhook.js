@@ -20,10 +20,26 @@
  * with a random unguessable password (they sign in via password reset).
  * Existing email: ensures their tenant carries plan='influencer'.
  * Every outcome is written to provisioning_log.
+ *
+ * The armor_bearer_id (the affiliate's AB ref_code) is also persisted on
+ * the tenant (migration 024) so GET /api/auth/me can hand the affiliate
+ * their referral link. Only pattern-valid codes are stored
+ * (src/lib/referral.js) — a poisoned value stores NULL. Re-provisioning
+ * with a different valid code updates the stored value; a call WITHOUT a
+ * code never clears an existing one.
+ *
+ * Every outcome additionally runs the affiliate arsenal seed
+ * (src/lib/arsenalSeed.js): the tenant is topped up to the full 13,871
+ * master contacts, idempotently. Synchronous — measured ~0.3s for the
+ * full 13,871-row transaction, well inside the caller's retry window,
+ * and it guarantees the arsenal is present before the affiliate's
+ * first login. Seed errors are logged, never fail the provisioning
+ * response.
  */
 const crypto = require('crypto');
 const { db, transaction } = require('../db');
 const password = require('../lib/password');
+const { normalizeRefCode } = require('../lib/referral');
 
 function utcNow() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -56,6 +72,33 @@ function logEvent(eventType, email, tenantId, userId, detail) {
   `).run(eventType, email, tenantId || null, userId || null, detail || null);
 }
 
+/**
+ * "Loaded guns" (Michael, 2026-10-25): an influencer tenant arrives
+ * PRELOADED with the full D2RM contact arsenal (src/lib/arsenalSeed.js).
+ * Runs after provisioning commits, on EVERY outcome — a replay therefore
+ * also repairs a tenant whose earlier seed failed. Idempotent: a fully
+ * seeded tenant fast-paths and inserts 0. A seed failure must never fail
+ * provisioning (the tenant + login already exist; the seed tops up on
+ * the next webhook call or via scripts/seed_affiliate_arsenal.js), so
+ * errors are logged, never thrown.
+ */
+function seedArsenal(tenantId, email) {
+  try {
+    const { seedArsenalForTenant } = require('../lib/arsenalSeed');
+    const started = Date.now();
+    const r = seedArsenalForTenant(db, tenantId);
+    // eslint-disable-next-line no-console
+    console.log(`[influencer-webhook] arsenal seed email=${email} tenant=${tenantId} ` +
+      `inserted=${r.inserted} adopted=${r.adopted} already=${r.already} total=${r.total} ` +
+      `complete=${r.complete} (${Date.now() - started}ms)`);
+    return r.complete;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(`[influencer-webhook] arsenal seed FAILED email=${email} tenant=${tenantId}: ${e.message}`);
+    return false;
+  }
+}
+
 async function handler(req, res) {
   const secret = process.env.INFLUENCER_WEBHOOK_SECRET;
   if (!secret) {
@@ -76,6 +119,10 @@ async function handler(req, res) {
   const displayName = String(name || '').trim().slice(0, 80) || null;
   const abId = armor_bearer_id === undefined || armor_bearer_id === null
     ? null : String(armor_bearer_id).slice(0, 80);
+  // The value persisted on the tenant: strictly validated (letters/digits
+  // only). Anything else — quotes, slashes, a scheme — stores as NULL so
+  // it can never be turned into a referral link later.
+  const storedAbId = normalizeRefCode(armor_bearer_id);
 
   try {
     // Idempotency: email is globally unique in users.
@@ -85,14 +132,25 @@ async function handler(req, res) {
 
     if (existing) {
       if (existing.plan === 'influencer') {
-        logEvent('already_provisioned', cleanEmail, existing.tenant_id, existing.user_id,
-          abId ? `armor_bearer_id=${abId}` : null);
+        transaction(() => {
+          if (storedAbId) {
+            db.prepare('UPDATE tenants SET armor_bearer_id = ?, updated_at = ? WHERE id = ?')
+              .run(storedAbId, utcNow(), existing.tenant_id);
+          }
+          logEvent('already_provisioned', cleanEmail, existing.tenant_id, existing.user_id,
+            abId ? `armor_bearer_id=${abId}` : null);
+        });
+        seedArsenal(existing.tenant_id, cleanEmail);
         return res.json({ ok: true, result: 'already_provisioned', email: cleanEmail, tenant_id: existing.tenant_id });
       }
       // Existing customer upgraded to the free-for-life influencer plan.
       const out = transaction(() => {
         db.prepare("UPDATE tenants SET plan = 'influencer', subscription_status = 'active', updated_at = ? WHERE id = ?")
           .run(utcNow(), existing.tenant_id);
+        if (storedAbId) {
+          db.prepare('UPDATE tenants SET armor_bearer_id = ? WHERE id = ?')
+            .run(storedAbId, existing.tenant_id);
+        }
         if (displayName) {
           db.prepare('UPDATE users SET display_name = COALESCE(display_name, ?) WHERE id = ?')
             .run(displayName, existing.user_id);
@@ -103,6 +161,7 @@ async function handler(req, res) {
       });
       // eslint-disable-next-line no-console
       console.log(`[influencer-webhook] plan_upgraded email=${cleanEmail} tenant=${out.tenant_id}`);
+      seedArsenal(out.tenant_id, cleanEmail);
       return res.json({ ok: true, result: 'plan_upgraded', email: cleanEmail, tenant_id: out.tenant_id });
     }
 
@@ -111,9 +170,9 @@ async function handler(req, res) {
     const hash = await password.hash(randomPassword);
     const out = transaction(() => {
       const t = db.prepare(
-        `INSERT INTO tenants (name, slug, plan, subscription_status)
-         VALUES (?, ?, 'influencer', 'active')`
-      ).run(displayName || cleanEmail, makeSlug(cleanEmail));
+        `INSERT INTO tenants (name, slug, plan, subscription_status, armor_bearer_id)
+         VALUES (?, ?, 'influencer', 'active', ?)`
+      ).run(displayName || cleanEmail, makeSlug(cleanEmail), storedAbId);
       const tenantId = Number(t.lastInsertRowid);
       const u = db.prepare(
         'INSERT INTO users (tenant_id, email, password_hash, display_name, role, email_verified_at) VALUES (?, ?, ?, ?, \'owner\', ?)'
@@ -125,6 +184,7 @@ async function handler(req, res) {
     });
     // eslint-disable-next-line no-console
     console.log(`[influencer-webhook] provisioned email=${cleanEmail} tenant=${out.tenant_id}`);
+    seedArsenal(out.tenant_id, cleanEmail);
     return res.status(201).json({ ok: true, result: 'provisioned', email: cleanEmail, tenant_id: out.tenant_id });
   } catch (e) {
     // eslint-disable-next-line no-console

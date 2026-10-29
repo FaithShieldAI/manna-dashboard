@@ -126,6 +126,15 @@ router.patch('/goals/:id', (req, res) => {
   res.json({ ok: true, goal: db.prepare('SELECT * FROM goals WHERE tenant_id = ? AND id = ?').get(t, id) });
 });
 
+router.delete('/goals/:id', (req, res) => {
+  const t = req.tenant.id;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ ok: false, error: 'invalid_id' });
+  const r = db.prepare('DELETE FROM goals WHERE tenant_id = ? AND id = ?').run(t, id);
+  if (r.changes === 0) return res.status(404).json({ ok: false, error: 'goal_not_found' });
+  res.json({ ok: true, deleted: id });
+});
+
 // ---------------------------------------------------------------------------
 // Podcast outreach — guest-pitch workflow on influencers(category='podcast').
 // ---------------------------------------------------------------------------
@@ -337,7 +346,9 @@ router.post('/financials/revenue', (req, res) => {
   const { date, source, amount_cents, kind, note } = req.body || {};
   if (!isIsoDate(date)) return res.status(400).json({ ok: false, error: 'invalid_date' });
   if (!REVENUE_SOURCES.includes(source)) return res.status(400).json({ ok: false, error: 'invalid_source' });
-  const amt = parseInt(amount_cents, 10);
+  const rawAmt = (amount_cents === null || amount_cents === undefined || String(amount_cents).trim() === '')
+    ? NaN : Number(amount_cents);
+  const amt = Number.isFinite(rawAmt) ? Math.round(rawAmt) : NaN;
   if (!Number.isInteger(amt) || amt < 0) return res.status(400).json({ ok: false, error: 'invalid_amount' });
   const k = REVENUE_KINDS.includes(kind) ? kind : 'mrr';
   const r = db.prepare(
@@ -355,7 +366,9 @@ router.post('/financials/costs', (req, res) => {
   const { date, category, amount_cents, note } = req.body || {};
   if (!isIsoDate(date)) return res.status(400).json({ ok: false, error: 'invalid_date' });
   if (!COST_CATEGORIES.includes(category)) return res.status(400).json({ ok: false, error: 'invalid_category' });
-  const amt = parseInt(amount_cents, 10);
+  const rawAmt = (amount_cents === null || amount_cents === undefined || String(amount_cents).trim() === '')
+    ? NaN : Number(amount_cents);
+  const amt = Number.isFinite(rawAmt) ? Math.round(rawAmt) : NaN;
   if (!Number.isInteger(amt) || amt < 0) return res.status(400).json({ ok: false, error: 'invalid_amount' });
   const r = db.prepare(
     `INSERT INTO cost_ledger (tenant_id, date, category, amount_cents, note)

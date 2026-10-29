@@ -192,10 +192,10 @@ function insightReply(message, ctx) {
     parts.push('');
     if (!hasSites) {
       parts.push(`1. Add your first project/site \u2014 click the Sites tab below, then "Add your first site". This starts tracking visitors in real time.`);
-      parts.push(`2. Set up lead collection \u2014 open the Leads page and run your first search to build your list. Your trial includes dashboard + collection.`);
+      parts.push(`2. Set up lead collection \u2014 open the Leads page and run your first search to build your list. Your trial includes dashboard + collection + 100 emails.`);
     } else {
       parts.push(`1. Your first site is already tracking \u2014 nice. Next: open the Leads page and run a lead search to build your list.`);
-      parts.push(`2. Set up lead collection \u2014 your trial includes dashboard + collection, so fill that pipeline.`);
+      parts.push(`2. Set up lead collection \u2014 your trial includes dashboard + collection + 100 emails, so fill that pipeline.`);
     }
     parts.push(`3. I'll guide each step \u2014 ask me anything as you go. I'm your instructor.`);
     parts.push('');

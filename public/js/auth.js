@@ -46,6 +46,7 @@
     invalid_token: 'auth.js.err_invalid_token',
     too_many_requests: 'dash.js.common.too_many_requests',
     csrf_check_failed: 'dash.js.common.csrf_check_failed',
+    too_many_jobs: 'dash.js.common.too_many_jobs',
     job_not_found: 'dash.js.common.job_not_found',
     job_not_cancelable: 'dash.js.common.job_not_cancelable',
     invalid_job_id: 'dash.js.common.job_invalid',

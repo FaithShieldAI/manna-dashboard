@@ -223,6 +223,7 @@
       <button data-i18n="dash.instructor.chip_collect_leads" class="chip" data-goto="leads">&#128229; Collect leads</button>
       <button data-i18n="dash.instructor.chip_add_site" class="chip" data-site-modal="1">&#127760; Add my site</button>
       <button data-i18n="dash.instructor.chip_whats_next" class="chip" data-q="What should I do next?">&#127919; What&rsquo;s next?</button>
+      <button class="chip" data-scribe="1">&#128202; Scribe analysis</button>
     </div>
     <form class="instructor-form" id="instructor-form">
       <input id="instructor-input" type="text" data-i18n-ph="dash.instructor.input.placeholder" placeholder="Ask your instructor anything&hellip;" maxlength="2000" autocomplete="off">
@@ -290,10 +291,71 @@
     <div class="check-list" id="getting-started-list">
       <div class="check-item"><div class="check-box" id="gs-site">&#9675;</div><div><div data-i18n="dash.overview.gs_site_title" style="font-weight:600">Add your first project / site</div><div style="font-size:13px;color:var(--text2)"><span data-i18n="dash.overview.gs_site_desc">Connect a site to start tracking visitors in real time. Go to the</span> <a href="#" data-goto-tab="sites" data-i18n="dash.overview.gs_site_link">Sites tab</a>.</div></div></div>
       <div class="check-item"><div class="check-box" id="gs-leads">&#9675;</div><div><div data-i18n="dash.overview.gs_leads_title" style="font-weight:600">Collect your first leads</div><div style="font-size:13px;color:var(--text2)"><span data-i18n="dash.overview.gs_leads_desc">Build your list &mdash; trial includes dashboard + lead collection. Open the</span> <a href="/app#leads" style="color:var(--gold)" data-i18n="dash.overview.gs_leads_link">Leads tab</a>.</div></div></div>
-      <div class="check-item"><div class="check-box" id="gs-email">&#9675;</div><div><div data-i18n="dash.overview.gs_email_title" style="font-weight:600">Log your first email send</div><div data-i18n="dash.overview.gs_email_desc" style="font-size:13px;color:var(--text2)">Sending unlocks on paid plans &mdash; log sends to track performance from day one.</div></div></div>
+      <div class="check-item"><div class="check-box" id="gs-email">&#9675;</div><div><div data-i18n="dash.overview.gs_email_title" style="font-weight:600">Log your first email send</div><div data-i18n="dash.overview.gs_email_desc" style="font-size:13px;color:var(--text2)">Your trial includes up to 100 emails &mdash; log sends to track performance from day one.</div></div></div>
       <div class="check-item"><div class="check-box" id="gs-goal">&#9675;</div><div><div data-i18n="dash.overview.gs_goal_title" style="font-weight:600">Set a goal</div><div data-i18n="dash.overview.gs_goal_desc" style="font-size:13px;color:var(--text2)">Pick a round number to chase &mdash; your instructor will track your pace.</div></div></div>
     </div>
   </div>
+
+  <!-- ============ OVERVIEW: GROW WITH ARMOR BEARER ============ -->
+  <div class="card" id="ab-grow-card" style="border:1px solid rgba(217,164,65,.35)">
+    <div class="card-header"><div>
+      <div data-i18n="dash.overview.ab_title" class="card-title">&#128737;&#65039; Grow with Armor Bearer</div>
+      <div data-i18n="dash.overview.ab_sub" class="card-sub">D2RM&rsquo;s affiliate platform. Promote the apps, earn 10% recurring commission &mdash; and your Manna Pro is free as an affiliate.</div>
+    </div>
+    <span class="badge b-green" id="ab-status-badge" style="display:none">Affiliate</span></div>
+    <div id="ab-affiliate-block" style="display:none">
+      <div style="font-size:13px;color:var(--text2)"><span data-i18n="dash.overview.ab_status_label">Affiliate status:</span> <strong id="ab-status-text" style="color:var(--green)"></strong></div>
+      <div style="margin-top:10px">
+        <div data-i18n="dash.overview.ab_referral_label" style="font-size:12px;color:var(--text2);margin-bottom:4px">Your personal referral link</div>
+        <div id="ab-referral-row" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+          <code id="ab-referral-link" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--gold);word-break:break-all"></code>
+        </div>
+        <div id="ab-referral-empty" data-i18n="dash.overview.ab_referral_empty" style="font-size:13px;color:var(--text2)">Your referral link isn&rsquo;t connected to this Manna account yet &mdash; you&rsquo;ll find it any time inside Armor Bearer.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px">
+      <a data-i18n="dash.overview.ab_cta_join" class="btn gold" id="ab-cta" href="https://armorbearer.d2rmmedia.com/" target="_blank" rel="noopener">Join Armor Bearer &mdash; free</a>
+      <span data-i18n="dash.overview.ab_note_join" id="ab-note" style="font-size:13px;color:var(--text2)">Free to join, no credit card required.</span>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var card = document.getElementById('ab-grow-card');
+    if (!card) return;
+    function apiH(){ return { 'X-Requested-With': 'XMLHttpRequest' }; }
+    fetch('/api/auth/me', { headers: apiH(), credentials: 'same-origin' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var tenant = (j && j.tenant) || {};
+        // Affiliate state in Manna = tenant plan 'influencer', set by the
+        // Armor Bearer -> Manna provisioning webhook (migration 016).
+        // Anyone else keeps the default render: the free-join invite.
+        if (tenant.plan !== 'influencer') return;
+        var badge = document.getElementById('ab-status-badge');
+        badge.textContent = MannaI18n.t('dash.overview.ab_badge');
+        badge.style.display = '';
+        document.getElementById('ab-affiliate-block').style.display = '';
+        document.getElementById('ab-status-text').textContent = MannaI18n.t('dash.overview.ab_status_active');
+        // Referral link: constructed server-side from the AB ref code
+        // stored on the tenant (migration 024) and carried on this
+        // payload only for provisioned affiliates. Show it verbatim —
+        // never construct one here; no field means the empty state
+        // above is the honest render.
+        var link = tenant.referral_link || tenant.referral_url || '';
+        if (link) {
+          document.getElementById('ab-referral-link').textContent = link;
+          document.getElementById('ab-referral-row').style.display = 'flex';
+          document.getElementById('ab-referral-empty').style.display = 'none';
+        }
+        var cta = document.getElementById('ab-cta');
+        cta.textContent = MannaI18n.t('dash.overview.ab_cta_open');
+        var note = document.getElementById('ab-note');
+        note.textContent = MannaI18n.t('dash.overview.ab_note_affiliate');
+        note.removeAttribute('data-i18n');
+        cta.removeAttribute('data-i18n');
+      }).catch(function(){});
+  })();
+  </script>
 
   <!-- ============ OVERVIEW: D2RM SYNC (Michael/Leon only) ============ -->
   <div class="card" id="d2rm-sync-card" style="border:1px solid rgba(217,164,65,.35)">
@@ -629,10 +691,53 @@
     </table></div>
   </div>
 
+  <div class="card">
+    <div class="card-header"><div>
+      <div data-i18n="dash.social.connect_title" class="card-title">&#128268; Connect Accounts</div>
+      <div data-i18n="dash.social.connect_sub" class="card-sub">link YouTube, Truth Social, and Rumble — post and track from here</div>
+    </div></div>
+    <div id="social-connect-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:1rem">
+      <div class="empty">Loading&hellip;</div>
+    </div>
+  </div>
+
   </div><!-- /panel-social -->
 
   <!-- ============ TAB: CONTENT LIBRARY ============ -->
   <div class="main-tab-panel" id="panel-content" style="display:none">
+
+  <div class="card">
+    <div class="card-header"><div>
+      <div data-i18n="dash.video.title" class="card-title">&#127916; Create a Video</div>
+      <div data-i18n="dash.video.sub" class="card-sub">type a script, pick a presenter and voice — Manna makes the video</div>
+    </div></div>
+    <div id="video-usage" style="font-size:13px;color:var(--text2);margin-bottom:1rem"></div>
+    <div id="video-prompt" style="display:none;margin-bottom:1rem"></div>
+    <form id="video-form">
+      <div class="modal-field">
+        <label data-i18n="dash.video.script_label" for="video-script">Your script</label>
+        <textarea id="video-script" rows="4" maxlength="1000" data-i18n-ph="dash.video.script_placeholder" placeholder="What should the presenter say? (up to 1,000 characters)" style="width:100%"></textarea>
+      </div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div class="modal-field" style="flex:1;min-width:200px">
+          <label data-i18n="dash.video.avatar_label" for="video-avatar">Presenter</label>
+          <select id="video-avatar" class="filter-select" style="width:100%"></select>
+        </div>
+        <div class="modal-field" style="flex:1;min-width:200px">
+          <label data-i18n="dash.video.voice_label" for="video-voice">Voice</label>
+          <select id="video-voice" class="filter-select" style="width:100%"></select>
+        </div>
+      </div>
+      <div class="modal-err" id="video-err" style="display:none"></div>
+      <div style="margin-top:0.75rem">
+        <button data-i18n="dash.video.generate" type="submit" class="btn gold" id="video-generate">Generate video</button>
+      </div>
+    </form>
+    <div style="margin-top:1.5rem">
+      <div data-i18n="dash.video.mine" style="font-weight:600;margin-bottom:0.5rem">My Videos</div>
+      <div id="video-list"><div class="empty">Loading&hellip;</div></div>
+    </div>
+  </div>
 
   <div class="card">
     <div class="card-header"><div>
@@ -950,9 +1055,71 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
       addMsg(MannaI18n.t('dash.js.common.network_error'), 'bot');
     });
   }
+  /* Scribe analysis: POST /api/scribe/analyze and render the structured
+     advice (observations citing numbers + recommendations) into the
+     instructor thread. In stub mode (no Spark key yet) the server says
+     so and the samples are labelled. "Create drafts" turns the last
+     analysis into DRAFT artifacts for human approval — never a send. */
+  var lastScribeAdvice = null;
+  var lastScribeAnalysisId = null;
+  function runScribeAnalysis(){
+    addMsg('Run a Scribe analysis of my numbers', 'user');
+    var typing = addMsg(MannaI18n.t('dash.js.common.thinking'), 'bot typing');
+    fetch('/api/scribe/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: '{}'
+    }).then(function(r){ return r.json(); }).then(function(j){
+      typing.remove();
+      if (!j || !j.ok || !j.advice) {
+        addMsg('Scribe could not complete the analysis just now — no advice was produced.', 'bot');
+        return;
+      }
+      lastScribeAdvice = j.advice;
+      lastScribeAnalysisId = j.analysis_id || null;
+      if (j.stub) addMsg('Scribe is in sample mode (Spark key not connected yet) — the shape below is real, the recommendations are samples.', 'bot');
+      if (j.advice.summary) addMsg(j.advice.summary, 'bot');
+      (j.advice.observations || []).forEach(function(o){
+        var cites = '';
+        if (o.metrics) {
+          var parts = Object.keys(o.metrics).map(function(k){ return k + ': ' + o.metrics[k]; });
+          if (parts.length) cites = ' (' + parts.join(' · ') + ')';
+        }
+        addMsg('• ' + o.text + cites, 'bot');
+      });
+      (j.advice.recommendations || []).forEach(function(r, i){
+        addMsg((i + 1) + '. ' + r.title + ' — ' + r.rationale, 'bot');
+      });
+      var btn = document.createElement('button');
+      btn.className = 'btn gold';
+      btn.textContent = 'Create drafts from this analysis';
+      btn.addEventListener('click', function(){
+        btn.disabled = true;
+        fetch('/api/scribe/drafts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify({ analysis_id: lastScribeAnalysisId })
+        }).then(function(r){ return r.json(); }).then(function(dj){
+          if (dj && dj.ok) addMsg('Created ' + dj.created.length + ' draft(s) in Scribe Drafts — nothing sends or posts until you approve them.', 'bot');
+          else if (dj && dj.error === 'draft_cap_reached') { addMsg('You have 200 drafts waiting in Scribe Drafts — that is the limit. Approve or dismiss some of them to make room for new ones.', 'bot'); btn.disabled = false; }
+          else { addMsg('Draft creation failed — nothing was created.', 'bot'); btn.disabled = false; }
+        }).catch(function(){ addMsg(MannaI18n.t('dash.js.common.network_error'), 'bot'); btn.disabled = false; });
+      });
+      var wrap = document.createElement('div');
+      wrap.className = 'inst-msg bot';
+      wrap.appendChild(btn);
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+    }).catch(function(){
+      typing.remove();
+      addMsg(MannaI18n.t('dash.js.common.network_error'), 'bot');
+    });
+  }
   document.querySelectorAll('#instructor-chips .chip').forEach(function(chip){
     chip.addEventListener('click', function(){
-      if (chip.hasAttribute('data-suggest')) {
+      if (chip.hasAttribute('data-scribe')) {
+        runScribeAnalysis();
+      } else if (chip.hasAttribute('data-suggest')) {
         addMsg(MannaI18n.t('dash.js.scribe.chip_suggest'), 'user');
         renderSuggestCard();
         history.push({ role: 'user', content: 'Suggest a start' });
@@ -1671,6 +1838,87 @@ function parseFunnelStages(text){
   }).catch(function(){});
 })();
 
+/* ---------- social connect cards (YouTube / Truth / Rumble) ---------- */
+(function(){
+  var wrap = document.getElementById('social-connect-cards');
+  if (!wrap) return;
+  var T = function(k, vars){ return (window.MannaI18n && MannaI18n.t) ? MannaI18n.t(k, vars) : k; };
+  function jget(path){
+    return fetch(path, { headers: apiH() }).then(function(r){ return r.json(); });
+  }
+  function jpost(path, body){
+    return fetch(path, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, apiH()), body: JSON.stringify(body || {}) }).then(function(r){ return r.json(); });
+  }
+  function load(){
+    Promise.all([ jget('/api/social/platforms'), jget('/api/social/accounts') ]).then(function(rs){
+      var platforms = (rs[0] && rs[0].platforms) || [];
+      var byPlat = {};
+      ((rs[1] && rs[1].accounts) || []).forEach(function(a){ byPlat[a.platform] = a; });
+      if (!platforms.length) { wrap.innerHTML = '<div class="empty">' + esc(T('dash.js.social.err_load')) + '</div>'; return; }
+      wrap.innerHTML = '';
+      platforms.forEach(function(p){
+        var acc = byPlat[p.platform];
+        var card = document.createElement('div');
+        card.className = 'stat-card';
+        var status = acc
+          ? '<span style="color:#7ee2a8">' + esc(T('dash.js.social.connected_as', { handle: acc.handle })) + '</span>'
+          : '<span style="opacity:.65">' + esc(T('dash.js.social.not_connected')) + '</span>';
+        var html = '<div class="stat-label">' + esc(p.name) + '</div>'
+          + '<div style="margin:.45rem 0 .8rem;font-size:13px">' + status + '</div>';
+        if (p.platform === 'rumble') {
+          html += '<div style="font-size:12px;color:var(--gold);margin-bottom:.6rem">' + esc(T('dash.js.social.manual_upload')) + '</div>';
+          if (!acc) {
+            html += '<div style="display:flex;gap:6px"><input type="text" data-rumble-handle maxlength="80" placeholder="' + esc(T('dash.js.social.handle_ph')) + '" style="flex:1;min-width:0">'
+              + '<button class="btn gold" data-act="register">' + esc(T('dash.js.social.register')) + '</button></div>';
+          }
+        } else if (!acc) {
+          html += '<button class="btn gold" data-act="connect">' + esc(T('dash.js.social.connect')) + '</button>'
+            + '<div style="font-size:12px;opacity:.6;margin-top:.5rem">' + esc(T('dash.js.social.oauth_note')) + '</div>';
+        }
+        if (acc) {
+          html += '<button class="btn" data-act="disconnect">' + esc(T('dash.js.social.disconnect')) + '</button>';
+        }
+        html += '<div style="font-size:12px;color:#e27e7e;margin-top:.5rem" data-err></div>';
+        card.innerHTML = html;
+        var errEl = card.querySelector('[data-err]');
+        function fail(msg){ if (errEl) errEl.textContent = msg || T('dash.js.social.err_generic'); }
+        var connectBtn = card.querySelector('[data-act="connect"]');
+        if (connectBtn) connectBtn.addEventListener('click', function(){
+          connectBtn.disabled = true;
+          jget('/api/social/connect/' + encodeURIComponent(p.platform)).then(function(j){
+            if (j && j.ok && j.url) { window.location.href = j.url; return; }
+            connectBtn.disabled = false;
+            fail((j && (j.detail || j.error)) || T('dash.js.social.err_generic'));
+          }).catch(function(){ connectBtn.disabled = false; fail(); });
+        });
+        var regBtn = card.querySelector('[data-act="register"]');
+        if (regBtn) regBtn.addEventListener('click', function(){
+          var input = card.querySelector('[data-rumble-handle]');
+          var handle = input ? input.value.trim() : '';
+          if (!handle) { fail(T('dash.js.social.handle_ph')); return; }
+          regBtn.disabled = true;
+          jpost('/api/social/accounts', { platform: 'rumble', handle: handle }).then(function(j){
+            if (j && j.ok) { load(); return; }
+            regBtn.disabled = false;
+            fail((j && (j.detail || j.error)) || T('dash.js.social.err_generic'));
+          }).catch(function(){ regBtn.disabled = false; fail(); });
+        });
+        var discBtn = card.querySelector('[data-act="disconnect"]');
+        if (discBtn) discBtn.addEventListener('click', function(){
+          discBtn.disabled = true;
+          fetch('/api/social/accounts/' + encodeURIComponent(p.platform), { method: 'DELETE', headers: apiH() })
+            .then(function(r){ return r.json(); }).then(function(j){
+              if (j && j.ok) { load(); return; }
+              discBtn.disabled = false; fail((j && j.error) || T('dash.js.social.err_generic'));
+            }).catch(function(){ discBtn.disabled = false; fail(); });
+        });
+        wrap.appendChild(card);
+      });
+    }).catch(function(){ wrap.innerHTML = '<div class="empty">' + esc(T('dash.js.social.err_load')) + '</div>'; });
+  }
+  load();
+})();
+
 /* ---------- ip registry ---------- */
 (function(){
   function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
@@ -1795,6 +2043,217 @@ function siteModalOk(msg){
   el.style.display = 'block';
   document.getElementById('site-modal-err').style.display = 'none';
 }
+/* ---------- plan-limit purchase prompt ----------
+   Michael's directive (2026-10-25): when a user goes past their allowed
+   usage, prompt them to purchase — never a dead-end error. The headline
+   is his exact wording (dash.js.limit.headline); the detail line names
+   the limit hit and the plan's allowance; the Purchase button takes
+   them to the Billing tab (plans/purchase). */
+function gotoPlans(){
+  closeSiteModal();
+  setMainTab('billing');
+  if (!_billingLoaded) loadBilling();
+  try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch(e) {}
+}
+function buildPurchasePrompt(detailText){
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'border:1px solid rgba(217,164,65,.45);border-radius:10px;padding:12px 14px;background:rgba(217,164,65,.07)';
+  var head = document.createElement('div');
+  head.style.cssText = 'font-weight:700;font-size:15px;margin-bottom:4px';
+  head.textContent = MannaI18n.t('dash.js.limit.headline');
+  wrap.appendChild(head);
+  if (detailText) {
+    var detail = document.createElement('div');
+    detail.style.cssText = 'font-size:13px;color:var(--text2);margin-bottom:10px';
+    detail.textContent = detailText;
+    wrap.appendChild(detail);
+  }
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn gold';
+  btn.textContent = MannaI18n.t('dash.js.limit.purchase_button');
+  btn.addEventListener('click', gotoPlans);
+  wrap.appendChild(btn);
+  return wrap;
+}
+function siteModalPurchase(j){
+  var el = document.getElementById('site-modal-err');
+  if (!el) return;
+  el.innerHTML = '';
+  el.appendChild(buildPurchasePrompt(MannaI18n.t('dash.js.limit.projects_detail', {
+    limit: (j && j.limit != null) ? j.limit : '',
+    used: (j && j.used != null) ? j.used : ''
+  })));
+  el.style.display = 'block';
+  document.getElementById('site-modal-ok').style.display = 'none';
+}
+/* ---------- video generation (HeyGen, /api/videos) ----------
+   Script + presenter + voice -> POST /api/videos/jobs; the server
+   enforces plan/trial caps and answers over-cap requests with the
+   purchase-prompt contract (upgrade_required), rendered here with the
+   same buildPurchasePrompt() as the project limit. Processing jobs are
+   polled via the list endpoint (the server refreshes them from the
+   provider on read). All user text is rendered with textContent. */
+var _videoCatalogueLoaded = false;
+var _videoPollTimer = null;
+var _videoPollCount = 0;
+function videoErr(msg){
+  var el = document.getElementById('video-err');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+function renderVideoUsage(ent){
+  var el = document.getElementById('video-usage');
+  if (!el || !ent) return;
+  var key = ent.trial ? 'dash.video.usage_trial'
+    : (ent.limit == null ? 'dash.video.usage_unlimited' : 'dash.video.usage_month');
+  el.textContent = MannaI18n.t(key, { used: ent.used != null ? ent.used : 0, limit: ent.limit != null ? ent.limit : '' });
+}
+function renderVideoPrompt(j){
+  var el = document.getElementById('video-prompt');
+  if (!el) return;
+  el.innerHTML = '';
+  el.appendChild(buildPurchasePrompt(MannaI18n.t(j.trial ? 'dash.js.limit.trial_videos_detail' : 'dash.js.limit.videos_detail', {
+    limit: (j && j.limit != null) ? j.limit : '',
+    used: (j && j.used != null) ? j.used : ''
+  })));
+  el.style.display = 'block';
+}
+function hideVideoPrompt(){
+  var el = document.getElementById('video-prompt');
+  if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+}
+function fillVideoSelect(id, items){
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  var prev = sel.value;
+  sel.innerHTML = '';
+  (items || []).forEach(function(it){
+    var o = document.createElement('option');
+    o.value = it.key;
+    o.textContent = it.name;
+    sel.appendChild(o);
+  });
+  if (prev) sel.value = prev;
+}
+function renderVideoList(jobs){
+  var list = document.getElementById('video-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!jobs || !jobs.length) {
+    var empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = MannaI18n.t('dash.video.empty');
+    list.appendChild(empty);
+    return;
+  }
+  jobs.forEach(function(job){
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:0.75rem;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)';
+    var status = document.createElement('span');
+    status.style.cssText = 'font-size:12px;min-width:110px;color:' + (job.status === 'completed' ? 'var(--green)' : (job.status === 'failed' ? '#e0655a' : 'var(--gold)'));
+    status.textContent = MannaI18n.t('dash.video.status_' + job.status);
+    row.appendChild(status);
+    var snippet = document.createElement('span');
+    snippet.style.cssText = 'flex:1;font-size:13px;color:var(--text2)';
+    snippet.textContent = job.script.length > 90 ? job.script.slice(0, 90) + '…' : job.script;
+    row.appendChild(snippet);
+    if (job.status === 'completed' && job.video_url) {
+      var a = document.createElement('a');
+      a.href = job.video_url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.style.cssText = 'color:var(--gold);font-size:13px';
+      a.textContent = MannaI18n.t('dash.video.watch');
+      row.appendChild(a);
+    }
+    if (job.status === 'failed' && job.error) {
+      var err = document.createElement('span');
+      err.style.cssText = 'font-size:12px;color:#e0655a';
+      err.textContent = job.error;
+      row.appendChild(err);
+    }
+    list.appendChild(row);
+  });
+}
+function scheduleVideoPoll(jobs){
+  var active = (jobs || []).some(function(j){ return j.status === 'queued' || j.status === 'processing'; });
+  if (_videoPollTimer) { clearTimeout(_videoPollTimer); _videoPollTimer = null; }
+  if (!active || _videoPollCount > 24) return;
+  _videoPollCount += 1;
+  _videoPollTimer = setTimeout(function(){ loadVideos(); }, 5000);
+}
+function loadVideos(){
+  fetch('/api/videos/catalogue', { headers: apiH() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (j && j.ok) {
+        if (!_videoCatalogueLoaded) {
+          fillVideoSelect('video-avatar', j.avatars);
+          fillVideoSelect('video-voice', j.voices);
+          _videoCatalogueLoaded = true;
+        }
+        renderVideoUsage(j.entitlement);
+        if (!j.configured) videoErr(MannaI18n.t('dash.video.not_configured'));
+      }
+    })
+    .catch(function(){});
+  return fetch('/api/videos/jobs', { headers: apiH() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (j && j.ok) { renderVideoList(j.jobs); renderVideoUsage(j.entitlement); scheduleVideoPoll(j.jobs); }
+    })
+    .catch(function(){});
+}
+(function(){
+  var tabBtn = document.querySelector('.main-tab[data-tab="content"]');
+  if (tabBtn) tabBtn.addEventListener('click', function(){ loadVideos(); });
+  var panel = document.getElementById('panel-content');
+  if (panel && panel.style.display !== 'none') loadVideos();
+  var form = document.getElementById('video-form');
+  if (!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    videoErr('');
+    hideVideoPrompt();
+    var script = document.getElementById('video-script').value.trim();
+    if (!script) { videoErr(MannaI18n.t('dash.video.err_script')); return; }
+    var btn = document.getElementById('video-generate');
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = MannaI18n.t('dash.video.generating');
+    fetch('/api/videos/jobs', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiH()),
+      body: JSON.stringify({
+        script: script,
+        avatar: document.getElementById('video-avatar').value,
+        voice: document.getElementById('video-voice').value
+      })
+    }).then(function(r){
+      return r.json().then(function(j){ return { status: r.status, j: j }; });
+    }).then(function(out){
+      btn.disabled = false;
+      btn.textContent = orig;
+      var j = out.j || {};
+      if (out.status === 201 && j.ok) {
+        _videoPollCount = 0;
+        renderVideoUsage(j.entitlement);
+        loadVideos();
+        return;
+      }
+      if (j.upgrade_required) { renderVideoPrompt(j); return; }
+      if (j.error === 'heygen_not_configured') { videoErr(MannaI18n.t('dash.video.not_configured')); return; }
+      if (j.error === 'script_too_long') { videoErr(MannaI18n.t('dash.video.err_script')); return; }
+      videoErr(MannaI18n.t('dash.video.err_generic'));
+    }).catch(function(){
+      btn.disabled = false;
+      btn.textContent = orig;
+      videoErr(MannaI18n.t('dash.video.err_generic'));
+    });
+  });
+})();
 function refreshSites(){
   return fetch(API_BASE + '/api/sites', { headers: apiH() })
     .then(function(r){ return r.json(); })
@@ -1856,6 +2315,7 @@ function refreshSites(){
         keyTouched = false;
         refreshSites();
       } else {
+        if (j.error === 'project_limit_reached' && j.upgrade_required) { siteModalPurchase(j); return; }
         var msg = MannaI18n.t('dash.js.sites.err_add');
         if (j.error === 'site_key_taken') msg = MannaI18n.t('dash.js.sites.err_key_taken');
         else if (j.error === 'invalid_site_key') msg = MannaI18n.t('dash.js.sites.err_key');
@@ -1913,7 +2373,7 @@ function loadBilling(){
          never hardcoded, so the UI can't drift from real pricing */
       var plans = (j.plans && j.plans.length) ? j.plans : [
         { key:'starter', name:'Starter', price_label:'$29.99/mo', regular_price_label:'$49.99/mo', special_offer:true, tagline:MannaI18n.t('dash.js.billing.plan_starter_tagline'), projects:2, emails_per_month:5000 },
-        { key:'pro', name:'Pro', price_label:'$69.99/mo', regular_price_label:'$89.99/mo', special_offer:true, tagline:MannaI18n.t('dash.js.billing.plan_pro_tagline'), projects:10, emails_per_month:20000 }
+        { key:'pro', name:'Pro', price_label:'$69.99/mo', regular_price_label:'$99.99/mo', special_offer:true, tagline:MannaI18n.t('dash.js.billing.plan_pro_tagline'), projects:10, emails_per_month:50000 }
       ];
       function planSpecs(p){
         var bits = [];

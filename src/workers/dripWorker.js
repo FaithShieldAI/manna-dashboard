@@ -16,7 +16,7 @@
  *      left for the next run; the enrollment is NOT advanced or failed.
  *   2. Template resolution — email_templates for the tenant by template_key.
  *      Missing template -> logged as failed (config error, not retried).
- *   3. Send via src/lib/mailer.js (SES -> Brevo -> stub). campaign =
+ *   3. Send via src/lib/mailer.js (SES -> stub). campaign =
  *      `drip-<drip_id>`, templateKey = step.template_key (dashboard rule:
  *      every send logs its template_key).
  *   4. Success -> drip_send_log 'sent', tenant_usage +1, enrollment advanced
@@ -199,7 +199,7 @@ async function processItem(item) {
       campaign: `drip-${item.drip_id}`,
       templateKey: item.template_key,
     });
-    const provider = result.stubbed ? 'stub' : 'ses/brevo';
+    const provider = result.stubbed ? 'stub' : 'ses';
     transaction(() => {
       recordSend({
         tenantId: item.tenant_id, dripId: item.drip_id, enrollmentId: item.enrollment_id,

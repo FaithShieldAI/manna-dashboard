@@ -2,9 +2,11 @@
 /**
  * CSRF protection for cookie-authenticated mutating requests.
  *
- * The session cookie is SameSite=Strict, which already blocks cross-site
- * form/cookie sends in modern browsers. Defense in depth: mutating
- * requests (POST/PUT/PATCH/DELETE) must also carry the
+ * The session cookie is SameSite=Lax (see src/lib/sessions.js
+ * cookieOptions; FIX 2026-10-29, audit S9 — this comment previously said
+ * "Strict", which the code has never set). Lax still withholds the cookie
+ * on cross-site POST/subresource requests in modern browsers. Defense in
+ * depth: mutating requests (POST/PUT/PATCH/DELETE) must also carry the
  * `X-Requested-With: XMLHttpRequest` header, which browsers do not send
  * cross-origin without a preflight the attacker cannot satisfy for
  * credentialed simple requests.

@@ -2,7 +2,15 @@
 /**
  * Signup demo-seeding tests (Michael, 2026-10-14):
  * a new signup must land in a POPULATED dashboard — the seeder runs
- * synchronously inside POST /api/auth/register for the new tenant only.
+ * for the new tenant only, with no server restart.
+ *
+ * FIX 2026-10-29 (audit B2): the seeder no longer runs synchronously
+ * inside POST /api/auth/register — it runs in the background right after
+ * the 201 response (synchronous seeding made signup take ~60s under
+ * concurrency). These tests therefore POLL for the seeded state instead
+ * of asserting it in the same tick as the response. The contract under
+ * test is unchanged: signup -> populated dashboard, idempotent,
+ * tenant-scoped, and a seed failure never breaks registration.
  *
  * NOTE: this file deliberately does NOT call setupTestEnv() from helpers.js,
  * because the harness sets MANNA_SKIP_SIGNUP_SEED=1. This file exercises the
@@ -45,8 +53,24 @@ async function register(email, companyName) {
 const count = (table, tid) =>
   db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE tenant_id = ?`).get(tid).n;
 
+// FIX 2026-10-29 (audit B2): seeding is backgrounded — poll until the
+// tenant reaches the fully seeded state (or the deadline expires and the
+// assertions below fail with the real counts).
+async function waitSeeded(tid, timeoutMs = 180000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (count('influencers', tid) === 9284
+      && count('email_snapshots', tid) === 4
+      && count('email_campaigns', tid) === 6
+      && count('goals', tid) === 5) return true;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return false;
+}
+
 test('signup seeds demo data immediately, no restart', async () => {
   const tenant = await register('ken-seed@example.com', 'Ken Seed Co');
+  assert.equal(await waitSeeded(tenant.id), true);
   assert.equal(count('email_snapshots', tenant.id), 4);
   assert.equal(count('email_campaigns', tenant.id), 6);
   assert.equal(count('goals', tenant.id), 5);
@@ -55,6 +79,9 @@ test('signup seeds demo data immediately, no restart', async () => {
 
 test('seeding is idempotent (re-run causes no duplicates)', async () => {
   const tenant = await register('idem-seed@example.com', 'Idem Co');
+  // Wait for the background signup seed to finish first; only then does a
+  // direct re-run exercise the idempotency guard (not a race).
+  assert.equal(await waitSeeded(tenant.id), true);
   const { seedDemoData } = require('../scripts/seed-demo-data');
   const { seedTenantInfluencers } = require('../scripts/seed-contacts');
   seedDemoData(tenant.slug);
@@ -69,6 +96,8 @@ test('seeding is idempotent (re-run causes no duplicates)', async () => {
 test('seeding is tenant-scoped (second signup does not touch first tenant)', async () => {
   const t1 = await register('scope1@example.com', 'Scope One');
   const t2 = await register('scope2@example.com', 'Scope Two');
+  assert.equal(await waitSeeded(t1.id), true);
+  assert.equal(await waitSeeded(t2.id), true);
   assert.equal(count('influencers', t2.id), 9284);
   assert.equal(count('influencers', t1.id), 9284);
   assert.equal(count('email_snapshots', t1.id), 4);
