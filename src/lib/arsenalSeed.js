@@ -40,10 +40,41 @@ const DEFAULT_SEED_PATH = path.join(__dirname, '..', '..', 'data', 'seed', 'arse
 
 const cache = new Map(); // path -> parsed seed data
 
+/** Empty arsenal used ONLY when the seed file is missing (see below). */
+function emptySeed() {
+  return {
+    seed_key: SEED_KEY,
+    version: 0,
+    generated_from: null,
+    total: 0,
+    counts_by_master_category: {},
+    counts_by_mapped_category: {},
+    rows: []
+  };
+}
+
 function loadSeedData(seedPath) {
   const p = seedPath || DEFAULT_SEED_PATH;
   if (cache.has(p)) return cache.get(p);
-  const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+  let raw;
+  try {
+    raw = fs.readFileSync(p, 'utf8');
+  } catch (e) {
+    if (e && e.code === 'ENOENT') {
+      // FIX 2026-10-29: a MISSING seed file (e.g. the .dockerignore
+      // packaging miss that kept data/seed/arsenal-seed.json out of the
+      // production image) must never break signup / webhook seeding by
+      // throwing. Degrade to an empty arsenal with a LOUD warning; the
+      // empty fallback is deliberately NOT cached, so once the real file
+      // ships it is picked up on the next call. A file that exists but is
+      // malformed still throws below — corrupt data must stay visible.
+      // eslint-disable-next-line no-console
+      console.error(`[arsenal] WARNING: seed file not found at ${p} — arsenal preload DISABLED (empty seed). Check packaging of data/seed/arsenal-seed.json.`);
+      return emptySeed();
+    }
+    throw e;
+  }
+  const data = JSON.parse(raw);
   if (!data || !Array.isArray(data.rows) || typeof data.total !== 'number'
       || data.rows.length !== data.total) {
     throw new Error(`[arsenal] seed file ${p} is malformed (rows/total mismatch)`);

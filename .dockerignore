@@ -1,6 +1,8 @@
 node_modules
 data/
 !data/d2rm-source.db
+!data/seed/
+!data/seed/arsenal-seed.json
 .git
 .gitignore
 tests/
