@@ -34,6 +34,14 @@ app.use(helmet({
 app.post('/api/billing/webhook',
   express.raw({ type: 'application/json', limit: '1mb' }),
   require('./routes/billingWebhook'));
+// FaithShield Stripe webhook: separate endpoint, separate signing secret
+// (STRIPE_FS_WEBHOOK_SECRET) — tracks FaithShield subscription state into
+// faithshield_subscriptions and the D2RM 'faithshield' goal counter. Same
+// raw-body treatment as the billing webhook above.
+// See src/routes/faithshieldWebhook.js.
+app.post('/api/billing/webhook/faithshield',
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  require('./routes/faithshieldWebhook'));
 app.use(express.json({ limit: '256kb' }));
 // Influencer auto-provision webhook (Armor Bearer -> Manna). Mounted before
 // the authenticated /api router: the X-Webhook-Secret header IS the auth.
@@ -130,8 +138,18 @@ app.get('/i18n/:lang.json', (req, res) => {
 const { serveApp } = require('./app-serve');
 app.get('/app', requireAuthPage, (req, res) => serveApp(req, res));
 
-// Root -> app (which bounces to /login when unauthenticated).
-app.get('/', (req, res) => res.redirect('/app'));
+// Root — the front door. A visitor with no session gets the SALES PAGE
+// (public/sales.html, the Manna landing page wired into the app); a
+// signed-in user goes straight to /app, exactly what the old redirect
+// chain achieved. Served WITHOUT the strict CSP on purpose: the sales
+// page is a self-contained marketing page with one inline <style> block
+// and no scripts, and STRICT_CSP (style-src 'self') would strip its
+// styling. The auth pages keep STRICT_CSP via sendPage above.
+app.get('/', (req, res) => {
+  const token = req.cookies && req.cookies[sessions.COOKIE_NAME];
+  if (sessions.verifySession(token)) return res.redirect('/app');
+  res.sendFile(path.join(PUBLIC_DIR, 'sales.html'));
+});
 
 // --- public ----------------------------------------------------------------
 app.get('/health', (req, res) => res.json({ ok: true, service: 'd2rm-dashboard-saas', version: '0.1.0' }));
@@ -199,9 +217,12 @@ api.use('/billing', require('./routes/billing'));
 api.use('/leads', require('./routes/leads'));
 api.use('/onboarding', require('./routes/onboarding'));
 api.use('/assistant', require('./routes/assistant'));
+api.use('/scribe', require('./routes/scribe'));
+api.use('/videos', require('./routes/videos'));
 api.use('/admin', require('./routes/admin'));
 api.use('/growth', require('./routes/growth'));
 api.use('/facebook', require('./routes/facebook'));
+api.use('/social', require('./routes/socialConnect'));
 
 // Compat shim: query-param style tracker endpoints the dashboard HTML calls
 // (API_BASE + '/api/stats?site=KEY'). Same tenant-scoped data, tracker shape.
@@ -273,13 +294,32 @@ app.use((req, res) => res.status(404).json({ ok: false, error: 'not_found' }));
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  // Body-parser errors already carry a proper status: 413 for bodies over the
+  // express.json() 256kb limit, 400 for malformed JSON. Return those instead
+  // of a generic 500 so clients can tell their request apart from a crash.
+  if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+    return res.status(413).json({ ok: false, error: 'payload_too_large' });
+  }
+  if (err && (err.type === 'entity.parse.failed' || err.status === 400)) {
+    return res.status(400).json({ ok: false, error: 'malformed_json' });
+  }
   // eslint-disable-next-line no-console
   console.error('[unhandled]', err);
   res.status(500).json({ ok: false, error: 'server_error' });
 });
 
 // --- boot ----------------------------------------------------------------------
-migrate();
+// A failed migration must be loud and final (red-team round 1, F-A1):
+// never serve traffic against a half-migrated database. The throw is
+// deliberate — process supervisors surface a crash with this message far
+// better than a quiet boot on a broken schema.
+try {
+  migrate();
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.error(`[boot] FATAL: database migration failed — refusing to start: ${e && e.message ? e.message : e}`);
+  throw e;
+}
 
 // Seed Michael's real contacts on startup (if not already present)
 try {
@@ -317,7 +357,7 @@ if (require.main === module) {
       // eslint-disable-next-line no-console
       console.log(`[mailer] provider-chain=${require('./lib/mailer').describeProvider()}`
         + ` ses_region=${require('./config').awsRegion}`
-        + ` from_domain=${(require('./config').sesFromEmail || process.env.BREVO_FROM_EMAIL || '').split('@')[1] || 'unset'}`);
+        + ` from_domain=${(require('./config').sesFromEmail || '').split('@')[1] || 'unset'}`);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[mailer] status log failed:', e.message);

@@ -7,15 +7,18 @@
  *
  * - SES mode: AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + SES_FROM_EMAIL
  *   are all set  -> sends via @aws-sdk/client-ses (SendEmail).
- * - Brevo fallback mode: when SES is missing OR a SES send fails, and
- *   BREVO_API_KEY is set -> sends via Brevo's transactional SMTP API.
- *   (Brevo free tier: 300 emails/day — plenty for password resets.)
- * - Stub mode: neither configured -> logs + records to an in-memory
+ * - Stub mode: SES not configured -> logs + records to an in-memory
  *   outbox (visible in dev/test). Zero emails sent.
  *
- * Provider chain in sendMail(): SES -> Brevo -> stub.
- * A provider failure is logged loudly and the next provider is tried,
- * so a single broken provider never silently eats transactional mail.
+ * Provider chain in sendMail(): SES -> stub.
+ * If a SES send fails, the failure is logged loudly and the mail falls to
+ * the stub with stubbed=true clearly reported — a failed send is never
+ * silently reported as a real send.
+ *
+ * NOTE (2026-10-29): Brevo was removed from Manna entirely by Michael's
+ * decision — Manna's mail runs on Amazon SES only, the owned pipe. Brevo
+ * remains D2RM's contact storage + appeal channel; it is never a Manna
+ * dependency.
  *
  * API (all async):
  *   sendMail({ to, subject, text, html, campaign, templateKey }) -> { ok, stubbed, id }
@@ -47,16 +50,12 @@ function isSesConfigured() {
   return config.sesConfigured === true;
 }
 
-function isBrevoConfigured() {
-  return Boolean(process.env.BREVO_API_KEY);
-}
-
 /**
  * ------------------------------------------------------------------
  * AUTO UTM TAGGING (Michael's rule: auto UTM tags on ALL outbound).
  *
  * Every outbound email HTML passes through tagUtm() before it leaves,
- * regardless of provider (SES, Brevo, stub). The tagging is purely
+ * regardless of provider (SES, stub). The tagging is purely
  * ADDITIVE — it never rewrites, removes, or breaks existing links:
  *
  *   - appends utm_source=manna, utm_medium=email,
@@ -138,13 +137,9 @@ function tagUtm(html, campaign, templateKey) {
   );
 }
 
-/** No secrets — safe to log at boot. e.g. "ses+brevo", "brevo", "stub". */
+/** No secrets — safe to log at boot. e.g. "ses", "stub". */
 function describeProvider() {
-  const parts = [];
-  if (isSesConfigured()) parts.push('ses');
-  if (isBrevoConfigured()) parts.push('brevo');
-  if (parts.length === 0) parts.push('stub');
-  return parts.join('+');
+  return isSesConfigured() ? 'ses' : 'stub';
 }
 
 function getSesClient() {
@@ -220,73 +215,26 @@ function sendViaStub({ to, subject, text, html, campaign, templateKey }) {
   return { ok: true, stubbed: true, id: msg.id };
 }
 
-/**
- * Brevo transactional fallback (https://api.brevo.com/v3/smtp/email).
- * Env: BREVO_API_KEY (required), BREVO_FROM_EMAIL (optional, falls back
- * to SES_FROM_EMAIL). Free tier = 300 emails/day.
- */
-async function sendViaBrevo({ to, subject, text, html, campaign, templateKey }) {
-  // Auto-UTM on the Brevo branch — same rule as every other branch.
-  const taggedHtml = tagUtm(html, campaign, templateKey);
-  const fromEmail = process.env.BREVO_FROM_EMAIL || config.sesFromEmail;
-  if (!fromEmail) throw new Error('[mailer:brevo] no from-address (set BREVO_FROM_EMAIL or SES_FROM_EMAIL)');
-  const payload = {
-    sender: { email: fromEmail },
-    to: [{ email: to }],
-    subject,
-    textContent: text || '',
-    ...(taggedHtml ? { htmlContent: taggedHtml } : {}),
-  };
-  const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'api-key': process.env.BREVO_API_KEY,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => '');
-    throw new Error(`[mailer:brevo] HTTP ${resp.status}: ${String(errText).slice(0, 200)}`);
-  }
-  const data = await resp.json().catch(() => ({}));
-  const msg = recordOutbox({
-    id: data.messageId || `brevo-${Date.now()}`,
-    to, subject, text, html: taggedHtml, stubbed: false,
-  });
-  // eslint-disable-next-line no-console
-  console.log(`[mailer:brevo] to=${to} subject="${subject}" messageId=${msg.id}`);
-  return { ok: true, stubbed: false, id: msg.id, provider: 'brevo' };
-}
-
 async function sendMail({ to, subject, text, html, campaign, templateKey }) {
   if (!to || !subject) throw new Error('sendMail: to and subject are required');
-  // UTM tagging applies to every provider branch below (SES, Brevo, stub):
+  // UTM tagging applies to every provider branch below (SES, stub):
   // each branch tags its own HTML copy via tagUtm() before sending, so no
   // email leaves untagged. campaign/templateKey are optional — defaults
   // fall back to utm_campaign=manna and no utm_content.
-  // 1) SES when configured — but never let one broken provider eat the mail.
+  // 1) SES when configured — SES is Manna's only real mail provider.
   if (isSesConfigured()) {
     try {
       return await sendViaSes({ to, subject, text, html, campaign, templateKey });
     } catch (e) {
+      // Loud failure: a failed SES send is never reported as a real send —
+      // it falls to the stub below with stubbed=true clearly reported.
       // eslint-disable-next-line no-console
-      console.error(`[mailer] SES send failed for to=${to}: ${e.message} — trying fallback`);
+      console.error(`[mailer] SES send failed for to=${to}: ${e.message} — falling back to stub`);
     }
   }
-  // 2) Brevo transactional fallback when configured.
-  if (isBrevoConfigured()) {
-    try {
-      return await sendViaBrevo({ to, subject, text, html, campaign, templateKey });
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(`[mailer] Brevo send failed for to=${to}: ${e.message} — falling back to stub`);
-    }
-  }
-  // 3) Stub: logs + in-memory outbox, zero emails sent.
+  // 2) Stub: logs + in-memory outbox, zero emails sent.
   // eslint-disable-next-line no-console
-  console.error(`[mailer] NO working provider for to=${to} subject="${subject}" — stubbed (check SES/Brevo config)`);
+  console.error(`[mailer] NO working provider for to=${to} subject="${subject}" — stubbed (check SES config)`);
   return sendViaStub({ to, subject, text, html, campaign, templateKey });
 }
 
@@ -331,7 +279,6 @@ module.exports = {
   verificationEmail,
   passwordResetEmail,
   isSesConfigured,
-  isBrevoConfigured,
   describeProvider,
   _resetSesClient,
 };

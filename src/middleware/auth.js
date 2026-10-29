@@ -26,9 +26,15 @@ function requireAuth(req, res, next) {
   req.user = verified.user;
   // Whitelisted partners (Michael's rule 2026-10-18) get full visibility:
   // treat as admin so they see all tenants' data, like owners do.
+  // FIX 2026-10-29 (audit B6): elevation now ALSO requires the account's
+  // email to be verified (email_verified_at set). Previously any session
+  // under a whitelisted address was promoted to admin unverified, so a
+  // first-come unverified registration under a whitelisted address (if it
+  // had no existing user row) would have become admin. Whitelist MEMBERSHIP
+  // is unchanged — see src/lib/whitelist.js.
   try {
     const { isWhitelisted } = require('../lib/whitelist');
-    if (isWhitelisted(verified.user.email) && req.user.role !== 'owner') {
+    if (isWhitelisted(verified.user.email) && verified.user.email_verified_at && req.user.role !== 'owner') {
       req.user = { ...verified.user, role: 'admin' };
     }
   } catch (e) { /* whitelist is additive; never break auth */ }
@@ -58,9 +64,11 @@ function requireAuthPage(req, res, next) {
   }
   req.user = verified.user;
   // Whitelisted partners get full visibility (same as API auth).
+  // FIX 2026-10-29 (audit B6): same verified-email requirement as
+  // requireAuth above — no admin elevation for unverified addresses.
   try {
     const { isWhitelisted } = require('../lib/whitelist');
-    if (isWhitelisted(verified.user.email) && req.user.role !== 'owner') {
+    if (isWhitelisted(verified.user.email) && verified.user.email_verified_at && req.user.role !== 'owner') {
       req.user = { ...verified.user, role: 'admin' };
     }
   } catch (e) { /* additive only */ }

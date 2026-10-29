@@ -20,10 +20,33 @@ const DB_PATH = process.env.DATABASE_PATH
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
+// FIX 2026-10-29 (audit B3): state the resolved database path in the boot
+// log, and whether an existing file was found or a NEW empty database is
+// about to be created. The deploy flips DATABASE_PATH to the persistent
+// disk (/var/data); this line is the proof in the logs of which file the
+// process actually opened — the failure mode being guarded against is a
+// quiet boot against a fresh empty DB while the real data sits elsewhere.
+const DB_FILE_EXISTED = fs.existsSync(DB_PATH);
+// eslint-disable-next-line no-console
+console.log(
+  `[db] DATABASE_PATH=${DB_PATH} (${process.env.DATABASE_PATH ? 'from env' : 'default'}) — `
+  + (DB_FILE_EXISTED ? 'existing database file found, opening it' : 'no file found, creating a NEW empty database')
+);
+if (!process.env.DATABASE_PATH && process.env.NODE_ENV === 'production') {
+  // eslint-disable-next-line no-console
+  console.warn('[db] WARNING: DATABASE_PATH is unset in production — the default path lives inside the app directory and may be EPHEMERAL storage that a redeploy can wipe.');
+}
+
 const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL;');
 db.exec('PRAGMA foreign_keys = ON;');
 db.exec('PRAGMA busy_timeout = 5000;');
+
+/** Parse a JSON column value; null on missing/malformed (never throws). */
+function safeJson(v) {
+  if (v == null) return null;
+  try { return JSON.parse(v); } catch (e) { return null; }
+}
 
 /** Synchronous transaction helper (node:sqlite has no .transaction()). */
 function transaction(fn) {
@@ -55,14 +78,51 @@ function currentVersion() {
   }
 }
 
+function appliedVersions() {
+  try {
+    return new Set(
+      db.prepare('SELECT version FROM schema_migrations').all().map(r => r.version)
+    );
+  } catch (e) {
+    // schema_migrations doesn't exist yet (fresh DB)
+    return new Set();
+  }
+}
+
 function migrate() {
   const files = fs.readdirSync(MIGRATIONS_DIR)
     .filter(f => /^\d+_.*\.sql$/.test(f))
     .sort();
-  const cur = currentVersion();
+  const fileVersions = new Map();
   for (const file of files) {
     const version = parseInt(file.split('_')[0], 10);
-    if (version <= cur) continue;
+    if (fileVersions.has(version)) {
+      throw new Error(
+        `[migrate] duplicate migration version ${version}: ${fileVersions.get(version)} and ${file}`
+      );
+    }
+    fileVersions.set(version, file);
+  }
+  const applied = appliedVersions();
+  // Fail loud on a recorded version with no file on disk: the DB claims a
+  // migration ran that this codebase cannot account for (wrong tree,
+  // backup restored from a newer build). Never guess past it.
+  for (const v of [...applied].sort((a, b) => a - b)) {
+    if (!fileVersions.has(v)) {
+      throw new Error(
+        `[migrate] schema_migrations records version ${v} but no migration file for it exists in ${MIGRATIONS_DIR} — refusing to migrate a database this build cannot account for`
+      );
+    }
+  }
+  // Apply by SET DIFFERENCE, not "version > MAX(applied)" (red-team round
+  // 1, F-A2): a DB stamped with a higher version while an earlier file was
+  // absent must still receive the missing migration, in version order —
+  // the MAX() test silently skipped it forever.
+  const pending = [...fileVersions.keys()]
+    .filter(v => !applied.has(v))
+    .sort((a, b) => a - b);
+  for (const version of pending) {
+    const file = fileVersions.get(version);
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
     transaction(() => {
       db.exec(sql);
@@ -312,6 +372,57 @@ function forTenant(tenantId) {
         .run(...params);
     },
 
+    // -- video generation jobs (migration 026) ---------------------------
+    createVideoJob({ script, avatarKey, voiceKey, engine, provider }) {
+      return db.prepare(`
+        INSERT INTO video_jobs (tenant_id, script, avatar_key, voice_key, engine, provider)
+        VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(t, script, avatarKey, voiceKey, engine || 'standard', provider || 'heygen');
+    },
+    listVideoJobs(limit = 50) {
+      return db.prepare(`
+        SELECT id, script, avatar_key, voice_key, engine, provider, status,
+               video_url, duration_s, error, created_at, updated_at, finished_at
+        FROM video_jobs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?`)
+        .all(t, limit);
+    },
+    getVideoJob(id) {
+      return db.prepare(`
+        SELECT id, script, avatar_key, voice_key, engine, provider, provider_job_id, status,
+               video_url, duration_s, error, created_at, updated_at, finished_at
+        FROM video_jobs WHERE tenant_id = ? AND id = ?`).get(t, id);
+    },
+    updateVideoJob(id, fields) {
+      const allowed = ['provider_job_id', 'status', 'video_url', 'duration_s', 'error', 'finished_at'];
+      const sets = [];
+      const params = [];
+      for (const k of allowed) {
+        if (fields[k] !== undefined) { sets.push(`${k} = ?`); params.push(fields[k]); }
+      }
+      if (!sets.length) return;
+      sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+      params.push(t, id);
+      db.prepare(`UPDATE video_jobs SET ${sets.join(', ')} WHERE tenant_id = ? AND id = ?`)
+        .run(...params);
+    },
+    /**
+     * Allowance accounting: jobs that consumed (or are consuming) a render.
+     * 'failed' rows never rendered, so they never count. `sinceIso` null
+     * counts all-time (trial cap); a month-start ISO counts that month
+     * (Heavy monthly caps).
+     */
+    countVideoJobs(sinceIso) {
+      const row = sinceIso
+        ? db.prepare(`
+            SELECT COUNT(*) AS n FROM video_jobs
+            WHERE tenant_id = ? AND status IN ('queued','processing','completed')
+              AND created_at >= ?`).get(t, sinceIso)
+        : db.prepare(`
+            SELECT COUNT(*) AS n FROM video_jobs
+            WHERE tenant_id = ? AND status IN ('queued','processing','completed')`).get(t);
+      return row ? row.n : 0;
+    },
+
     // -- onboarding -------------------------------------------------------
     getOnboarding() {
       let row = db.prepare(
@@ -369,11 +480,25 @@ function forTenant(tenantId) {
         'DELETE FROM connected_socials WHERE tenant_id = ? AND platform = ?'
       ).run(t, platform);
     },
+    /** Internal: returns the row WITH token material for server-side decrypt. */
+    getConnectedSocial(platform) {
+      return db.prepare(
+        `SELECT platform, handle, access_token_enc, refresh_token_enc, expires_at, created_at
+         FROM connected_socials WHERE tenant_id = ? AND platform = ?`
+      ).get(t, platform) || null;
+    },
     upsertSocialAccount({ platform, handle }) {
       return db.prepare(`
         INSERT INTO social_accounts (tenant_id, platform, handle, followers, posts)
         VALUES (?, ?, ?, 0, 0)
         ON CONFLICT (tenant_id, platform, handle) DO NOTHING`).run(t, platform, handle);
+    },
+    /** Update tracked follower/post counts for a connected platform account. */
+    updateSocialStats({ platform, handle, followers, posts }) {
+      return db.prepare(`
+        UPDATE social_accounts SET followers = ?, posts = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE tenant_id = ? AND platform = ? AND handle = ?`)
+        .run(followers || 0, posts || 0, t, platform, handle);
     },
 
     // -- facebook pages (per-Page tokens; tokens stored encrypted) -----------
@@ -487,6 +612,109 @@ function forTenant(tenantId) {
       return db.prepare(
         'SELECT goal_key, label, current_value, goal_value, unit FROM goals WHERE tenant_id = ? ORDER BY id'
       ).all(t);
+    },
+
+    // -- video / social post performance (Scribe data-read layer) --------
+    videoPostings(limit = 50) {
+      return db.prepare(`
+        SELECT id, video_name, product, platform, account_handle, post_url, posted_at,
+               views, likes, comments, shares, notes
+        FROM video_postings WHERE tenant_id = ? ORDER BY posted_at DESC LIMIT ?`)
+        .all(t, limit);
+    },
+    socialPostings(limit = 50) {
+      return db.prepare(`
+        SELECT id, platform, post_url, content_item_id, posted_at,
+               likes, shares, comments, clicks
+        FROM social_postings WHERE tenant_id = ? ORDER BY posted_at DESC LIMIT ?`)
+        .all(t, limit);
+    },
+    intakeDaily(days = 14) {
+      return db.prepare(`
+        SELECT date, category, new_count FROM intake_daily
+        WHERE tenant_id = ? AND date >= date('now', '-' || ? || ' days')
+        ORDER BY date DESC, category`).all(t, days);
+    },
+
+    // -- Scribe analyses (server-side store of validated advice) ---------
+    // /analyze persists its validated advice here and returns only the
+    // opaque id; drafts are created from the stored record, so provenance
+    // (mode/transport) is server-side truth — never client input (F1).
+    createScribeAnalysis({ id, mode, transport, advice, signals, expiresAt }) {
+      return db.prepare(`
+        INSERT INTO scribe_analyses (id, tenant_id, mode, transport, advice_json, signals_json, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .run(id, t, mode, transport,
+          JSON.stringify(advice || {}), JSON.stringify(signals || {}), expiresAt);
+    },
+    getScribeAnalysis(id) {
+      // Tenant-scoped AND unexpired; missing, foreign, and expired ids are
+      // indistinguishable (all null) so ids can't be probed across tenants.
+      const r = db.prepare(`
+        SELECT id, mode, transport, advice_json, signals_json, created_at, expires_at
+        FROM scribe_analyses
+        WHERE tenant_id = ? AND id = ?
+          AND expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')`).get(t, id);
+      if (!r) return null;
+      return {
+        id: r.id, mode: r.mode, transport: r.transport,
+        advice: safeJson(r.advice_json), signals: safeJson(r.signals_json),
+        created_at: r.created_at, expires_at: r.expires_at,
+      };
+    },
+
+    // -- Scribe drafts (act-layer artifacts; status starts 'draft') -------
+    insertScribeDrafts(rows) {
+      // One transaction for the whole batch (F11): a failure mid-batch
+      // leaves zero drafts, never a partial set.
+      return transaction(() => rows.map(row => Number(db.prepare(`
+        INSERT INTO scribe_drafts (tenant_id, draft_type, title, body, payload_json, source, analysis_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .run(t, row.draftType, row.title, row.body || null,
+          JSON.stringify(row.payload || {}), row.source, row.analysisId || null)
+        .lastInsertRowid)));
+    },
+    listScribeDraftsByAnalysis(analysisId) {
+      return db.prepare(`
+        SELECT id, draft_type, title, status, source, analysis_id
+        FROM scribe_drafts WHERE tenant_id = ? AND analysis_id = ? ORDER BY id`)
+        .all(t, analysisId);
+    },
+    countScribeDrafts({ status } = {}) {
+      let sql = 'SELECT COUNT(*) AS n FROM scribe_drafts WHERE tenant_id = ?';
+      const params = [t];
+      if (status) { sql += ' AND status = ?'; params.push(status); }
+      return db.prepare(sql).get(...params).n;
+    },
+    listScribeDrafts({ status, limit = 100 } = {}) {
+      let sql = `SELECT id, draft_type, title, body, payload_json, source, status, analysis_id, decided_by, decided_at, created_at, updated_at
+                 FROM scribe_drafts WHERE tenant_id = ?`;
+      const params = [t];
+      if (status) { sql += ' AND status = ?'; params.push(status); }
+      sql += ' ORDER BY id DESC LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params)
+        .map(r => ({ ...r, payload: safeJson(r.payload_json), payload_json: undefined }));
+    },
+    getScribeDraft(id) {
+      const r = db.prepare(`
+        SELECT id, draft_type, title, body, payload_json, source, status, analysis_id, decided_by, decided_at, created_at, updated_at
+        FROM scribe_drafts WHERE tenant_id = ? AND id = ?`).get(t, id);
+      if (!r) return null;
+      return { ...r, payload: safeJson(r.payload_json), payload_json: undefined };
+    },
+    setScribeDraftStatus(id, status, decidedBy) {
+      // State machine (F5): only a row still in 'draft' may transition, and
+      // the decision is audited (decided_by / decided_at). 0 changes means
+      // the draft was already decided — terminal states are final.
+      const r = db.prepare(`
+        UPDATE scribe_drafts
+        SET status = ?, decided_by = ?,
+            decided_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE tenant_id = ? AND id = ? AND status = 'draft'`)
+        .run(status, decidedBy || null, t, id);
+      return r.changes > 0;
     },
   };
 }

@@ -11,11 +11,18 @@ const crypto = require('crypto');
 const { unscoped, db, transaction } = require('../db');
 const password = require('../lib/password');
 const sessions = require('../lib/sessions');
+const { referralLinkFor } = require('../lib/referral');
 const { authLimiter, loginLimiter } = require('../middleware/rateLimit');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
-router.use(authLimiter);
+// FIX 2026-10-29 (audit S3): authLimiter is NO LONGER router-wide. It used to
+// cover GET /me and /logout too, so a household/office behind one NAT IP
+// exhausted the shared 20/15min auth bucket just by using the dashboard
+// (load test phase F: 30% of /me calls returned 429). The limiter now applies
+// only to the credential routes below (register, login, verify-email,
+// resend-verification, forgot-password, reset-password); session routes
+// (/me, /logout, /logout-everywhere) sit outside the bucket.
 
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const MIN_PASSWORD_LEN = 12;
@@ -44,7 +51,7 @@ function publicUser(u) {
 }
 
 // ---------------------------------------------------------------------------
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { companyName, email, password: pw, displayName, plan } = req.body || {};
 
@@ -96,13 +103,25 @@ router.post('/register', async (req, res) => {
       return { tenantId: Number(t.lastInsertRowid), userId: Number(u.lastInsertRowid) };
     });
 
-    // Seed demo data for the NEW tenant immediately (tenant-scoped: only this
-    // tenant is touched). A new signup must land in a populated dashboard —
-    // the boot-time seeder only covers tenants that exist at server start.
+    // Seed demo data for the NEW tenant (tenant-scoped: only this tenant is
+    // touched). A new signup must land in a populated dashboard — the
+    // boot-time seeder only covers tenants that exist at server start.
     // Skipped when MANNA_SKIP_SIGNUP_SEED=1 (test harness sets this; the
     // dedicated tests/signup-seed.test.js exercises the real path).
     // A seed failure must never break registration, so errors are logged.
-    if (process.env.MANNA_SKIP_SIGNUP_SEED !== '1') {
+    //
+    // FIX 2026-10-29 (audit B2): the seeds used to run SYNCHRONOUSLY here,
+    // before the response — seeding ~9.5k contacts per tenant serialized on
+    // the request, so 50 concurrent signups took p50 ~60s each. The seeds
+    // still run in full (the loaded-guns contact preload is unchanged), but
+    // AFTER the 201 response, in the background (see setImmediate below).
+    // Both seeds are idempotent — seedTenantInfluencers skips a tenant that
+    // already has influencers, seedDemoData skips rows already present — so
+    // a retried signup or a race with the boot-time seeder cannot
+    // double-seed. If the process restarts before the background run fires,
+    // the boot-time seeders in src/server.js cover this tenant at next boot.
+    const runSignupSeeds = () => {
+      if (process.env.MANNA_SKIP_SIGNUP_SEED === '1') return;
       try {
         const { seedDemoData } = require('../../scripts/seed-demo-data');
         seedDemoData(slug);
@@ -112,7 +131,7 @@ router.post('/register', async (req, res) => {
         // eslint-disable-next-line no-console
         console.error('[auth/register] demo seed failed for tenant', slug, ':', e.message);
       }
-    }
+    };
 
     // Signup attribution: link the new account back to its visit session so
     // we know which landing page converted. Fire-and-forget, never breaks
@@ -168,6 +187,10 @@ router.post('/register', async (req, res) => {
       // DEV ONLY — never expose in production. Phase 2 sends this by email.
       ...(process.env.NODE_ENV !== 'production' ? { devVerificationToken: rawToken } : {}),
     });
+    // FIX 2026-10-29 (audit B2): fire the (idempotent) tenant seeds in the
+    // background now that the 201 is on the wire — signup answers in
+    // well under a second instead of after ~9.5k seed inserts.
+    setImmediate(runSignupSeeds);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[auth/register]', e);
@@ -176,7 +199,7 @@ router.post('/register', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', authLimiter, loginLimiter, async (req, res) => {
   try {
     const { email, password: pw } = req.body || {};
     const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -227,7 +250,19 @@ router.post('/logout-everywhere', requireAuth, (req, res) => {
 
 // ---------------------------------------------------------------------------
 router.get('/me', requireAuth, (req, res) => {
-  res.json({ ok: true, user: publicUser(req.user), tenant: req.tenant });
+  const tenant = { ...req.tenant };
+  // Armor Bearer affiliates (provisioned via the AB -> Manna webhook) get
+  // their personal referral link, constructed server-side from the ref
+  // code stored on the tenant (migration 024). The stored code is
+  // re-validated at construction (src/lib/referral.js): a missing or
+  // poisoned value yields NO referral_link field at all, and the
+  // dashboard card keeps its honest empty state.
+  try {
+    const row = db.prepare('SELECT armor_bearer_id FROM tenants WHERE id = ?').get(req.tenant.id);
+    const link = referralLinkFor(row && row.armor_bearer_id);
+    if (link) tenant.referral_link = link;
+  } catch (e) { /* unmigrated DB: no link field, card empty state stands */ }
+  res.json({ ok: true, user: publicUser(req.user), tenant });
 });
 
 // ---------------------------------------------------------------------------
@@ -255,7 +290,7 @@ router.delete('/me', requireAuth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-router.post('/verify-email', async (req, res) => {
+router.post('/verify-email', authLimiter, async (req, res) => {
   try {
     const { token } = req.body || {};
     if (!token || typeof token !== 'string') {
@@ -285,7 +320,7 @@ router.post('/verify-email', async (req, res) => {
 // POST /api/auth/resend-verification — re-send the verification email.
 // Requires auth (the user is logged in right after register).
 // ---------------------------------------------------------------------------
-router.post('/resend-verification', requireAuth, (req, res) => {
+router.post('/resend-verification', authLimiter, requireAuth, (req, res) => {
   try {
     if (req.user.email_verified_at) {
       return res.json({ ok: true, already_verified: true });
@@ -318,7 +353,7 @@ router.post('/resend-verification', requireAuth, (req, res) => {
 // Always returns { ok: true } — never reveals whether the email exists.
 // Rate-limited by the auth limiter (shared with login/register).
 // ---------------------------------------------------------------------------
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body || {};
     const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -353,7 +388,7 @@ router.post('/forgot-password', async (req, res) => {
 // POST /api/auth/reset-password { token, password }
 // Single-use token, 1h expiry. On success all sessions are revoked.
 // ---------------------------------------------------------------------------
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authLimiter, async (req, res) => {
   try {
     const { token, password: pw } = req.body || {};
     if (!token || typeof token !== 'string') {
@@ -384,62 +419,61 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// TEMPORARY debug — remove with emergency login
-router.get('/emergency-debug', (req, res) => {
-  try {
-    const users = db.prepare('SELECT email FROM users LIMIT 20').all();
-    res.json({ ok: true, count: users.length, emails: users.map(u => u.email) });
-  } catch (err) { res.json({ ok: false, error: err.message }); }
-});
-
-// TEMPORARY emergency login for Leon — REMOVE after he resets his password.
-// Single-use token, expires 72h after deploy.
-const EMERGENCY_TOKEN = '7e10d54c-b72a-49de-84e2-e470ee6c5d7b';
-let emergencyUsed = false;
-const EMERGENCY_EXPIRES = Date.now() + 72 * 60 * 60 * 1000;
-router.get('/emergency-login/:token', async (req, res) => {
-  try {
-    if (emergencyUsed || Date.now() > EMERGENCY_EXPIRES || req.params.token !== EMERGENCY_TOKEN) {
-      return res.status(404).send('Not found');
-    }
-    // One-time link for Leon — Michael already has password access.
-    const emails = ['leon@faithshield.ai'];
-    let user = null;
-    for (const e of emails) {
-      user = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(e);
-      if (user) break;
-    }
-    if (!user) {
-      // Create Leon's owner account if it doesn't exist
-      const bcrypt = require('bcryptjs');
-      const hash = bcrypt.hashSync('TempPass123!', 10);
-      // Ensure a tenant exists
-      let tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
-      if (!tenant) {
-        const t = db.prepare("INSERT INTO tenants (name, slug) VALUES ('D2RM', 'd2rm')").run();
-        tenant = { id: t.lastInsertRowid };
-      }
-      const result = db.prepare(
-        "INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, ?, ?, 'owner')"
-      ).run(tenant.id, 'leon@faithshield.ai', hash);
-      user = { id: result.lastInsertRowid };
-    }
-    if (!user) return res.status(404).send('Not found');
-    emergencyUsed = true;
-    const { token } = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('user-agent') });
-    res.cookie('d2rm_session', token, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    res.redirect('/app');
-  } catch (e) {
-    console.error('[auth/emergency-login]', e);
-    res.status(500).send('Error');
+// ---------------------------------------------------------------------------
+// FIX 2026-10-29 (audit B1 — security): the emergency/migration block below
+// was gated by a HARDCODED token literal in source, and emergency-login
+// created/logged-in an owner account with a HARDCODED password behind a
+// module-level used-flag that reset on every restart.
+//   - GET /emergency-debug (unauthenticated, leaked user emails): DELETED.
+//   - GET /emergency-login/:token (owner login, hardcoded password): DELETED.
+//   - The hardcoded token, the used-flag, and every hardcoded password are
+//     gone from this file.
+// The three migration routes REMAIN only because the 30-minute backup /
+// self-heal script (hidden_files/manna_backup/backup_manna.py) depends on
+// export/import/cleanup for wipe recovery. They are now gated by the
+// MIGRATION_TOKEN environment variable, read at call time and compared in
+// constant time, FAILING CLOSED (503) when the env var is unset. The backup
+// script reads the same value from its own token file
+// (hidden_files/manna_backup/.migration_token); the deploy must set
+// MIGRATION_TOKEN on Render to match it. Owner-account seeding in
+// import/cleanup no longer invents a password: it reads
+// OWNER_SEED_PASSWORD_MICHAEL / OWNER_SEED_PASSWORD_LEON and SKIPS creation
+// (with a warning) when the relevant variable is unset.
+// ---------------------------------------------------------------------------
+function requireMigrationToken(req, res, next) {
+  const expected = process.env.MIGRATION_TOKEN;
+  if (!expected) {
+    return res.status(503).json({ ok: false, error: 'migration_not_configured' });
   }
-});
+  const provided = Buffer.from(String(req.params.token || ''));
+  const wanted = Buffer.from(expected);
+  if (provided.length !== wanted.length || !crypto.timingSafeEqual(provided, wanted)) {
+    return res.status(403).json({ ok: false, error: 'forbidden' });
+  }
+  return next();
+}
 
-// TEMPORARY: export tenant data for migration — REMOVE after migration
-router.get('/migration-export/:token', (req, res) => {
+// Ensure an owner account exists for `email`, using ONLY the password from
+// the named env var. Never invents a password: returns 'skipped_no_password'
+// when the env var is unset so the caller can log/skip safely.
+async function ensureOwnerFromEnv(email, envVar, tenantId) {
+  const existing = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+  if (existing) return 'exists';
+  const pw = process.env[envVar];
+  if (!pw) {
+    // eslint-disable-next-line no-console
+    console.warn(`[auth/migration] ${envVar} is not set — skipping owner account creation for ${email}`);
+    return 'skipped_no_password';
+  }
+  const hash = await password.hash(pw);
+  db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, ?, ?, 'owner')")
+    .run(tenantId, email, hash);
+  return 'created';
+}
+
+// Migration: export tenant data (backup/self-heal only — token-gated, B1)
+router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
   try {
-    if (req.params.token !== EMERGENCY_TOKEN) return res.status(404).send('Not found');
-    
     const tables = ['tenants', 'users', 'sites', 'site_daily_metrics', 'site_events',
       'site_visits', 'signup_events', 'email_snapshots', 'email_campaigns',
       'funnels', 'funnel_stages', 'influencers', 'ip_assets', 'social_accounts',
@@ -466,11 +500,9 @@ router.get('/migration-export/:token', (req, res) => {
   }
 });
 
-// TEMPORARY: import migrated data — REMOVE after migration
-router.post('/migration-import/:token', express.json({ limit: '50mb' }), (req, res) => {
+// Migration: import migrated data (backup/self-heal only — token-gated, B1)
+router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {
   try {
-    if (req.params.token !== EMERGENCY_TOKEN) return res.status(404).send('Not found');
-    
     const importData = req.body.data;
     if (!importData) return res.status(400).json({ ok: false, error: 'No data' });
     
@@ -548,17 +580,13 @@ router.post('/migration-import/:token', express.json({ limit: '50mb' }), (req, r
       }
     }
     
-    // Ensure Leon has an account
+    // FIX 2026-10-29 (audit B1): ensure Leon has an account — password comes
+    // ONLY from OWNER_SEED_PASSWORD_LEON; skipped when unset (never invent
+    // a password).
     try {
-      const leonExists = db.prepare("SELECT id FROM users WHERE LOWER(email) = 'leon@faithshield.ai'").get();
-      if (!leonExists) {
-        const bcrypt = require('bcryptjs');
-        const hash = bcrypt.hashSync('TempPass123!', 10);
-        db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, 'leon@faithshield.ai', ?, 'owner')").run(newTenantId, hash);
-        results['leon_user'] = { created: true };
-      } else {
-        results['leon_user'] = { exists: true };
-      }
+      results['leon_user'] = {
+        status: await ensureOwnerFromEnv('leon@faithshield.ai', 'OWNER_SEED_PASSWORD_LEON', newTenantId),
+      };
     } catch (e) {
       results['leon_user'] = { error: e.message };
     }
@@ -569,11 +597,9 @@ router.post('/migration-import/:token', express.json({ limit: '50mb' }), (req, r
   }
 });
 
-// TEMPORARY: cleanup duplicates and ensure users — REMOVE after migration
-router.post('/migration-cleanup/:token', express.json(), (req, res) => {
+// Migration: cleanup duplicates and ensure users (backup/self-heal — B1)
+router.post('/migration-cleanup/:token', requireMigrationToken, express.json(), async (req, res) => {
   try {
-    if (req.params.token !== EMERGENCY_TOKEN) return res.status(404).send('Not found');
-    
     const results = {};
     
     // Delete duplicate campaigns (keep lowest IDs)
@@ -595,34 +621,20 @@ router.post('/migration-cleanup/:token', express.json(), (req, res) => {
       results['deduped_campaigns'] = { error: e.message };
     }
     
-    // Ensure Michael exists
+    // FIX 2026-10-29 (audit B1): ensure Michael + Leon exist — passwords come
+    // ONLY from OWNER_SEED_PASSWORD_MICHAEL / OWNER_SEED_PASSWORD_LEON;
+    // creation is skipped (with a logged warning) when the variable is
+    // unset. The hardcoded password these blocks used is deleted.
     try {
-      const michael = db.prepare("SELECT id FROM users WHERE LOWER(email) = 'michael@faithshield.ai'").get();
-      if (!michael) {
-        const tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
-        const bcrypt = require('bcryptjs');
-        const hash = bcrypt.hashSync('TempPass123!', 10);
-        db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, 'michael@faithshield.ai', ?, 'owner')").run(tenant.id, hash);
-        results['michael'] = { created: true };
-      } else {
-        results['michael'] = { exists: true };
-      }
+      const tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
+      results['michael'] = { status: await ensureOwnerFromEnv('michael@faithshield.ai', 'OWNER_SEED_PASSWORD_MICHAEL', tenant.id) };
     } catch (e) {
       results['michael'] = { error: e.message };
     }
-    
-    // Ensure Leon exists
+
     try {
-      const leon = db.prepare("SELECT id FROM users WHERE LOWER(email) = 'leon@faithshield.ai'").get();
-      if (!leon) {
-        const tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
-        const bcrypt = require('bcryptjs');
-        const hash = bcrypt.hashSync('TempPass123!', 10);
-        db.prepare("INSERT INTO users (tenant_id, email, password_hash, role) VALUES (?, 'leon@faithshield.ai', ?, 'owner')").run(tenant.id, hash);
-        results['leon'] = { created: true };
-      } else {
-        results['leon'] = { exists: true };
-      }
+      const tenant = db.prepare('SELECT id FROM tenants LIMIT 1').get();
+      results['leon'] = { status: await ensureOwnerFromEnv('leon@faithshield.ai', 'OWNER_SEED_PASSWORD_LEON', tenant.id) };
     } catch (e) {
       results['leon'] = { error: e.message };
     }

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manna — Big Agency Data, Little Guy Money</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f1117; color: #e8e8e8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+  .gold { color: #d9a441; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 24px 0; display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-size: 28px; font-weight: 300; color: #d9a441; letter-spacing: 4px; }
+  .btn { display: inline-block; background: #d9a441; color: #0f1117; padding: 16px 40px; border-radius: 8px; font-weight: 700; font-size: 18px; text-decoration: none; transition: transform 0.2s; }
+  .btn:hover { transform: translateY(-2px); }
+  .hero { text-align: center; padding: 80px 0 60px; }
+  .hero h1 { font-size: 52px; font-weight: 300; color: #d9a441; margin-bottom: 40px; letter-spacing: 2px; }
+  .hero .brand { font-size: 28px; font-weight: 300; color: #d9a441; letter-spacing: 4px; margin-bottom: 16px; }
+  .price-box { background: #161b27; border: 2px solid #d9a441; border-radius: 16px; padding: 40px; max-width: 500px; margin: 0 auto 40px; }
+  .price-box .was { text-decoration: line-through; color: #888; font-size: 22px; }
+  .price-box .now { font-size: 56px; color: #d9a441; font-weight: 700; }
+  .price-box .per { color: #888; font-size: 18px; }
+  .price-box .badge { display: inline-block; background: #d9a441; color: #0f1117; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+  section { padding: 60px 0; }
+  h2 { font-size: 36px; color: #d9a441; text-align: center; margin-bottom: 40px; font-weight: 300; }
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+  .comp-card { background: #161b27; border-radius: 12px; padding: 30px 20px; text-align: center; position: relative; }
+  .comp-card .x { position: absolute; top: 10px; right: 14px; color: #e74c3c; font-size: 28px; font-weight: 700; }
+  .comp-card .cname { color: #888; font-size: 16px; margin-bottom: 8px; }
+  .comp-card .cprice { font-size: 36px; color: #888; text-decoration: line-through; }
+  .comp-card.winner { border: 2px solid #d9a441; }
+  .comp-card.winner .cprice { color: #d9a441; text-decoration: none; font-size: 44px; font-weight: 700; }
+  .comp-card.winner .x { display: none; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+  .feature { background: #161b27; border-radius: 12px; padding: 32px; }
+  .feature h3 { color: #d9a441; font-size: 22px; margin-bottom: 12px; }
+  .feature p { color: #b0b0b0; }
+  .funnel { background: #161b27; border-radius: 16px; padding: 40px; text-align: center; }
+  .funnel-steps { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  .fstep { background: #0f1117; border: 1px solid #d9a441; border-radius: 10px; padding: 16px 24px; }
+  .fstep .num { font-size: 28px; color: #d9a441; font-weight: 700; }
+  .fstep .lbl { font-size: 14px; color: #888; }
+  .arrow { color: #d9a441; font-size: 24px; }
+  .cta-section { text-align: center; padding: 80px 0; }
+  .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 700px; margin: 0 auto; }
+  .tier { background: #161b27; border-radius: 16px; padding: 36px 28px; text-align: center; border: 1px solid #2a2f3f; }
+  .tier.featured { border: 2px solid #d9a441; }
+  .tier h3 { color: #d9a441; font-size: 20px; margin-bottom: 12px; font-weight: 600; }
+  .tier .tprice { font-size: 40px; color: #e8e8e8; font-weight: 700; margin-bottom: 4px; }
+  .tier .tper { color: #888; font-size: 14px; margin-bottom: 20px; }
+  .tier .emails { font-size: 18px; color: #d9a441; font-weight: 600; margin-bottom: 20px; }
+  footer { text-align: center; padding: 40px 0; color: #666; font-size: 14px; border-top: 1px solid #222; }
+  @media (max-width: 600px) { .hero h1 { font-size: 36px; } }
+</style>
+</head>
+<body>
+
+<header class="container">
+  <div class="logo">MANNA</div>
+  <a href="/signup" class="btn" style="padding:12px 28px;font-size:16px;">Sign Up</a>
+</header>
+
+<div class="hero container">
+  <p class="brand">MANNA</p>
+  <h1>Big agency data, little guy money.</h1>
+  <div class="price-box">
+    <div class="badge">SPECIAL OFFER</div>
+    <div class="was">$49.99/mo</div>
+    <div class="now">$29.99<span class="per">/mo</span></div>
+    <p style="color:#888;margin:16px 0;">Full marketing command center.<br>No onboarding fees. No per-seat pricing.</p>
+    <a href="/signup" class="btn">Get Started</a>
+    <!-- FIX 2026-10-29 (audit S1): trial terms now stated in the hero. -->
+    <p style="color:#e8e8e8;margin-top:16px;">Start free: 14 days, no credit card, never auto-charges.</p>
+    <p style="margin-top:16px;"><a href="/signup" style="color:#d9a441;">Or start free →</a></p>
+  </div>
+</div>
+
+<section class="container">
+  <h2>Simple Pricing</h2>
+  <div class="tiers">
+    <div class="tier featured">
+      <h3>Starter</h3>
+      <div class="tprice">$29.99</div>
+      <div class="tper">per month <span style="text-decoration:line-through;">$49.99</span></div>
+      <div class="emails">5k emails/mo</div>
+      <a href="/signup" class="btn" style="padding:12px 32px;font-size:16px;">Get Started</a>
+    </div>
+    <div class="tier">
+      <h3>Pro</h3>
+      <div class="tprice">$69.99</div>
+      <div class="tper">per month <span style="text-decoration:line-through;">$99.99</span></div>
+      <div class="emails">50k emails/mo</div>
+      <a href="/signup" class="btn" style="padding:12px 32px;font-size:16px;background:#2a2f3f;color:#d9a441;">Go Pro</a>
+    </div>
+    <div class="tier">
+      <h3>Manna Heavy</h3>
+      <div class="tprice">$99</div>
+      <div class="tper">per month</div>
+      <div class="emails">10 videos/mo</div>
+      <a href="/signup" class="btn" style="padding:12px 32px;font-size:16px;background:#2a2f3f;color:#d9a441;">Go Heavy</a>
+    </div>
+    <div class="tier">
+      <h3>Manna Heavy</h3>
+      <div class="tprice">$189</div>
+      <div class="tper">per month</div>
+      <div class="emails">30 videos/mo</div>
+      <a href="/signup" class="btn" style="padding:12px 32px;font-size:16px;background:#2a2f3f;color:#d9a441;">Go Heavy</a>
+    </div>
+  </div>
+  <p style="text-align:center;margin-top:24px;"><a href="/signup" style="color:#d9a441;">Or start free →</a></p>
+</section>
+
+<section class="container">
+  <h2>Stop Overpaying</h2>
+  <div class="compare">
+    <div class="comp-card"><span class="x">✕</span><div class="cname">GoHighLevel</div><div class="cprice">$97</div></div>
+    <div class="comp-card"><span class="x">✕</span><div class="cname">Kartra</div><div class="cprice">$229</div></div>
+    <div class="comp-card"><span class="x">✕</span><div class="cname">HubSpot Pro</div><div class="cprice">$800</div></div>
+    <div class="comp-card winner"><div class="cname" style="color:#d9a441;">Manna</div><div class="cprice">$29.99</div><div style="color:#888;font-size:14px;">per month</div></div>
+  </div>
+  <p style="text-align:center;color:#888;">Same data. A fraction of the price. No $3,000 onboarding fee.</p>
+</section>
+
+<section class="container">
+  <h2>Why Manna Wins</h2>
+  <div class="features">
+    <div class="feature">
+      <h3>📜 Meet Scribe</h3>
+      <p>Your AI instructor lives at the top of every dashboard. Ask anything — Scribe explains your numbers in plain English. No other platform has this.</p>
+    </div>
+    <div class="feature">
+      <h3>⚡ Dead Simple</h3>
+      <p>Onboard in minutes. No 40-hour setup. No certification course. If you can read a chart, you can use Manna.</p>
+    </div>
+    <div class="feature">
+      <h3>📊 Full Funnel Math</h3>
+      <p>Track every step: emails sent → opened → clicked → subscribed. See exactly where your funnel leaks and fix it.</p>
+    </div>
+    <div class="feature">
+      <h3>🎯 Built for the Little Guy</h3>
+      <p>Enterprise tools are built for enterprises. Manna is built for you — the small business that needs big-league insights without the big-league bill.</p>
+    </div>
+    <div class="feature">
+      <h3>📈 Lead Collection</h3>
+      <p>Capture leads, track campaigns, measure ROI — all in one command center. No duct-taping five tools together.</p>
+    </div>
+    <div class="feature">
+      <h3>🔓 No Lock-In</h3>
+      <p>No annual contract. No per-seat gouging. No $3,000 onboarding. Cancel anytime.</p>
+    </div>
+    <!-- FIX 2026-10-29 (audit S1): the SMS feature card was removed —
+         there is no SMS anywhere in the product (no SMS code, no
+         provider). Advertising it was a false claim. -->
+  </div>
+</section>
+
+<section class="container">
+  <h2>The Math Speaks for Itself</h2>
+  <div class="funnel">
+    <p style="color:#888;margin-bottom:8px;">An example funnel, worked end to end — your numbers will vary:</p>
+    <div class="funnel-steps">
+      <div class="fstep"><div class="num">38,000</div><div class="lbl">sent</div></div>
+      <span class="arrow">→</span>
+      <div class="fstep"><div class="num">8,200</div><div class="lbl">opened (21.5%)</div></div>
+      <span class="arrow">→</span>
+      <div class="fstep"><div class="num">826</div><div class="lbl">clicked (10%)</div></div>
+      <span class="arrow">→</span>
+      <div class="fstep"><div class="num">100</div><div class="lbl">subscribed (12.1%)</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section container">
+  <h2>Ready?</h2>
+  <p style="color:#888;margin-bottom:32px;font-size:20px;">Join Manna for <span class="gold" style="font-weight:700;">$29.99/mo</span> <span style="text-decoration:line-through;">$49.99</span></p>
+  <a href="/signup" class="btn" style="font-size:22px;padding:20px 60px;">Start Now</a>
+</div>
+
+<footer>
+  <p>MANNA — Big agency data, little guy money. A D2RM product.</p>
+  <p style="margin-top:8px;color:#555;font-size:11px;">Email infrastructure powered by Amazon SES</p>
+</footer>
+
+</body>
+</html>

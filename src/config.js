@@ -27,6 +27,26 @@ const config = {
   // AI co-pilot: when set, replies are synthesized by Muse.
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
   assistantModel: process.env.ASSISTANT_MODEL || 'claude-haiku-4-5',
+  // --- Scribe (Meta Muse Spark via the Meta Model API) ---
+  // Scribe is Manna's performance analyst: it reads the tenant's numbers,
+  // returns structured observations + recommendations, and (on approval)
+  // turns recommendations into draft artifacts. Provider is Meta's Muse
+  // Spark, reached through the OpenAI-compatible Meta Model API.
+  // SPARK_API_KEY is the ONLY required value. When it is unset, Scribe runs
+  // in stub mode: the full pipeline works and returns clearly-marked sample
+  // output, but no network call is made. SPARK_BASE_URL / SPARK_MODEL are
+  // overridable so the exact production values can be set at key time
+  // without a code change.
+  sparkApiKey: process.env.SPARK_API_KEY || null,
+  sparkBaseUrl: process.env.SPARK_BASE_URL || 'https://api.meta.ai/v1',
+  sparkModel: process.env.SPARK_MODEL || 'muse-spark-1.3',
+  // --- Video generation (HeyGen API, pay-as-you-go) ---
+  // HEYGEN_API_KEY is the ONLY required value. When it is unset the video
+  // feature fails closed (503 heygen_not_configured) — no stub videos are
+  // ever fabricated. All provider specifics live in src/lib/videogen.js.
+  // HEYGEN_API_BASE is overridable for the same reason SPARK_BASE_URL is.
+  heygenApiKey: process.env.HEYGEN_API_KEY || null,
+  heygenApiBase: process.env.HEYGEN_API_BASE || 'https://api.heygen.com',
   // --- Amazon SES (transactional email: verification, password reset) ---
   // Region defaults to us-east-1; the access key pair and from-address are
   // required for real sending. When any is missing, mailer.js falls back
@@ -41,16 +61,36 @@ config.sesConfigured = Boolean(
   config.awsAccessKeyId && config.awsSecretAccessKey && config.sesFromEmail
 );
 
+config.scribeConfigured = Boolean(config.sparkApiKey);
+
+config.heygenConfigured = Boolean(config.heygenApiKey);
+
 if (config.env === 'production' && config.appBaseUrl && !config.appBaseUrl.startsWith('https://')) {
   throw new Error('[config] APP_BASE_URL must be https:// in production');
 }
 
+// Mail boot rule (audit B4, revised 2026-10-29): production requires the
+// SES trio — SES is Manna's ONLY mail provider. An earlier B4 revision also
+// accepted BREVO_API_KEY as an alternative; Michael then decided Brevo is
+// eliminated from Manna entirely (Brevo = D2RM contact storage + appeal
+// only, never a Manna dependency), so the Brevo alternative was removed.
+// Neither SES in production = boot failure; non-production gets a loud
+// stub warning instead.
+config.mailConfigured = config.sesConfigured;
+
 // Fail fast in production: verification/password-reset emails must actually
 // send. Stub mode in production would silently break signup.
-if (config.env === 'production' && !config.sesConfigured) {
+if (config.env === 'production' && !config.mailConfigured) {
   throw new Error(
-    '[config] SES is not configured: set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, '
-    + 'and SES_FROM_EMAIL (AWS_REGION optional, defaults to us-east-1).'
+    '[config] No transactional mail provider is configured: set the SES trio '
+    + '(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, SES_FROM_EMAIL).'
+  );
+}
+if (config.env !== 'production' && !config.mailConfigured) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[config] WARNING: no mail provider configured (SES trio) — '
+    + 'transactional mail is STUBBED: logged and kept in an in-memory outbox, never sent.'
   );
 }
 

@@ -25,9 +25,11 @@
  * that needs to gate a feature — do not hardcode plan key lists at call
  * sites.
  *
- * Stripe billing is STUBBED in this build (per Michael: wire payments later,
- * once everything works). This module enforces the limits; the billing
- * route reports subscription state without touching Stripe.
+ * FIX 2026-10-29 (audit S1): this comment previously claimed "Stripe
+ * billing is STUBBED in this build" — that is stale. src/routes/billing.js
+ * implements real Stripe Checkout (checkout sessions, customer portal,
+ * webhook-driven subscription state) using the price IDs in
+ * src/lib/stripe.js. This module defines the plans and enforces limits.
  */
 
 const PLANS = {

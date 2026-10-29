@@ -40,6 +40,11 @@ test('starter is capped at 2 projects', async () => {
   assert.equal(over.json.error, 'project_limit_reached');
   assert.equal(over.json.limit, 2);
   assert.equal(over.json.used, 2);
+  // Purchase-prompt contract: the rejection must carry everything the UI
+  // needs to render the prompt (headline + limit detail + Purchase button).
+  assert.equal(over.json.upgrade_required, true);
+  assert.equal(over.json.limit_name, 'projects');
+  assert.equal(over.json.remaining, 0);
 });
 
 test('pro allows up to 10 projects', async () => {
@@ -82,6 +87,14 @@ test('trial users get 100 free emails (fishhook)', async () => {
   const over = await c.post('/api/email/log-send', { count: 1 });
   assert.equal(over.status, 403);
   assert.equal(over.json.error, 'trial_email_limit_reached');
+  // Purchase-prompt contract (trial path): the prompt tells a trial user
+  // their path is choosing a paid plan.
+  assert.equal(over.json.upgrade_required, true);
+  assert.equal(over.json.limit_name, 'trial_emails');
+  assert.equal(over.json.trial, true);
+  assert.equal(over.json.limit, 100);
+  assert.equal(over.json.used, 100);
+  assert.equal(over.json.remaining, 0);
 });
 
 test('email quota enforced at 5k/mo for starter', async () => {
@@ -99,6 +112,12 @@ test('email quota enforced at 5k/mo for starter', async () => {
   assert.equal(over.status, 403);
   assert.equal(over.json.error, 'email_quota_exceeded');
   assert.equal(over.json.remaining, 1);
+  // Purchase-prompt contract (paid-plan path).
+  assert.equal(over.json.upgrade_required, true);
+  assert.equal(over.json.limit_name, 'emails_per_month');
+  assert.equal(over.json.trial, false);
+  assert.equal(over.json.limit, 5000);
+  assert.equal(over.json.used, 4999);
 
   const exact = await c.post('/api/email/log-send', { count: 1 });
   assert.equal(exact.status, 200);

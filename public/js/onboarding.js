@@ -194,6 +194,90 @@
     hint.textContent = MannaI18n.t('dash.js.onboarding.social_hint');
     body.appendChild(hint);
 
+    /* YouTube / Truth Social / Rumble — OAuth connect (or handle register
+       for Rumble, which has no posting API) via /api/social/*. */
+    var hub = document.createElement('div');
+    body.appendChild(hub);
+    var hubTitle = document.createElement('h4');
+    hubTitle.className = 'ob-h';
+    hubTitle.textContent = MannaI18n.t('dash.js.onboarding.socialhub_title');
+    hub.appendChild(hubTitle);
+    var hubNote = document.createElement('p');
+    hubNote.className = 'ob-hint';
+    hubNote.textContent = MannaI18n.t('dash.js.onboarding.socialhub_oauth');
+    hub.appendChild(hubNote);
+    var hubList = document.createElement('div');
+    hub.appendChild(hubList);
+
+    function hubRow(p, acc) {
+      var rowEl = document.createElement('div');
+      rowEl.className = 'row';
+      var name = document.createElement('strong');
+      name.textContent = p.name;
+      rowEl.appendChild(name);
+      if (acc) {
+        var st = document.createElement('span');
+        st.textContent = MannaI18n.t('dash.js.onboarding.socialhub_connected', { handle: acc.handle });
+        rowEl.appendChild(st);
+        var disc = document.createElement('button');
+        disc.className = 'ghost';
+        disc.textContent = MannaI18n.t('dash.js.onboarding.socialhub_disconnect');
+        disc.addEventListener('click', function () {
+          disc.disabled = true;
+          api('DELETE', '/api/social/accounts/' + encodeURIComponent(p.platform)).then(function () { loadHub(); refresh(false); });
+        });
+        rowEl.appendChild(disc);
+      } else if (p.platform === 'rumble') {
+        var inp = document.createElement('input');
+        inp.type = 'text'; inp.maxLength = 80;
+        inp.placeholder = MannaI18n.t('dash.js.onboarding.socialhub_handle_ph');
+        rowEl.appendChild(inp);
+        var reg = document.createElement('button');
+        reg.textContent = MannaI18n.t('dash.js.onboarding.socialhub_register');
+        reg.addEventListener('click', function () {
+          if (!inp.value.trim()) { alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.err_handle')); return; }
+          reg.disabled = true;
+          api('POST', '/api/social/accounts', { platform: 'rumble', handle: inp.value.trim() }).then(function (r) {
+            reg.disabled = false;
+            if (r.json && r.json.ok) { alertBox(body, 'ok', MannaI18n.t('dash.js.onboarding.social_connected')); loadHub(); refresh(false); }
+            else alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.err_connect', { error: (r.json && r.json.error) || 'error' }));
+          }).catch(function () { reg.disabled = false; alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.network_error_bare')); });
+        });
+        rowEl.appendChild(reg);
+        var note = document.createElement('p');
+        note.className = 'ob-hint';
+        note.textContent = MannaI18n.t('dash.js.onboarding.socialhub_rumble_note');
+        rowEl.appendChild(note);
+      } else {
+        var conn = document.createElement('button');
+        conn.textContent = MannaI18n.t('dash.js.onboarding.socialhub_connect');
+        conn.addEventListener('click', function () {
+          conn.disabled = true;
+          api('GET', '/api/social/connect/' + encodeURIComponent(p.platform)).then(function (r) {
+            if (r.json && r.json.ok && r.json.url) { window.location.href = r.json.url; return; }
+            conn.disabled = false;
+            alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.err_connect', { error: (r.json && (r.json.detail || r.json.error)) || 'error' }));
+          }).catch(function () { conn.disabled = false; alertBox(body, 'err', MannaI18n.t('dash.js.onboarding.network_error_bare')); });
+        });
+        rowEl.appendChild(conn);
+      }
+      return rowEl;
+    }
+
+    function loadHub() {
+      Promise.all([
+        api('GET', '/api/social/platforms'),
+        api('GET', '/api/social/accounts')
+      ]).then(function (rs) {
+        var platforms = (rs[0].json && rs[0].json.platforms) || [];
+        var byPlat = {};
+        ((rs[1].json && rs[1].json.accounts) || []).forEach(function (a) { byPlat[a.platform] = a; });
+        hubList.innerHTML = '';
+        platforms.forEach(function (p) { hubList.appendChild(hubRow(p, byPlat[p.platform])); });
+      }).catch(function () {});
+    }
+    loadHub();
+
     function load() {
       api('GET', '/api/onboarding/socials').then(function (r) {
         list.innerHTML = '';
@@ -399,12 +483,11 @@
     /* i18n keys for the provider option labels (replaces code-side uppercasing). */
     var PROVIDER_LABELS = {
       ses: 'dash.js.onboarding.provider_ses',
-      brevo: 'dash.js.onboarding.provider_brevo',
       kit: 'dash.js.onboarding.provider_kit',
       mailerlite: 'dash.js.onboarding.provider_mailerlite',
       other: 'dash.js.onboarding.provider_other',
     };
-    ['ses', 'brevo', 'kit', 'mailerlite', 'other'].forEach(function (v) {
+    ['ses', 'kit', 'mailerlite', 'other'].forEach(function (v) {
       var o = document.createElement('option');
       o.value = v; o.textContent = MannaI18n.t(PROVIDER_LABELS[v]);
       prov.appendChild(o);

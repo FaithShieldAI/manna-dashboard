@@ -74,7 +74,7 @@ router.post('/campaigns', (req, res) => {
 // POST /api/email/log-send { count, campaign_id? }
 // Records metered email sends against the plan quota. Delivery is NOT
 // performed here (stubbed) — this is the accounting choke point so the
-// $29.99/$89.99 tiers' 5k/20k monthly limits are enforced in one place.
+// $29.99/$69.99 tiers' 5k/50k monthly limits (src/lib/plans.js) are enforced in one place.
 router.post('/log-send', (req, res) => {
   // Trial users get 100 free emails (fishhook — enough to test the full
   // flow). Paid plans get their full quota. (Michael, 2026-10-15)
@@ -95,9 +95,17 @@ router.post('/log-send', (req, res) => {
   const monthKey = currentMonthKey();
   const used = req.tdb.getUsage(monthKey);
   if (effectiveLimit != null && used + count > effectiveLimit) {
+    // Limit prompt contract (Michael, 2026-10-25): going past the allowed
+    // usage must prompt the user to purchase, never dead-end. Clients key
+    // on `upgrade_required` and render the purchase prompt (headline +
+    // limit detail + Purchase button -> plans). Enforcement is unchanged —
+    // the over-limit send is still refused.
     return res.status(403).json({
       ok: false,
       error: isTrial ? 'trial_email_limit_reached' : 'email_quota_exceeded',
+      upgrade_required: true,
+      limit_name: isTrial ? 'trial_emails' : 'emails_per_month',
+      trial: isTrial,
       plan: plan.key,
       limit: effectiveLimit,
       used,
