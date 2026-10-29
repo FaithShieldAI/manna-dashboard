@@ -52,7 +52,15 @@ async function chatCompletion({ system, user, maxTokens = 1500, temperature = 0.
 
   const url = `${String(config.sparkBaseUrl).replace(/\/+$/, '')}/chat/completions`;
   const ctl = new AbortController();
-  const to = setTimeout(() => ctl.abort(), 30000);
+  // Reasoning models (e.g. Grok 4.7) routinely need well over 30s on a
+  // full Scribe analysis prompt; the old fixed 30s cap aborted every live
+  // call (spark_timeout, 2026-10-29). Default 150s, overridable via
+  // SPARK_TIMEOUT_MS (minimum 5000).
+  const timeoutMs = (() => {
+    const n = parseInt(process.env.SPARK_TIMEOUT_MS || '', 10);
+    return Number.isFinite(n) && n >= 5000 ? n : 150000;
+  })();
+  const to = setTimeout(() => ctl.abort(), timeoutMs);
   let res;
   try {
     res = await fetch(url, {
