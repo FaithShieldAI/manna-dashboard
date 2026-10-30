@@ -18,6 +18,22 @@
  *   -> { ok, url }  (Stripe Customer Portal session; 404 when the tenant
  *                    has no Stripe customer yet)
  *
+ * Seats ($25/mo each, on top of the one seat every plan includes):
+ * POST /api/billing/seats/checkout  { quantity }
+ *   -> owner/admin only. Buys `quantity` MORE seats. When the tenant
+ *      already has a subscription, the seat item is added/grown on THAT
+ *      subscription (no second subscription, no checkout redirect);
+ *      otherwise a Checkout Session sells a seats-only subscription and
+ *      the webhook links it to the tenant like a plan purchase.
+ * POST /api/billing/seats  { quantity }
+ *   -> owner/admin only. Sets the TOTAL purchased extra-seat count on
+ *      the tenant's existing subscription (0 removes the seat item).
+ *      This is the supported quantity-management path: the Stripe
+ *      customer portal only allows quantity edits when the portal
+ *      configuration created in the Stripe Dashboard enables them for
+ *      the seat price, which this codebase cannot assume.
+ * GET / reports the same seat state under `seats` (src/lib/seats.js).
+ *
  * Webhook (POST /api/billing/webhook) is mounted separately in server.js —
  * it must skip auth/CSRF and receive the raw body for signature verification.
  */
@@ -26,6 +42,8 @@ const { getPlan, PUBLIC_PLANS, hasFeature } = require('../lib/plans');
 const { currentMonthKey } = require('../lib/plans');
 const mailer = require('../lib/mailer');
 const stripeLib = require('../lib/stripe');
+const seatsLib = require('../lib/seats');
+const { requireRole } = require('../middleware/auth');
 const { db } = require('../db');
 
 const router = express.Router();
@@ -80,6 +98,8 @@ router.get('/', (req, res) => {
       configured: stripeLib.isConfigured(),
       has_subscription: Boolean(stripeRow && stripeRow.stripe_subscription_id),
     },
+    // Seats: included (owner's login) + purchased extras vs logins in use.
+    seats: seatsLib.getSeatState(req.tenant.id),
     email_delivery: mailer.isSesConfigured()
       ? { provider: 'ses', from: require('../config').sesFromEmail }
       : { provider: 'stub', note: 'Set AWS keys + SES_FROM_EMAIL to send real email.' },
@@ -176,6 +196,173 @@ router.post('/portal', async (req, res) => {
     // eslint-disable-next-line no-console
     console.error('[billing/portal]', e.message);
     res.status(500).json({ ok: false, error: 'portal_failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Seats — buy more, or set the total. Owner/admin only.
+// ---------------------------------------------------------------------------
+const MAX_SEATS_PER_CALL = 50;
+
+function cleanSeatQuantity(v) {
+  const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
+  return Number.isInteger(n) && n >= 0 && n <= MAX_SEATS_PER_CALL ? n : null;
+}
+
+function billingUrls() {
+  const baseUrl = (process.env.APP_BASE_URL || '').replace(/\/$/, '');
+  const billing = baseUrl ? `${baseUrl}/app#billing` : '/app#billing';
+  return { billing };
+}
+
+/**
+ * Shared tail of both seat mutations: point the tenant's subscription seat
+ * item at `targetQty` total extra seats (creating/updating/deleting the
+ * Stripe item as needed), then mirror the result onto the tenant row.
+ * Stripe is written FIRST — the DB only records what Stripe accepted.
+ * Returns the Stripe seat item id (null when targetQty is 0).
+ */
+async function setSubscriptionSeatQuantity(stripe, subscription, seatPriceId, targetQty) {
+  const existing = seatsLib.seatItemFor(subscription);
+  if (targetQty === 0) {
+    if (existing) await stripe.subscriptionItems.del(existing.id);
+    return null;
+  }
+  if (existing) {
+    if (existing.quantity !== targetQty) {
+      await stripe.subscriptionItems.update(existing.id, {
+        quantity: targetQty,
+        proration_behavior: 'create_prorations',
+      });
+    }
+    return existing.id;
+  }
+  const created = await stripe.subscriptionItems.create({
+    subscription: subscription.id,
+    price: seatPriceId,
+    quantity: targetQty,
+    proration_behavior: 'create_prorations',
+  });
+  return created.id;
+}
+
+function saveSeatState(tenantId, extraSeats, seatItemId) {
+  db.prepare(
+    `UPDATE tenants SET extra_seats = ?, stripe_seat_item_id = ?,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
+  ).run(extraSeats, seatItemId, tenantId);
+}
+
+/**
+ * POST /api/billing/seats/checkout { quantity }
+ * Buy `quantity` MORE extra seats ($25/mo each).
+ *
+ * Existing subscription: the seat item is added/grown on that same
+ * subscription in place (Stripe prorates it onto the next invoice) —
+ * response { ok, mode: 'subscription_update', seats }.
+ * No subscription yet (trial): a Checkout Session sells a seats-only
+ * subscription — response { ok, url }; the webhook links it and syncs
+ * the seat count when checkout completes.
+ */
+router.post('/seats/checkout', requireRole('admin'), async (req, res) => {
+  try {
+    const stripe = stripeLib.getStripe();
+    if (!stripe) {
+      return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+    }
+    const seatPriceId = stripeLib.seatPriceId();
+    if (!seatPriceId) {
+      return res.status(503).json({ ok: false, error: 'price_not_configured', plan: 'seat' });
+    }
+    const quantity = cleanSeatQuantity(req.body && req.body.quantity);
+    if (quantity === null || quantity < 1) {
+      return res.status(400).json({ ok: false, error: 'invalid_quantity', min: 1, max: MAX_SEATS_PER_CALL });
+    }
+
+    const tenantId = req.tenant.id;
+    const row = db.prepare(
+      'SELECT stripe_customer_id, stripe_subscription_id FROM tenants WHERE id = ?'
+    ).get(tenantId);
+
+    if (row && row.stripe_subscription_id) {
+      const subscription = await stripe.subscriptions.retrieve(row.stripe_subscription_id);
+      const currentQty = seatsLib.seatQuantityFor(subscription);
+      const itemId = await setSubscriptionSeatQuantity(
+        stripe, subscription, seatPriceId, currentQty + quantity
+      );
+      saveSeatState(tenantId, currentQty + quantity, itemId);
+      return res.json({
+        ok: true,
+        mode: 'subscription_update',
+        seats: seatsLib.getSeatState(tenantId),
+      });
+    }
+
+    // No subscription yet: sell the seats as their own subscription via
+    // Checkout. Metadata marks the purchase so the webhook records it as
+    // seats (plan mapping ignores the seat price — the plan never moves).
+    const { billing } = billingUrls();
+    const sessionParams = {
+      mode: 'subscription',
+      line_items: [{ price: seatPriceId, quantity }],
+      payment_method_types: ['card', 'us_bank_account'],
+      payment_method_options: {
+        us_bank_account: { financial_connections: { permissions: ['payment_method'] } },
+      },
+      success_url: billing + '?checkout=success',
+      cancel_url: billing + '?checkout=cancelled',
+      metadata: { tenant_id: String(tenantId), purchase: 'seats' },
+      subscription_data: { metadata: { tenant_id: String(tenantId), purchase: 'seats' } },
+      customer_email: req.user.email || undefined,
+    };
+    if (row && row.stripe_customer_id) {
+      sessionParams.customer = row.stripe_customer_id;
+      delete sessionParams.customer_email;
+    }
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    res.json({ ok: true, url: session.url });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[billing/seats/checkout]', e.message);
+    res.status(500).json({ ok: false, error: 'seat_checkout_failed' });
+  }
+});
+
+/**
+ * POST /api/billing/seats { quantity }
+ * Set the TOTAL purchased extra-seat count on the existing subscription
+ * (0 removes the seat item entirely). Requires a subscription — without
+ * one there is nothing to attach seats to (buy via seats/checkout).
+ */
+router.post('/seats', requireRole('admin'), async (req, res) => {
+  try {
+    const stripe = stripeLib.getStripe();
+    if (!stripe) {
+      return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+    }
+    const seatPriceId = stripeLib.seatPriceId();
+    if (!seatPriceId) {
+      return res.status(503).json({ ok: false, error: 'price_not_configured', plan: 'seat' });
+    }
+    const quantity = cleanSeatQuantity(req.body && req.body.quantity);
+    if (quantity === null) {
+      return res.status(400).json({ ok: false, error: 'invalid_quantity', min: 0, max: MAX_SEATS_PER_CALL });
+    }
+    const tenantId = req.tenant.id;
+    const row = db.prepare(
+      'SELECT stripe_subscription_id FROM tenants WHERE id = ?'
+    ).get(tenantId);
+    if (!row || !row.stripe_subscription_id) {
+      return res.status(404).json({ ok: false, error: 'no_subscription' });
+    }
+    const subscription = await stripe.subscriptions.retrieve(row.stripe_subscription_id);
+    const itemId = await setSubscriptionSeatQuantity(stripe, subscription, seatPriceId, quantity);
+    saveSeatState(tenantId, quantity, itemId);
+    res.json({ ok: true, seats: seatsLib.getSeatState(tenantId) });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[billing/seats]', e.message);
+    res.status(500).json({ ok: false, error: 'seat_update_failed' });
   }
 });
 

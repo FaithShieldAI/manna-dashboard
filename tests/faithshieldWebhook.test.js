@@ -43,7 +43,7 @@ before(async () => {
     companyName: 'FS Goal Co',
     email: 'fs-goal@example.org',
     password: 'Sup3rSecret!',
-    plan: 'pro',
+    plan: 'starter',
   });
   assert.equal(r.status, 201);
   tenantId = db.prepare('SELECT tenant_id FROM users WHERE email = ?')

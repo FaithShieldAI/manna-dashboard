@@ -214,6 +214,7 @@ api.use('/influencers', require('./routes/influencers'));
 api.use('/vetted', require('./routes/vetted'));
 api.use('/ip-registry', require('./routes/ipRegistry'));
 api.use('/billing', require('./routes/billing'));
+api.use('/team', require('./routes/team'));
 api.use('/leads', require('./routes/leads'));
 api.use('/onboarding', require('./routes/onboarding'));
 api.use('/assistant', require('./routes/assistant'));

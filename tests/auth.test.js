@@ -20,14 +20,14 @@ test('register creates tenant + owner and logs in', async () => {
     email: 'founder@testco.example',
     password: 'supersecret-password-1',
     displayName: 'Founder',
-    plan: 'pro',
+    plan: 'heavy10',
   });
   assert.equal(r.status, 201);
   assert.equal(r.json.ok, true);
   assert.equal(r.json.user.email, 'founder@testco.example');
   assert.equal(r.json.user.role, 'owner');
   assert.equal(r.json.tenant.slug, 'test-co');
-  assert.equal(r.json.tenant.plan, 'pro');
+  assert.equal(r.json.tenant.plan, 'heavy10');
 
   const me = await c.get('/api/auth/me');
   assert.equal(me.status, 200);

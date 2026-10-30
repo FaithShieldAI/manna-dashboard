@@ -63,13 +63,20 @@ function useMock() {
 
 async function register(email, plan) {
   const c = client(base);
+  // 'pro' was retired from self-serve signup (2026-10-29), so a legacy pro
+  // tenant is simulated the way one exists in production: registered on a
+  // public plan, then carrying plan='pro' on the tenant row.
   const r = await c.post('/api/auth/register', {
     companyName: 'Video Co ' + email,
     email,
     password: 'password1234',
-    plan,
+    plan: plan === 'pro' ? 'heavy10' : plan,
   });
   assert.equal(r.status, 201, JSON.stringify(r.json));
+  if (plan === 'pro') {
+    const u = db.prepare('SELECT tenant_id FROM users WHERE email=?').get(email);
+    db.prepare("UPDATE tenants SET plan='pro' WHERE id=?").run(u.tenant_id);
+  }
   return c;
 }
 
