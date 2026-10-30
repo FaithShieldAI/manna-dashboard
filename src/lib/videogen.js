@@ -74,7 +74,8 @@ class VideoError extends Error {
 function heygenFetch(pathname, { method = 'GET', body } = {}) {
   const url = `${String(config.heygenApiBase).replace(/\/+$/, '')}${pathname}`;
   const ctl = new AbortController();
-  const to = setTimeout(() => ctl.abort(), 30000);
+  // HeyGen authenticated list calls measured at ~41s (Oct 30, 2026); 30s aborted every job.
+  const to = setTimeout(() => ctl.abort(), 120000);
   return fetch(url, {
     method,
     signal: ctl.signal,
