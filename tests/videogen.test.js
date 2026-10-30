@@ -147,6 +147,16 @@ test('job lifecycle: processing -> completed with provider URL via poll-on-read'
   await sleep(2100);
   const first = await c.get('/api/videos/jobs/' + jobId);
   assert.equal(first.json.job.status, 'processing');
+  // Second poll goes through the LIST path: refreshJob only asks the provider
+  // if the listVideoJobs row carries provider_job_id — if it were missing,
+  // this job would sit at 'processing' forever (the Oct 30, 2026 bug).
+  const list = await c.get('/api/videos/jobs');
+  const listed = list.json.jobs.find((j) => j.id === jobId);
+  assert.ok(listed, 'created job must appear in the list');
+  assert.equal(listed.status, 'completed');
+  assert.match(listed.video_url, /^https:\/\/videos\.example\/mock-\d+\.mp4$/);
+  assert.equal(listed.duration_s, 42);
+  assert.ok(listed.finished_at);
   const second = await c.get('/api/videos/jobs/' + jobId);
   assert.equal(second.status, 200);
   assert.equal(second.json.job.status, 'completed');

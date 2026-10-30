@@ -380,8 +380,9 @@ function forTenant(tenantId) {
         .run(t, script, avatarKey, voiceKey, engine || 'standard', provider || 'heygen');
     },
     listVideoJobs(limit = 50) {
+      // refreshJob needs provider_job_id or poll-on-read silently skips (Oct 30, 2026).
       return db.prepare(`
-        SELECT id, script, avatar_key, voice_key, engine, provider, status,
+        SELECT id, script, avatar_key, voice_key, engine, provider, provider_job_id, status,
                video_url, duration_s, error, created_at, updated_at, finished_at
         FROM video_jobs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?`)
         .all(t, limit);
