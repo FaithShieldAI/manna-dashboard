@@ -68,8 +68,11 @@ router.post('/register', authLimiter, async (req, res) => {
     }
     // Self-serve registration may only pick purchasable plans. 'influencer'
     // (Armor Bearer free-for-life) and 'agency' (invite-only) are assigned
-    // server-side / by admin — never via public signup.
-    const SELF_SERVE_PLANS = ['starter', 'pro', 'heavy10', 'heavy30'];
+    // server-side / by admin — never via public signup. 'pro' is retired
+    // from public sale (2026-10-29): the plan key survives for existing
+    // tenants, but new signups cannot pick it — this list must match the
+    // self-serve checkout shelf in src/lib/plans.js (PUBLIC_PLANS).
+    const SELF_SERVE_PLANS = ['starter', 'heavy10', 'heavy30'];
     const cleanPlan = SELF_SERVE_PLANS.includes(plan) ? plan : (plan === undefined ? 'starter' : null);
     if (cleanPlan === null) {
       return res.status(400).json({ ok: false, error: 'invalid_plan', valid: PLANS });

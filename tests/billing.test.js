@@ -47,11 +47,11 @@ test('starter is capped at 2 projects', async () => {
   assert.equal(over.json.remaining, 0);
 });
 
-test('pro allows up to 10 projects', async () => {
+test('heavy10 allows up to 10 projects', async () => {
   const c = client(base);
   const r = await c.post('/api/auth/register', {
     companyName: 'Pro Co', email: 'pro1@example.org',
-    password: 'pro-secret-pw-1234', plan: 'pro',
+    password: 'pro-secret-pw-1234', plan: 'heavy10',
   });
   assert.equal(r.status, 201);
   for (let i = 0; i < 10; i++) {

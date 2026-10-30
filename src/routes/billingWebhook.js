@@ -12,14 +12,24 @@
  *                                   set plan (from server-side price mapping),
  *                                   subscription_status = 'active'
  *   customer.subscription.updated -> sync status/plan from the subscription
- *   customer.subscription.deleted -> subscription_status = 'canceled'
+ *   customer.subscription.deleted -> subscription_status = 'canceled',
+ *                                   purchased seats reset to 0
  *   invoice.payment_failed        -> subscription_status = 'past_due'
+ *
+ * Seats: a subscription can carry TWO items — the plan item and the seat
+ * item ($25/mo, env STRIPE_PRICE_SEAT). Every subscription-bearing event
+ * reconciles tenants.extra_seats + stripe_seat_item_id from the seat item
+ * (src/lib/seats.js), so quantity changes made in Stripe (portal,
+ * dashboard) land on the tenant. The plan is read from whichever item
+ * maps to a plan — never from items[0] by position, since the seat item
+ * can sit first.
  *
  * Tenant lookup order: subscription metadata tenant_id -> checkout session
  * metadata tenant_id -> stripe_customer_id match. Nothing is trusted from
  * the client; price->plan mapping uses server-side env vars only.
  */
 const stripeLib = require('../lib/stripe');
+const seatsLib = require('../lib/seats');
 const { db } = require('../db');
 
 /** Stripe subscription status -> our tenant subscription_status enum. */
@@ -55,22 +65,32 @@ function findTenantId(event, session, subscription) {
   return null;
 }
 
-function applySubscription(tenantId, { customerId, subscriptionId, stripeStatus, priceId }) {
-  const plan = stripeLib.planForPriceId(priceId);
+function applySubscription(tenantId, { customerId, subscriptionId, stripeStatus, items }) {
+  const itemList = Array.isArray(items) ? items : [];
+  // Plan comes from the item whose price maps to a plan (the seat price
+  // maps to none); a seats-only subscription therefore never moves the plan.
+  const planItem = itemList.find(it => it && it.price && stripeLib.planForPriceId(it.price.id));
+  const plan = planItem ? stripeLib.planForPriceId(planItem.price.id) : null;
   const status = mapStatus(stripeStatus);
+  // Seat reconciliation: the seat item's quantity IS the purchased count.
+  const seatItem = seatsLib.seatItemFor({ items: { data: itemList } });
+  const extraSeats = seatItem && Number.isInteger(seatItem.quantity) ? seatItem.quantity : 0;
+  const seatItemId = seatItem ? seatItem.id : null;
   if (plan) {
     db.prepare(
       `UPDATE tenants SET stripe_customer_id = ?, stripe_subscription_id = ?,
-        plan = ?, subscription_status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        plan = ?, subscription_status = ?, extra_seats = ?, stripe_seat_item_id = ?,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
        WHERE id = ?`
-    ).run(customerId, subscriptionId, plan, status, tenantId);
+    ).run(customerId, subscriptionId, plan, status, extraSeats, seatItemId, tenantId);
   } else {
-    // Unknown price — still record billing state, never change the plan.
+    // No plan item — still record billing state + seats, never change the plan.
     db.prepare(
       `UPDATE tenants SET stripe_customer_id = ?, stripe_subscription_id = ?,
-        subscription_status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        subscription_status = ?, extra_seats = ?, stripe_seat_item_id = ?,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
        WHERE id = ?`
-    ).run(customerId, subscriptionId, status, tenantId);
+    ).run(customerId, subscriptionId, status, extraSeats, seatItemId, tenantId);
   }
 }
 
@@ -101,13 +121,11 @@ async function webhookHandler(req, res) {
         }
         const tenantId = findTenantId(event, session, subscription);
         if (!tenantId) break;
-        const priceId = subscription && subscription.items.data[0]
-          ? subscription.items.data[0].price.id : null;
         applySubscription(tenantId, {
           customerId: typeof session.customer === 'string' ? session.customer : session.customer.id,
           subscriptionId: typeof session.subscription === 'string' ? session.subscription : null,
           stripeStatus: subscription ? subscription.status : 'active',
-          priceId,
+          items: subscription && subscription.items ? subscription.items.data : [],
         });
         break;
       }
@@ -115,12 +133,11 @@ async function webhookHandler(req, res) {
         const subscription = event.data.object;
         const tenantId = findTenantId(event, null, subscription);
         if (!tenantId) break;
-        const priceId = subscription.items.data[0] ? subscription.items.data[0].price.id : null;
         applySubscription(tenantId, {
           customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
           subscriptionId: subscription.id,
           stripeStatus: subscription.status,
-          priceId,
+          items: subscription.items ? subscription.items.data : [],
         });
         break;
       }
@@ -132,6 +149,7 @@ async function webhookHandler(req, res) {
           ? subscription.customer : subscription.customer.id;
         db.prepare(
           `UPDATE tenants SET stripe_subscription_id = NULL, subscription_status = 'canceled',
+            extra_seats = 0, stripe_seat_item_id = NULL,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
         ).run(tenantId);
         // Keep stripe_customer_id so they can resubscribe without a duplicate.
