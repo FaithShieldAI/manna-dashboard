@@ -27,6 +27,18 @@
  *           the only legal transitions and both are terminal (F5); the
  *           decision is audited (decided_by / decided_at).
  *
+ *   The loop (Michael, 2026-10-31): recorded moves fire Scribe
+ *   automatically (src/lib/scribeFollowup.js); each leaves a follow-up
+ *   notice here — what happened, the reaction's direction, Scribe's
+ *   dictated next move with its drafts already prepared, and any
+ *   questions Scribe asked. The operator's whole job: answer the
+ *   questions, then press OK (or Not now).
+ *   GET  /api/scribe/followups?status=pending
+ *   POST /api/scribe/followups/:id/answers { answers: { "0": "..." } }
+ *   POST /api/scribe/followups/:id/decide  { decision: 'approved'|'dismissed' }
+ *        -> the OK: every still-draft artifact of that follow-up's
+ *           analysis moves to the decided status in one press.
+ *
  * Tenant-scoped by construction: every handler works through req.tdb.
  * With no SPARK_API_KEY the analyze endpoint runs in stub mode and says
  * so in the response (mode: 'stub', stub: true, transport: 'stub').
@@ -99,6 +111,76 @@ router.post('/drafts', (req, res) => {
     }
     // eslint-disable-next-line no-console
     console.error('[scribe/drafts]', e);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+// --- Follow-ups: the operator's inbox for the loop ----------------------
+
+function strictId(raw) {
+  return /^\d+$/.test(String(raw || '')) ? parseInt(raw, 10) : null;
+}
+
+router.get('/followups', (req, res) => {
+  try {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    res.json({ ok: true, followups: req.tdb.listScribeFollowups({ status, limit: 50 }) });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[scribe/followups list]', e);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+router.post('/followups/:id/answers', (req, res) => {
+  try {
+    const id = strictId(req.params.id);
+    if (id === null) return res.status(400).json({ ok: false, error: 'invalid_id' });
+    const f = req.tdb.getScribeFollowup(id);
+    if (!f) return res.status(404).json({ ok: false, error: 'followup_not_found' });
+    if (f.status !== 'pending') return res.status(400).json({ ok: false, error: 'already_decided' });
+    const raw = (req.body && req.body.answers) || {};
+    if (typeof raw !== 'object' || Array.isArray(raw)) {
+      return res.status(400).json({ ok: false, error: 'invalid_answers' });
+    }
+    const answers = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (!/^\d+$/.test(k) || typeof v !== 'string') continue;
+      const s = v.trim().slice(0, 500);
+      if (s) answers[k] = s;
+    }
+    req.tdb.setScribeFollowupAnswers(id, { ...f.answers, ...answers });
+    res.json({ ok: true, followup: req.tdb.getScribeFollowup(id) });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[scribe/followups answers]', e);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+router.post('/followups/:id/decide', (req, res) => {
+  try {
+    const id = strictId(req.params.id);
+    if (id === null) return res.status(400).json({ ok: false, error: 'invalid_id' });
+    const decision = req.body && req.body.decision;
+    if (decision !== 'approved' && decision !== 'dismissed') {
+      return res.status(400).json({ ok: false, error: 'invalid_decision' });
+    }
+    const f = req.tdb.getScribeFollowup(id);
+    if (!f) return res.status(404).json({ ok: false, error: 'followup_not_found' });
+    if (f.status !== 'pending') return res.status(400).json({ ok: false, error: 'already_decided' });
+    // The one press: the whole prepared batch goes the indicated way.
+    let decided = 0;
+    if (f.analysis_id) {
+      for (const d of req.tdb.listScribeDraftsByAnalysis(f.analysis_id)) {
+        if (d.status === 'draft' && req.tdb.setScribeDraftStatus(d.id, decision, 'operator')) decided++;
+      }
+    }
+    req.tdb.setScribeFollowupStatus(id, decision);
+    res.json({ ok: true, followup: req.tdb.getScribeFollowup(id), drafts_decided: decided });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[scribe/followups decide]', e);
     res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

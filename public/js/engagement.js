@@ -32,6 +32,82 @@
   var goldInput = 'background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;font-family:inherit;';
   var goldLabel = 'font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block;';
 
+  /* --- Next Move: Scribe follow-ups (the loop) ---------------------------
+     Every recorded move fires Scribe automatically; this card is where
+     the operator hears what happened, answers Scribe's questions, and
+     presses the one button that matters: OK. */
+
+  function renderFollowups(el) {
+    el.innerHTML = '<div class="card"><div class="card-header"><div><div class="card-title">&#129517; Next Move — Scribe</div>' +
+      '<div class="card-sub">Every move is followed up automatically. Scribe dictates the next move and prepares it — your part is the answers and the OK.</div></div></div>' +
+      '<div data-fu-list><div class="empty">Loading…</div></div></div>';
+    var listEl = el.querySelector('[data-fu-list]');
+
+    function dirChip(d) {
+      if (d === 'up') return '<span style="color:#8fd18a;font-weight:700;font-size:11px">REACTION: UP</span>';
+      if (d === 'down') return '<span style="color:#e08a8a;font-weight:700;font-size:11px">REACTION: DOWN</span>';
+      if (d === 'flat') return '<span style="color:var(--text3);font-weight:700;font-size:11px">REACTION: FLAT</span>';
+      return '';
+    }
+
+    function load() {
+      get('/api/scribe/followups?limit=50').then(function (d) {
+        if (!d.ok) { listEl.innerHTML = '<div class="empty">Failed to load.</div>'; return; }
+        var pending = (d.followups || []).filter(function (f) { return f.status === 'pending'; });
+        var decided = (d.followups || []).filter(function (f) { return f.status !== 'pending'; }).slice(0, 3);
+        if (!pending.length && !decided.length) {
+          listEl.innerHTML = '<div class="empty">No moves waiting on you. When a move is recorded, Scribe\'s next move and its ask land here.</div>';
+          return;
+        }
+        var html = pending.map(function (f) {
+          var qs = (f.questions || []).map(function (q, i) {
+            var saved = (f.answers || {})[String(i)] || '';
+            return '<div style="margin-top:8px"><label style="' + goldLabel + '">Scribe asks</label>' +
+              '<div style="font-size:13px;margin-bottom:4px">' + esc(q.question) + (q.why ? '<div style="color:var(--text3);font-size:11px">' + esc(q.why) + '</div>' : '') + '</div>' +
+              '<input data-fu-answer="' + f.id + '|' + i + '" value="' + esc(saved) + '" placeholder="Your answer, one sentence" style="' + goldInput + 'width:100%" /></div>';
+          }).join('');
+          return '<div style="border:1px solid var(--border2);border-radius:10px;padding:12px;margin-bottom:10px">' +
+            '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><strong>' + esc(f.summary) + '</strong>' + dirChip(f.direction) + '</div>' +
+            (f.next_move ? '<div style="margin-top:6px;font-size:13px">Scribe\'s next move: <strong style="color:var(--gold)">' + esc(f.next_move) + '</strong>' +
+              (f.drafts_count ? ' <span style="color:var(--text3)">(' + f.drafts_count + ' draft' + (f.drafts_count === 1 ? '' : 's') + ' prepared)</span>' : '') + '</div>' : '') +
+            qs +
+            '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
+            (qs ? '<button class="btn" data-fu-save="' + f.id + '">Save answers</button>' : '') +
+            '<button class="btn gold" data-fu-decide="' + f.id + '|approved">OK — go this direction</button>' +
+            '<button class="btn" data-fu-decide="' + f.id + '|dismissed">Not now</button></div></div>';
+        }).join('');
+        if (decided.length) {
+          html += '<div style="color:var(--text3);font-size:12px;margin-top:4px">' + decided.map(function (f) {
+            return esc(f.status === 'approved' ? 'You said OK: ' : 'Shelved: ') + esc(f.summary);
+          }).join('<br>') + '</div>';
+        }
+        listEl.innerHTML = html;
+        listEl.querySelectorAll('[data-fu-save]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-fu-save');
+            var answers = {};
+            listEl.querySelectorAll('[data-fu-answer]').forEach(function (inp) {
+              var parts = inp.getAttribute('data-fu-answer').split('|');
+              if (parts[0] === id && inp.value.trim()) answers[parts[1]] = inp.value.trim();
+            });
+            fetch('/api/scribe/followups/' + id + '/answers', hdr('POST', { answers: answers }))
+              .then(function (r) { return r.json(); })
+              .then(function (w) { if (w.ok) load(); else alert('Save failed: ' + (w.error || 'unknown')); });
+          });
+        });
+        listEl.querySelectorAll('[data-fu-decide]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var parts = btn.getAttribute('data-fu-decide').split('|');
+            fetch('/api/scribe/followups/' + parts[0] + '/decide', hdr('POST', { decision: parts[1] }))
+              .then(function (r) { return r.json(); })
+              .then(function (w) { if (w.ok) load(); else alert('Failed: ' + (w.error || 'unknown')); });
+          });
+        });
+      }).catch(function () { listEl.innerHTML = '<div class="empty">Failed to load.</div>'; });
+    }
+    load();
+  }
+
   /* --- Star of the Day -------------------------------------------------- */
 
   function renderStar(el) {
@@ -309,9 +385,11 @@
     root.innerHTML =
       '<div class="page-header"><h1>&#9881; Engagement</h1>' +
       '<p>Star of the Day &middot; A/B tests &middot; social posting tracking</p></div>' +
+      '<div data-eng-next style="margin-bottom:1rem"></div>' +
       '<div data-eng-star style="margin-bottom:1rem"></div>' +
       '<div data-eng-ab style="margin-bottom:1rem"></div>' +
       '<div data-eng-social></div>';
+    renderFollowups(root.querySelector('[data-eng-next]'));
     renderStar(root.querySelector('[data-eng-star]'));
     renderAB(root.querySelector('[data-eng-ab]'));
     renderSocial(root.querySelector('[data-eng-social]'));

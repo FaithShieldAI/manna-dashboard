@@ -38,6 +38,7 @@ function collectSignals(tdb) {
     email: null,
     content: { top_videos: [], recent_postings: [], top_posts: [] },
     library: { films_total: 0, films: [] },
+    operator_answers: [],
     trending: { available: false, source: null, signals: [] },
     social: [],
     goals: [],
@@ -113,6 +114,20 @@ function collectSignals(tdb) {
       films: [...films].sort((a, b) => b.engagement - a.engagement).slice(0, 10),
     };
   } catch (e) { /* keep empty */ }
+
+  // --- the operator's answers to Scribe's questions --------------------
+  // The loop's other half (Michael, 2026-10-31): Scribe asks what the
+  // data cannot decide; the operator answers; the answers ride into the
+  // next analysis so the dictated move accounts for them.
+  try {
+    signals.operator_answers = tdb.recentScribeAnswers(5).map(a => ({
+      answered_at: a.answered_at,
+      qa: (a.questions || []).map((q, i) => ({
+        question: q.question,
+        answer: (a.answers && a.answers[String(i)]) || null,
+      })).filter(x => x.answer),
+    })).filter(a => a.qa.length);
+  } catch (e) { /* keep [] */ }
 
   // --- social accounts + goals -----------------------------------------
   try {

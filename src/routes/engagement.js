@@ -38,6 +38,15 @@
  */
 const express = require('express');
 const { db } = require('../db');
+const { fireFollowup } = require('../lib/scribeFollowup');
+
+// The loop (Michael, 2026-10-31): every recorded move below fires a
+// Scribe follow-up — analysis, dictated next move, prepared drafts,
+// and the operator's ask. Fire-and-forget: it never blocks or breaks
+// the move itself.
+function followup(req, event) {
+  if (req.tdb) void fireFollowup(req.tdb, req.tenant.id, event);
+}
 
 const router = express.Router();
 
@@ -258,7 +267,15 @@ router.post('/ab/:id/sync', (req, res) => {
       ).run(autoWinner, new Date().toISOString(), t, id);
     }
   }
-  res.json({ ok: true, test: decorate(t, getTest(t, id)), auto_winner: autoWinner });
+  const synced = getTest(t, id);
+  followup(req, {
+    type: 'ab_synced',
+    ref: String(id),
+    summary: `Video A/B "${test.name}" synced from its postings: A scores ${videoScore(synced, 'a')}, B scores ${videoScore(synced, 'b')}` +
+      (autoWinner ? ` — auto-crowned: variant ${autoWinner.toUpperCase()}.` : '.'),
+    direction: null,
+  });
+  res.json({ ok: true, test: decorate(t, synced), auto_winner: autoWinner });
 });
 
 router.post('/ab/:id/winner', (req, res) => {
@@ -271,7 +288,7 @@ router.post('/ab/:id/winner', (req, res) => {
   if (variant !== 'a' && variant !== 'b') {
     return res.status(400).json({ ok: false, error: 'invalid_variant' });
   }
-  const test = db.prepare('SELECT id FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
+  const test = db.prepare('SELECT id, name FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
   if (!test) {
     return res.status(404).json({ ok: false, error: 'test_not_found' });
   }
@@ -279,6 +296,12 @@ router.post('/ab/:id/winner', (req, res) => {
     `UPDATE ab_tests SET winner = ?, status = 'done', decided_at = ?
      WHERE tenant_id = ? AND id = ?`
   ).run(variant, new Date().toISOString(), t, id);
+  followup(req, {
+    type: 'ab_decided',
+    ref: String(id),
+    summary: `A/B test "${test.name}" decided: variant ${variant.toUpperCase()} won.`,
+    direction: null,
+  });
   res.json({
     ok: true,
     test: decorate(t, getTest(t, id)),
@@ -338,6 +361,13 @@ router.post('/ab/:id/results', (req, res) => {
   }
   const updated = db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
   const rate = (c, s) => (s > 0 ? +(100 * c / s).toFixed(2) : 0);
+  followup(req, {
+    type: 'ab_results',
+    ref: String(id),
+    summary: `Email A/B "${test.name}": results in. Click rates: A ${rate(updated.clicks_a, updated.sent_a)}%, B ${rate(updated.clicks_b, updated.sent_b)}%` +
+      (autoWinner ? ` — auto-crowned: variant ${autoWinner.toUpperCase()}.` : '.'),
+    direction: null,
+  });
   res.json({
     ok: true,
     test: updated,
@@ -411,6 +441,12 @@ router.post('/social', (req, res) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(t, p, url, cid, posted,
     toNonNegInt(likes), toNonNegInt(shares), toNonNegInt(comments), toNonNegInt(clicks));
+  followup(req, {
+    type: 'posting_logged',
+    ref: String(r.lastInsertRowid),
+    summary: `New ${p} posting logged: ${url}` + (cid ? ' (linked to a library film)' : ''),
+    direction: null,
+  });
   res.status(201).json({
     ok: true,
     posting: db.prepare('SELECT * FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, r.lastInsertRowid),
@@ -442,7 +478,7 @@ router.put('/social/:id/metrics', (req, res) => {
   if (!Number.isInteger(id) || id < 1) {
     return res.status(400).json({ ok: false, error: 'invalid_id' });
   }
-  const posting = db.prepare('SELECT id FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, id);
+  const posting = db.prepare('SELECT id, platform, likes, shares, comments, clicks FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, id);
   if (!posting) {
     return res.status(404).json({ ok: false, error: 'posting_not_found' });
   }
@@ -452,6 +488,15 @@ router.put('/social/:id/metrics', (req, res) => {
      SET likes = ?, shares = ?, comments = ?, clicks = ?
      WHERE tenant_id = ? AND id = ?`
   ).run(toNonNegInt(likes), toNonNegInt(shares), toNonNegInt(comments), toNonNegInt(clicks), t, id);
+  const beforeTotal = posting.likes + posting.shares + posting.comments + posting.clicks;
+  const afterTotal = toNonNegInt(likes) + toNonNegInt(shares) + toNonNegInt(comments) + toNonNegInt(clicks);
+  const dir = afterTotal > beforeTotal ? 'up' : afterTotal < beforeTotal ? 'down' : 'flat';
+  followup(req, {
+    type: 'metrics_updated',
+    ref: String(id),
+    summary: `${posting.platform} posting: audience reaction moved ${dir} — total engagement ${beforeTotal} to ${afterTotal} (likes, shares, comments, clicks).`,
+    direction: dir,
+  });
   res.json({
     ok: true,
     posting: db.prepare('SELECT * FROM social_postings WHERE tenant_id = ? AND id = ?').get(t, id),
