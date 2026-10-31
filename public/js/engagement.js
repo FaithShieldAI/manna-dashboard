@@ -90,15 +90,61 @@
 
   function renderAB(el) {
     el.innerHTML = '<div class="card"><div class="card-header"><div><div class="card-title">&#129518; A/B Tests</div>' +
-      '<div class="card-sub">Template split tests — declare a winner when the data is in</div></div></div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">' +
+      '<div class="card-sub">Split tests for email templates and video posts — declare a winner when the data is in</div></div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end">' +
       '<input data-ab-name placeholder="Test name" style="' + goldInput + 'flex:2;min-width:180px" />' +
+      '<select data-ab-kind style="' + goldInput + '"><option value="email">Email templates</option><option value="video">Video posts</option></select>' +
+      '<span data-ab-email-fields style="display:flex;gap:8px;flex-wrap:wrap">' +
       '<input data-ab-a placeholder="Variant A template key" style="' + goldInput + 'flex:1;min-width:150px" />' +
       '<input data-ab-b placeholder="Variant B template key" style="' + goldInput + 'flex:1;min-width:150px" />' +
-      '<input data-ab-split type="number" min="1" max="99" value="50" title="% of audience for variant A" style="' + goldInput + 'width:70px" />' +
+      '<input data-ab-split type="number" min="1" max="99" value="50" title="% of audience for variant A" style="' + goldInput + 'width:70px" /></span>' +
+      '<span data-ab-video-fields style="display:none;gap:8px;flex-wrap:wrap">' +
+      '<select data-ab-pa style="' + goldInput + 'flex:1;min-width:200px"></select>' +
+      '<select data-ab-pb style="' + goldInput + 'flex:1;min-width:200px"></select></span>' +
       '<button class="btn gold" data-ab-create>Create test</button></div>' +
       '<div data-ab-list><div class="empty">Loading…</div></div></div>';
     var listEl = el.querySelector('[data-ab-list]');
+    var kindSel = el.querySelector('[data-ab-kind]');
+    var emailFields = el.querySelector('[data-ab-email-fields]');
+    var videoFields = el.querySelector('[data-ab-video-fields]');
+
+    function postLabel(p) {
+      var d = (p.posted_at || '').slice(0, 10);
+      var u = p.post_url || '';
+      if (u.length > 42) u = u.slice(0, 42) + '…';
+      return p.platform + (d ? ' · ' + d : '') + ' · ' + u;
+    }
+
+    function fillPostPickers() {
+      get(API + '/social').then(function (d) {
+        var posts = (d && d.postings) || [];
+        var html = posts.length
+          ? posts.map(function (p) { return '<option value="' + p.id + '">' + esc(postLabel(p)) + '</option>'; }).join('')
+          : '<option value="">No posts logged yet — log both posts below first</option>';
+        el.querySelector('[data-ab-pa]').innerHTML = html;
+        el.querySelector('[data-ab-pb]').innerHTML = html;
+      }).catch(function () { /* pickers stay empty; create will complain */ });
+    }
+
+    kindSel.addEventListener('change', function () {
+      var video = kindSel.value === 'video';
+      emailFields.style.display = video ? 'none' : 'flex';
+      videoFields.style.display = video ? 'flex' : 'none';
+      if (video) fillPostPickers();
+    });
+
+    function postCell(post, fallback) {
+      if (!post) return esc(fallback || '—');
+      var u = post.post_url || '';
+      var short = u.length > 34 ? u.slice(0, 34) + '…' : u;
+      return esc(post.platform) + '<br><a href="' + esc(u) + '" target="_blank" rel="noopener" style="color:var(--gold);font-size:11px">' + esc(short) + '</a>';
+    }
+
+    function scoreLine(t, s) {
+      return '<span style="font-size:11px;color:var(--text2)">' + (s === 'a' ? 'A' : 'B') + ': ' +
+        t['clicks_' + s] + ' clicks · ' + t['likes_' + s] + ' likes · ' + t['shares_' + s] + ' shares · ' +
+        t['comments_' + s] + ' comments · <strong>score ' + (t.scores ? t.scores[s] : 0) + '</strong></span>';
+    }
 
     function load() {
       listEl.innerHTML = '<div class="empty">Loading…</div>';
@@ -112,12 +158,20 @@
             ? '<span class="btn-ok" style="cursor:default">Winner: ' + (t.winner === 'a' ? 'A' : 'B') + '</span>'
             : '<button class="btn-ok" data-winner="' + t.id + '|a">A wins</button> ' +
               '<button class="btn-ok" data-winner="' + t.id + '|b">B wins</button>';
-          return '<tr><td><strong>' + esc(t.name) + '</strong><br><span style="color:var(--text3);font-size:11px">' + esc(t.status) + '</span></td>' +
+          var kindTag = t.kind === 'video' ? ' · video' : ' · email';
+          if (t.kind === 'video') {
+            var syncCell = t.winner ? '' : ' <button class="btn" data-sync="' + t.id + '">Sync numbers</button>';
+            return '<tr><td><strong>' + esc(t.name) + '</strong><br><span style="color:var(--text3);font-size:11px">' + esc(t.status) + kindTag + '</span></td>' +
+              '<td>' + postCell(t.variant_a_post, t.variant_a_template) + '</td><td>' + postCell(t.variant_b_post, t.variant_b_template) + '</td>' +
+              '<td>' + scoreLine(t, 'a') + '<br>' + scoreLine(t, 'b') + '</td>' +
+              '<td>' + winnerCell + syncCell + '</td></tr>';
+          }
+          return '<tr><td><strong>' + esc(t.name) + '</strong><br><span style="color:var(--text3);font-size:11px">' + esc(t.status) + kindTag + '</span></td>' +
             '<td>' + esc(t.variant_a_template || '—') + '</td><td>' + esc(t.variant_b_template || '—') + '</td>' +
             '<td class="n">' + esc(String(t.split_pct)) + ' / ' + esc(String(100 - t.split_pct)) + '</td>' +
             '<td>' + winnerCell + '</td></tr>';
         }).join('');
-        listEl.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Test</th><th>Variant A</th><th>Variant B</th><th class="n">Split A/B</th><th>Winner</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+        listEl.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Test</th><th>Variant A</th><th>Variant B</th><th>Split / Score</th><th>Winner</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
         listEl.querySelectorAll('[data-winner]').forEach(function (btn) {
           btn.addEventListener('click', function () {
             var parts = btn.getAttribute('data-winner').split('|');
@@ -126,16 +180,39 @@
               .then(function (w) { if (w.ok) load(); else alert('Failed: ' + (w.error || 'unknown')); });
           });
         });
+        listEl.querySelectorAll('[data-sync]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            fetch(API + '/ab/' + btn.getAttribute('data-sync') + '/sync', hdr('POST', {}))
+              .then(function (r) { return r.json(); })
+              .then(function (w) {
+                if (!w.ok) { alert('Sync failed: ' + (w.error || 'unknown')); return; }
+                if (w.auto_winner) alert('Auto winner declared: ' + w.auto_winner.toUpperCase());
+                load();
+              });
+          });
+        });
       }).catch(function () { listEl.innerHTML = '<div class="empty">Failed to load.</div>'; });
     }
 
     el.querySelector('[data-ab-create]').addEventListener('click', function () {
       var name = el.querySelector('[data-ab-name]').value.trim();
-      var a = el.querySelector('[data-ab-a]').value.trim();
-      var b = el.querySelector('[data-ab-b]').value.trim();
-      var split = el.querySelector('[data-ab-split]').value;
       if (!name) { alert('Give the test a name.'); return; }
-      fetch(API + '/ab', hdr('POST', { name: name, variant_a_template: a, variant_b_template: b, split_pct: split }))
+      var payload;
+      if (kindSel.value === 'video') {
+        var pa = el.querySelector('[data-ab-pa]').value;
+        var pb = el.querySelector('[data-ab-pb]').value;
+        if (!pa || !pb) { alert('Log both posts in Social Posting Tracking first, then pick them.'); return; }
+        if (pa === pb) { alert('Pick two different posts for A and B.'); return; }
+        payload = { name: name, kind: 'video', variant_a_post_id: pa, variant_b_post_id: pb };
+      } else {
+        payload = {
+          name: name,
+          variant_a_template: el.querySelector('[data-ab-a]').value.trim(),
+          variant_b_template: el.querySelector('[data-ab-b]').value.trim(),
+          split_pct: el.querySelector('[data-ab-split]').value
+        };
+      }
+      fetch(API + '/ab', hdr('POST', payload))
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (!d.ok) { alert('Create failed: ' + (d.error || 'unknown')); return; }

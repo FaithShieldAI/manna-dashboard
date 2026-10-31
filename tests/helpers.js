@@ -60,6 +60,8 @@ function client(base) {
   return {
     get: (p) => req('GET', p),
     post: (p, body) => req('POST', p, body),
+    put: (p, body) => req('PUT', p, body),
+    patch: (p, body) => req('PATCH', p, body),
     del: (p) => req('DELETE', p),
     clearCookie() { cookie = ''; },
   };
