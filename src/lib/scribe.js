@@ -76,6 +76,7 @@ Rules:
 - Every observation MUST cite the numbers it rests on in its "metrics" object, copied from the data.
 - If the data is thin, say so in an observation (citing the zero/low numbers) and recommend data-producing actions.
 - Recommendations must be concrete and producible by a small team: a specific video to film, a specific post to publish, a specific email to send.
+- If a choice is genuinely the operator's and the data cannot decide it (which film to push first, which audience, what timing), ask it under "questions" instead of guessing: at most 3 questions, each pointed, answerable in a sentence, each with a "why" naming what the answer decides. Questions never carry numbers. The operator's recorded answers to earlier questions appear in the data under "operator_answers": honor them when you dictate the next move.
 - Return ONLY a JSON object matching the requested schema. No prose outside the JSON.`;
 
 function buildPrompt(signals) {
@@ -90,7 +91,8 @@ function buildPrompt(signals) {
     '      "rationale": "why, citing the observation it follows from",',
     '      "based_on": ["the metric labels this rests on"],',
     '      "draft": { }  // video_brief: {"hook","outline","platform","product"}; social_post: {"platform","copy"}; email_campaign: {"subject","audience","outline"}',
-    '  } ]',
+    '  } ],',
+    '  "questions": [ { "question": "a pointed question only the operator can answer", "why": "what the answer decides" } ]',
     '}',
     'At least 1 observation and at least 1 recommendation. At most 5 of each.',
     '',
@@ -145,6 +147,24 @@ function validateAdvice(raw) {
     });
   }
 
+  const questions = [];
+  if (raw.questions !== undefined) {
+    if (!Array.isArray(raw.questions)) {
+      errors.push('questions must be an array');
+    } else {
+      for (const q of raw.questions) {
+        if (typeof q === 'string' && q.trim()) {
+          questions.push({ question: q.trim().slice(0, 300), why: '' });
+        } else if (isPlainObject(q) && typeof q.question === 'string' && q.question.trim()) {
+          questions.push({
+            question: q.question.trim().slice(0, 300),
+            why: typeof q.why === 'string' ? q.why.trim().slice(0, 200) : '',
+          });
+        }
+      }
+    }
+  }
+
   if (errors.length) return { ok: false, errors };
   return {
     ok: true,
@@ -159,6 +179,7 @@ function validateAdvice(raw) {
         draft: r.draft,
         ...(r.sample === true ? { sample: true } : {}),
       })),
+      questions: questions.slice(0, 3),
     },
   };
 }
@@ -293,10 +314,25 @@ function stubAdvice(signals) {
     sample: true,
   });
 
+  const questions = [];
+  const unposted = ((signals.library && signals.library.films) || []).find(f => f.posts === 0);
+  if (unposted) {
+    questions.push({
+      question: `"${unposted.title}" is in your library but has never been posted. Should it go out next, and on which platform?`,
+      why: 'Scribe can prepare the post either way; the pick and the platform are the operator\'s.',
+    });
+  } else {
+    questions.push({
+      question: 'Which product should the next video push: FaithShield, Armor Bearer, or Manna?',
+      why: 'The data does not point at one yet; the answer sets the next brief.',
+    });
+  }
+
   return {
     summary: 'STUB MODE sample analysis — shape and citations are real, recommendations are samples.',
     observations,
     recommendations,
+    questions,
   };
 }
 

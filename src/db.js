@@ -726,6 +726,77 @@ function forTenant(tenantId) {
       if (!r) return null;
       return { ...r, payload: safeJson(r.payload_json), payload_json: undefined };
     },
+    // -- Scribe follow-ups (the loop: move -> analysis -> ask) -----------
+    // Written by the trigger layer after a recorded move (migration 030).
+    // The operator's answers and OK live here; drafts carry the action.
+    insertScribeFollowup({ eventType, eventRef, summary, direction, analysisId, nextMove, draftsCount, questions }) {
+      const r = db.prepare(`
+        INSERT INTO scribe_followups
+          (tenant_id, event_type, event_ref, summary, direction, analysis_id,
+           next_move, drafts_count, questions_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(t, eventType, eventRef || null, summary, direction || null,
+          analysisId || null, nextMove || null, draftsCount || 0,
+          JSON.stringify(questions || []));
+      return Number(r.lastInsertRowid);
+    },
+    listScribeFollowups({ status, limit = 50 } = {}) {
+      let sql = `SELECT id, event_type, event_ref, summary, direction, analysis_id,
+                        next_move, drafts_count, questions_json, answers_json,
+                        status, decided_at, created_at
+                 FROM scribe_followups WHERE tenant_id = ?`;
+      const params = [t];
+      if (status) { sql += ' AND status = ?'; params.push(status); }
+      sql += ' ORDER BY id DESC LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params).map(r => ({
+        ...r,
+        questions: safeJson(r.questions_json) || [],
+        answers: safeJson(r.answers_json) || {},
+        questions_json: undefined, answers_json: undefined,
+      }));
+    },
+    getScribeFollowup(id) {
+      const r = db.prepare(`
+        SELECT id, event_type, event_ref, summary, direction, analysis_id,
+               next_move, drafts_count, questions_json, answers_json,
+               status, decided_at, created_at
+        FROM scribe_followups WHERE tenant_id = ? AND id = ?`).get(t, id);
+      if (!r) return null;
+      return {
+        ...r,
+        questions: safeJson(r.questions_json) || [],
+        answers: safeJson(r.answers_json) || {},
+        questions_json: undefined, answers_json: undefined,
+      };
+    },
+    setScribeFollowupStatus(id, status) {
+      const r = db.prepare(`
+        UPDATE scribe_followups
+        SET status = ?, decided_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE tenant_id = ? AND id = ? AND status = 'pending'`)
+        .run(status, t, id);
+      return r.changes > 0;
+    },
+    setScribeFollowupAnswers(id, answers) {
+      const r = db.prepare(`
+        UPDATE scribe_followups SET answers_json = ?
+        WHERE tenant_id = ? AND id = ? AND status = 'pending'`)
+        .run(JSON.stringify(answers || {}), t, id);
+      return r.changes > 0;
+    },
+    recentScribeAnswers(limit = 5) {
+      return db.prepare(`
+        SELECT questions_json, answers_json, created_at
+        FROM scribe_followups
+        WHERE tenant_id = ? AND answers_json != '{}'
+        ORDER BY id DESC LIMIT ?`).all(t, limit)
+        .map(r => ({
+          questions: safeJson(r.questions_json) || [],
+          answers: safeJson(r.answers_json) || {},
+          answered_at: r.created_at,
+        }));
+    },
     setScribeDraftStatus(id, status, decidedBy) {
       // State machine (F5): only a row still in 'draft' may transition, and
       // the decision is audited (decided_by / decided_at). 0 changes means
