@@ -37,6 +37,7 @@ function collectSignals(tdb) {
     generated_at: new Date().toISOString(),
     email: null,
     content: { top_videos: [], recent_postings: [], top_posts: [] },
+    library: { films_total: 0, films: [] },
     trending: { available: false, source: null, signals: [] },
     social: [],
     goals: [],
@@ -91,6 +92,28 @@ function collectSignals(tdb) {
       .slice(0, 5);
   } catch (e) { /* keep empty */ }
 
+  // --- content library: the films themselves (Michael, 2026-10-31) -----
+  // Scribe watches the library, not just postings: a film counts before
+  // it is ever posted (posts: 0), and once postings link back through
+  // social_postings.content_item_id, their numbers roll up to the film,
+  // so Scribe can say which FILM is working and direct what comes next.
+  try {
+    const films = tdb.libraryFilms(50).map(f => ({
+      title: f.title, product: f.product, category: f.category,
+      language: f.language, views: f.view_count || 0,
+      score: f.performance_score == null ? null : f.performance_score,
+      posts: f.posts || 0, clicks: f.post_clicks || 0,
+      likes: f.post_likes || 0, shares: f.post_shares || 0,
+      comments: f.post_comments || 0,
+      engagement: (f.post_likes || 0) + (f.post_shares || 0) +
+        (f.post_comments || 0) + (f.post_clicks || 0),
+    }));
+    signals.library = {
+      films_total: films.length,
+      films: [...films].sort((a, b) => b.engagement - a.engagement).slice(0, 10),
+    };
+  } catch (e) { /* keep empty */ }
+
   // --- social accounts + goals -----------------------------------------
   try {
     signals.social = tdb.socialAccounts().map(a => ({
@@ -133,6 +156,14 @@ function collectSignals(tdb) {
         source: 'video_postings',
       });
     }
+  }
+  const libTop = (signals.library.films || []).find(f => f.posts > 0 && f.engagement > 0);
+  if (libTop) {
+    trendSignals.push({
+      signal: `Top library film: "${libTop.title}"`,
+      evidence: `${libTop.engagement} engagements across ${libTop.posts} posting(s) — clicks ${libTop.clicks}, likes ${libTop.likes}, shares ${libTop.shares}, comments ${libTop.comments}`,
+      source: 'content_items',
+    });
   }
   if (trendSignals.length) {
     signals.trending = {

@@ -630,6 +630,28 @@ function forTenant(tenantId) {
         FROM social_postings WHERE tenant_id = ? ORDER BY posted_at DESC LIMIT ?`)
         .all(t, limit);
     },
+    // Content library films visible to this tenant (own + global rows),
+    // with this tenant's posting performance rolled up per film via
+    // social_postings.content_item_id. Scribe's library watch (2026-10-31).
+    libraryFilms(limit = 50) {
+      return db.prepare(`
+        SELECT c.id, c.product, c.category, c.language, c.title, c.type,
+               c.view_count, c.performance_score, c.duration_s, c.created_at,
+               (SELECT COUNT(*) FROM social_postings s
+                 WHERE s.content_item_id = c.id AND s.tenant_id = ?) AS posts,
+               (SELECT COALESCE(SUM(s.clicks), 0) FROM social_postings s
+                 WHERE s.content_item_id = c.id AND s.tenant_id = ?) AS post_clicks,
+               (SELECT COALESCE(SUM(s.likes), 0) FROM social_postings s
+                 WHERE s.content_item_id = c.id AND s.tenant_id = ?) AS post_likes,
+               (SELECT COALESCE(SUM(s.shares), 0) FROM social_postings s
+                 WHERE s.content_item_id = c.id AND s.tenant_id = ?) AS post_shares,
+               (SELECT COALESCE(SUM(s.comments), 0) FROM social_postings s
+                 WHERE s.content_item_id = c.id AND s.tenant_id = ?) AS post_comments
+        FROM content_items c
+        WHERE (c.tenant_id = ? OR c.tenant_id IS NULL)
+        ORDER BY c.created_at DESC LIMIT ?`)
+        .all(t, t, t, t, t, t, limit);
+    },
     intakeDaily(days = 14) {
       return db.prepare(`
         SELECT date, category, new_count FROM intake_daily
