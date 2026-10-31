@@ -332,6 +332,19 @@ try {
   console.error('[seed] Startup seed failed:', e.message);
 }
 
+// Register shipped media-library films into content_items on startup
+// (Michael, 2026-10-31: the final films live in Manna's Content Library)
+if (process.env.MANNA_SKIP_MEDIA_SEED !== '1') {
+  try {
+    const { seedMediaLibrary } = require('./lib/mediaLibrarySeed');
+    const { db } = require('./db');
+    const n = seedMediaLibrary(db);
+    if (n) console.log(`[seed] media library: registered ${n} film(s)`);
+  } catch (e) {
+    console.error('[seed] Media library seed failed:', e.message);
+  }
+}
+
 // Seed demo data (email stats, campaigns, goals) for all tenants on startup
 try {
   const { seedDemoData } = require('../scripts/seed-demo-data');

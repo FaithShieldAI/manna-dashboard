@@ -23,6 +23,9 @@ function setupTestEnv() {
   // per registration). The real path is covered by tests/signup-seed.test.js,
   // which deliberately does NOT set this var.
   process.env.MANNA_SKIP_SIGNUP_SEED = '1';
+  // Media-library startup seed is skipped in tests for the same reason;
+  // tests/mediaLibrarySeed.test.js covers the seeder directly.
+  process.env.MANNA_SKIP_MEDIA_SEED = '1';
 }
 
 async function startServer() {
