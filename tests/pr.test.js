@@ -59,13 +59,17 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migration 031 applied: PR tables exist', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 31);
+  assert.equal(v, 32);
   const tables = db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('pr_targets', 'pr_releases', 'pr_pitches') ORDER BY name"
   ).all().map(r => r.name);
   assert.deepEqual(tables, ['pr_pitches', 'pr_releases', 'pr_targets']);
+  const targetCols = db.prepare('PRAGMA table_info(pr_targets)').all().map(r => r.name);
+  assert.ok(targetCols.includes('category'), 'pr_targets carries the shelf');
+  const releaseCols = db.prepare('PRAGMA table_info(pr_releases)').all().map(r => r.name);
+  assert.ok(releaseCols.includes('category'), 'pr_releases carries the shelf');
 });
 
 test('gate, unit level: who isPrAdmin lets in and keeps out', () => {
@@ -310,11 +314,15 @@ test('seeder: parses tables and sections, marks verification conservatively, ide
   const byPub = Object.fromEntries(parsed.map(e => [e.publication, e]));
   assert.equal(byPub['Faith Daily'].tier, 'faith_major');
   assert.equal(byPub['Faith Daily'].route_verified, 1);
+  assert.equal(byPub['Faith Daily'].category, 'faith_based', 'faith tier sits on the Faith-Based shelf');
+  assert.equal(byPub['Faith Daily'].status, 'active');
   assert.equal(byPub['Grace Weekly'].contact_name, null);
   assert.equal(byPub['Grace Weekly'].route_verified, 0, 'route text says unverified, stays unverified');
   assert.equal(byPub['Wire Faith'].tier, 'tech');
+  assert.equal(byPub['Wire Faith'].category, 'mainstream', 'tech tier sits on the Mainstream shelf');
   assert.equal(byPub['Wire Faith'].route_verified, 0, 'no explicit verified marker, stays unverified');
   assert.equal(byPub['Church Tech Weekly'].tier, 'niche');
+  assert.equal(byPub['Church Tech Weekly'].category, 'faith_based', 'the faith-tech niche is a Faith-Based shelf');
   assert.equal(byPub['Church Tech Weekly'].route_verified, 1);
   assert.equal(byPub['Church Tech Weekly'].contact_name, 'Tom Maker');
 
@@ -359,4 +367,176 @@ test('import endpoint: seeds the caller tenant from PR_TARGETS_FILE, then no-ops
     if (prev === undefined) delete process.env.PR_TARGETS_FILE;
     else process.env.PR_TARGETS_FILE = prev;
   }
+});
+
+// --- Categories (Michael, 2026-11-01): "Faith-Based" and "Mainstream" ---
+// The connections list sits on two shelves; releases sit on the same
+// two shelves because "those releases are different"; a pitch
+// defaults to a release from its target's own shelf.
+
+test('categories: target validation, tier-derived default, filter', async () => {
+  const c = await loginClient('sid.allen@yahoo.com');
+
+  const badCat = await c.post('/api/pr/targets', { publication: 'Bad Shelf News', category: 'regular' });
+  assert.equal(badCat.status, 400);
+  assert.equal(badCat.json.error, 'invalid_category');
+
+  // No shelf named: the tier decides. (The CRUD test above already
+  // left a faith_major 'Faith Daily' and deleted its tech target;
+  // these use fresh publications to stay independent.)
+  const techT = (await c.post('/api/pr/targets', { publication: 'Circuit Times', tier: 'tech' })).json.target;
+  assert.equal(techT.category, 'mainstream', 'tech tier defaults to the Mainstream shelf');
+  const faithT = (await c.post('/api/pr/targets', { publication: 'Hymn Herald', tier: 'faith_major' })).json.target;
+  assert.equal(faithT.category, 'faith_based', 'faith tier defaults to the Faith-Based shelf');
+  const explicit = (await c.post('/api/pr/targets', {
+    publication: 'Cross Shelf Journal', tier: 'tech', category: 'faith_based',
+  })).json.target;
+  assert.equal(explicit.category, 'faith_based', 'an explicit shelf wins over the tier default');
+
+  const badFilter = await c.get('/api/pr/targets?category=regular');
+  assert.equal(badFilter.status, 400);
+  const mainstream = await c.get('/api/pr/targets?category=mainstream');
+  assert.ok(mainstream.json.targets.every(t => t.category === 'mainstream'));
+  assert.ok(mainstream.json.targets.some(t => t.publication === 'Circuit Times'));
+  assert.ok(!mainstream.json.targets.some(t => t.publication === 'Hymn Herald'));
+  const faith = await c.get('/api/pr/targets?category=faith_based');
+  assert.ok(faith.json.targets.some(t => t.publication === 'Hymn Herald'));
+
+  const upd = await c.put(`/api/pr/targets/${techT.id}`, { category: 'faith_based' });
+  assert.equal(upd.status, 200);
+  assert.equal(upd.json.target.category, 'faith_based', 'a connection can be re-shelved');
+  const updBack = await c.put(`/api/pr/targets/${techT.id}`, { category: 'mainstream' });
+  assert.equal(updBack.json.target.category, 'mainstream');
+
+  const parked = (await c.post('/api/pr/targets', {
+    publication: 'Hidden Door Weekly', status: 'do_not_pitch',
+  })).json.target;
+  assert.equal(parked.status, 'do_not_pitch');
+  const parkedList = await c.get('/api/pr/targets?status=do_not_pitch');
+  assert.ok(parkedList.json.targets.some(t => t.publication === 'Hidden Door Weekly'));
+  const summary = await c.get('/api/pr/summary');
+  assert.ok(summary.json.summary.targets_do_not_pitch >= 1);
+});
+
+test('categories: releases carry the shelf and filter by it', async () => {
+  const c = await loginClient('michael@faithshield.ai');
+  const badCat = await c.post('/api/pr/releases', { title: 'Bad shelf', category: 'regular' });
+  assert.equal(badCat.status, 400);
+  assert.equal(badCat.json.error, 'invalid_category');
+
+  const faithRel = (await c.post('/api/pr/releases', {
+    title: 'Ministry cut', category: 'faith_based', body: 'Leads with the ministry angle',
+  })).json.release;
+  assert.equal(faithRel.category, 'faith_based');
+  const mainRel = (await c.post('/api/pr/releases', {
+    title: 'Tech cut', category: 'mainstream', body: 'Leads with the agent story',
+  })).json.release;
+  assert.equal(mainRel.category, 'mainstream');
+  const defaulted = (await c.post('/api/pr/releases', { title: 'Unshelved draft' })).json.release;
+  assert.equal(defaulted.category, 'faith_based', 'a release with no shelf named defaults to Faith-Based');
+
+  const faithList = await c.get('/api/pr/releases?category=faith_based');
+  assert.ok(faithList.json.releases.every(r => r.category === 'faith_based'));
+  assert.ok(faithList.json.releases.some(r => r.title === 'Ministry cut'));
+  assert.ok(!faithList.json.releases.some(r => r.title === 'Tech cut'));
+  const badFilter = await c.get('/api/pr/releases?category=regular');
+  assert.equal(badFilter.status, 400);
+
+  const upd = await c.put(`/api/pr/releases/${mainRel.id}`, { category: 'faith_based' });
+  assert.equal(upd.json.release.category, 'faith_based', 'a release can be re-shelved');
+  await c.put(`/api/pr/releases/${mainRel.id}`, { category: 'mainstream' });
+});
+
+test('pitch default pairing: a pitch takes the newest release on the target shelf; do-not-pitch refuses', async () => {
+  const c = await loginClient('leon@faithshield.ai');
+  // Shelf stock (leon's tenant already holds one uncategorized-era
+  // release from the flow test; these two are this test's shelves).
+  const faithOld = (await c.post('/api/pr/releases', { title: 'Faith cut v1', category: 'faith_based' })).json.release;
+  const faithNew = (await c.post('/api/pr/releases', { title: 'Faith cut v2', category: 'faith_based' })).json.release;
+  const mainRel = (await c.post('/api/pr/releases', { title: 'Mainstream cut', category: 'mainstream' })).json.release;
+
+  const mainTarget = (await c.post('/api/pr/targets', {
+    publication: 'Metro Circuit', tier: 'tech',
+  })).json.target;
+  assert.equal(mainTarget.category, 'mainstream');
+  const autoMain = (await c.post('/api/pr/pitches', { target_id: mainTarget.id })).json.pitch;
+  assert.equal(autoMain.release_id, mainRel.id, 'mainstream target defaults to the mainstream release');
+
+  const faithTarget = (await c.post('/api/pr/targets', {
+    publication: 'Parish Post', tier: 'faith_major',
+  })).json.target;
+  const autoFaith = (await c.post('/api/pr/pitches', { target_id: faithTarget.id })).json.pitch;
+  assert.equal(autoFaith.release_id, faithNew.id, 'faith target defaults to the NEWEST faith release');
+
+  const override = (await c.post('/api/pr/pitches', {
+    target_id: faithTarget.id, release_id: mainRel.id,
+  })).json.pitch;
+  assert.equal(override.release_id, mainRel.id, 'an explicit release overrides the shelf default');
+
+  const parked = (await c.post('/api/pr/targets', {
+    publication: 'No Door Gazette', status: 'do_not_pitch',
+  })).json.target;
+  const refused = await c.post('/api/pr/pitches', { target_id: parked.id });
+  assert.equal(refused.status, 400);
+  assert.equal(refused.json.error, 'target_do_not_pitch');
+});
+
+// --- The real connections file (2026-11-01): dry census ------------
+// The owner's researched list must parse with the right shelf under
+// every publication and the owner's exclusions parked. The file grew
+// in passes the same day: 22 base entries, the WIRED/newspapers
+// supplement (10), then Supplement 2, small Christian publications
+// (15): 47 in all. If the file is edited, these numbers are the
+// tripwire.
+
+test('seeder: the real 2026-11-01 file parses shelved and parked correctly', () => {
+  const { parsePrTargetsMarkdown: parse, defaultTargetsPath: targetsPath } = require('../src/lib/prTargetsSeed');
+  const md = fs.readFileSync(targetsPath(), 'utf8');
+  const entries = parse(md);
+  assert.equal(entries.length, 47, 'all 47 researched entries parse');
+
+  const byCat = { faith_based: 0, mainstream: 0 };
+  for (const e of entries) byCat[e.category]++;
+  assert.equal(byCat.faith_based, 32, 'Tier 1 (11) + faith-tech niche (6) + Supplement 2 small Christian press (15)');
+  assert.equal(byCat.mainstream, 15, 'Tier 2 (5) + the WIRED/newspapers supplement (10)');
+
+  const parked = entries.filter(e => e.status === 'do_not_pitch').map(e => e.publication).sort();
+  assert.deepEqual(parked, ['ASSIST News Service', 'Axios', 'CBN News', 'Christian Today', 'Ministry Tech', 'Religion Unplugged', 'TIME'],
+    'the owner rule parks exactly the outlets with no published route');
+  assert.ok(entries.filter(e => e.status !== 'do_not_pitch').every(e => e.status === 'active'));
+  assert.equal(entries.filter(e => e.route_verified).length, 39, 'the file\u2019s own verified-route counts: 8 + 4 + 5 + 9 + 13');
+
+  const byPub = Object.fromEntries(entries.map(e => [e.publication, e]));
+  assert.equal(byPub['Christianity Today'].contact_name, 'Erik Petrik');
+  assert.equal(byPub['Christianity Today'].category, 'faith_based');
+  assert.equal(byPub['Christianity Today'].route_verified, 1);
+  assert.equal(byPub['TechCrunch'].contact_name, 'Sarah Perez');
+  assert.equal(byPub['TechCrunch'].category, 'mainstream');
+  assert.equal(byPub['ChurchTechToday'].category, 'faith_based');
+  assert.equal(byPub['ChurchTechToday'].route_verified, 1);
+  assert.equal(byPub['TIME'].category, 'mainstream');
+  assert.equal(byPub['TIME'].route_verified, 0, 'TIME publishes no route: unverified and parked');
+  assert.equal(byPub['Ministry Tech'].contact_name, null, '"None current verified" means no contact on file');
+  assert.equal(byPub['Associated Press'].contact_name, 'Holly Meyer', 'the "(Global Religion Team)" suffix is formatting, not name');
+  // Supplement 2: the section heading names the shelf outright.
+  assert.equal(byPub['WORLD'].category, 'faith_based');
+  assert.equal(byPub['WORLD'].tier, 'niche', 'small Christian press sits in the niche tier, under the Faith-Based shelf');
+  assert.equal(byPub['WORLD'].contact_name, 'Leigh Jones');
+  assert.equal(byPub['The Christian Century'].contact_name, null);
+  assert.equal(byPub['Christian Today'].status, 'do_not_pitch');
+  assert.equal(byPub['Christian Today'].route_verified, 0);
+});
+
+test('seeder: the real file seeds a tenant with the census intact, idempotently', () => {
+  const tenantId = freshTenantId('pr-real-file-co');
+  const tdb = forTenant(tenantId);
+  const r1 = seedPrTargets(db, { tenantId });
+  assert.equal(r1.total, 47);
+  assert.equal(r1.inserted, 47);
+  assert.equal(tdb.listPrTargets({ category: 'faith_based' }).length, 32);
+  assert.equal(tdb.listPrTargets({ category: 'mainstream' }).length, 15);
+  assert.equal(tdb.listPrTargets({ status: 'do_not_pitch' }).length, 7);
+  const r2 = seedPrTargets(db, { tenantId });
+  assert.equal(r2.inserted, 0);
+  assert.equal(r2.skipped, 47);
 });
