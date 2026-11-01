@@ -19,9 +19,18 @@
   var STATUS_LABEL = {
     drafted: 'Drafted', approved: 'Approved', sent: 'Sent', replied: 'Replied',
     covered: 'Covered', declined: 'Declined', no_response: 'No response',
-    draft: 'Draft', active: 'Active', archived: 'Archived',
+    draft: 'Draft', active: 'Active', archived: 'Archived', do_not_pitch: 'Do not pitch',
   };
   var RELEASE_STATUSES = ['draft', 'approved', 'sent', 'archived'];
+  /* Michael's two shelves (2026-11-01): Faith-Based and Mainstream.
+     Targets and releases both carry one; a pitch defaults to a
+     release from its target's shelf. */
+  var CATEGORIES = [
+    ['faith_based', 'Faith-Based'],
+    ['mainstream', 'Mainstream'],
+  ];
+  var CATEGORY_LABEL = {};
+  CATEGORIES.forEach(function (c) { CATEGORY_LABEL[c[0]] = c[1]; });
 
   var state = { targets: [], releases: [], pitches: [], summary: null, editTarget: null, editRelease: null };
 
@@ -80,6 +89,7 @@
     var s = state.summary || {};
     el.innerHTML =
       '<span><strong style="color:var(--text)">' + (s.targets || 0) + '</strong> connections</span>' +
+      '<span><strong style="color:var(--text)">' + (s.targets_do_not_pitch || 0) + '</strong> parked (do not pitch)</span>' +
       '<span><strong style="color:var(--text)">' + (s.targets_unverified || 0) + '</strong> routes unverified</span>' +
       '<span><strong style="color:var(--text)">' + (s.releases || 0) + '</strong> releases</span>' +
       '<span><strong style="color:var(--text)">' + (s.pitches_sent || 0) + '</strong> pitches out</span>' +
@@ -100,15 +110,16 @@
     html += '<div class="card"><div class="card-header"><div><div class="card-title">Connections</div>' +
       '<div class="card-sub">One row per publication contact. A route marked unverified has not been confirmed from the outlet\'s own pages yet.</div></div></div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<div style="min-width:160px">' + field('Category', select('pr-filter-category', [['', 'Both shelves']].concat(CATEGORIES), '')) + '</div>' +
       '<div style="min-width:180px">' + field('Tier', select('pr-filter-tier', [['', 'All tiers']].concat(TIERS), '')) + '</div>' +
-      '<div style="min-width:140px">' + field('Status', select('pr-filter-status', [['active', 'Active'], ['archived', 'Archived'], ['', 'All']], 'active')) + '</div>' +
+      '<div style="min-width:140px">' + field('Status', select('pr-filter-status', [['active', 'Active'], ['do_not_pitch', 'Do not pitch'], ['archived', 'Archived'], ['', 'All']], 'active')) + '</div>' +
       '<div style="flex:1;min-width:200px">' + field('Search', textInput('pr-filter-q', '', 'Publication, contact, beat')) + '</div>' +
       '</div>' +
       '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>' +
       '<th style="text-align:left;padding:6px">Publication</th><th style="text-align:left;padding:6px">Contact</th>' +
       '<th style="text-align:left;padding:6px">Beat</th><th style="text-align:left;padding:6px">Pitch route</th>' +
-      '<th style="text-align:left;padding:6px">Tier</th><th style="text-align:left;padding:6px">Fit</th><th></th></tr></thead>' +
-      '<tbody data-pr-targets><tr><td colspan="7"><div class="empty">Loading…</div></td></tr></tbody></table></div>' +
+      '<th style="text-align:left;padding:6px">Shelf</th><th style="text-align:left;padding:6px">Tier</th><th style="text-align:left;padding:6px">Fit</th><th></th></tr></thead>' +
+      '<tbody data-pr-targets><tr><td colspan="8"><div class="empty">Loading…</div></td></tr></tbody></table></div>' +
       '<div style="margin-top:14px;border-top:1px solid var(--border2);padding-top:12px">' +
       '<div style="font-weight:700;margin-bottom:8px" data-pr-target-form-title>Add a connection</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">' +
@@ -116,6 +127,7 @@
       field('Contact name', textInput('pr-t-contact', '', 'Jane Editor')) +
       field('Role', textInput('pr-t-role', '', 'Religion editor')) +
       field('Beat', textInput('pr-t-beat', '', 'Faith and technology')) +
+      field('Shelf', select('pr-t-category', CATEGORIES, 'faith_based')) +
       field('Tier', select('pr-t-tier', TIERS, 'niche')) +
       field('Pitch route', textInput('pr-t-route', '', 'tips@example.org or the contact page URL')) +
       field('Source', textInput('pr-t-source', '', 'Where this contact was verified')) +
@@ -129,13 +141,17 @@
 
     /* --- Releases --- */
     html += '<div class="card"><div class="card-header"><div><div class="card-title">Releases</div>' +
-      '<div class="card-sub">The releases themselves, so every pitch points at the exact words that went out.</div></div></div>' +
+      '<div class="card-sub">The releases themselves, so every pitch points at the exact words that went out. The releases are different per shelf: Faith-Based leads with the ministry angle, Mainstream with the tech story.</div></div></div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<div style="min-width:160px">' + field('Shelf', select('pr-rel-filter-category', [['', 'Both shelves']].concat(CATEGORIES), '')) + '</div>' +
+      '</div>' +
       '<div data-pr-releases><div class="empty">Loading…</div></div>' +
       '<div style="margin-top:14px;border-top:1px solid var(--border2);padding-top:12px">' +
       '<div style="font-weight:700;margin-bottom:8px" data-pr-release-form-title>New release</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">' +
       field('Title *', textInput('pr-r-title', '', 'Release title')) +
       field('Subject line', textInput('pr-r-subject', '', 'Email subject when pitched')) +
+      field('Shelf', select('pr-r-category', CATEGORIES, 'faith_based')) +
       field('Status', select('pr-r-status', RELEASE_STATUSES.map(function (x) { return [x, STATUS_LABEL[x]]; }), 'draft')) +
       '</div>' +
       '<div style="margin-top:10px"><label style="' + labelCss + '">Body</label>' +
@@ -149,7 +165,8 @@
       '<div class="card-sub">Every pitch of a release to a connection, and where it stands. Changing a status here stamps the sent and reply dates automatically.</div></div></div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px">' +
       field('Connection', '<select id="pr-p-target" style="' + inputCss + 'width:100%"></select>') +
-      field('Release', '<select id="pr-p-release" style="' + inputCss + 'width:100%"></select>') +
+      '<div><label style="' + labelCss + '">Release</label><select id="pr-p-release" style="' + inputCss + 'width:100%"></select>' +
+      '<label style="font-size:12px;color:var(--text2)"><input type="checkbox" id="pr-p-release-all" /> Both shelves (override)</label></div>' +
       field('Status', select('pr-p-status', PITCH_STATUSES.map(function (x) { return [x, STATUS_LABEL[x]]; }), 'drafted')) +
       field('Follow-up due', '<input id="pr-p-followup" type="date" style="' + inputCss + 'width:100%" />') +
       field('Notes', textInput('pr-p-notes', '', 'What was said, what is owed')) +
@@ -169,28 +186,33 @@
   }
 
   function loadTargets(root) {
+    var category = root.querySelector('#pr-filter-category').value;
     var tier = root.querySelector('#pr-filter-tier').value;
     var status = root.querySelector('#pr-filter-status').value;
     var q = root.querySelector('#pr-filter-q').value.trim();
     var qs = [];
+    if (category) qs.push('category=' + encodeURIComponent(category));
     if (tier) qs.push('tier=' + encodeURIComponent(tier));
     if (status) qs.push('status=' + encodeURIComponent(status));
     if (q) qs.push('q=' + encodeURIComponent(q));
     var body = root.querySelector('[data-pr-targets]');
     get(API + '/targets' + (qs.length ? '?' + qs.join('&') : '')).then(function (d) {
-      if (!d.ok) { body.innerHTML = '<tr><td colspan="7"><div class="empty">Failed to load.</div></td></tr>'; return; }
+      if (!d.ok) { body.innerHTML = '<tr><td colspan="8"><div class="empty">Failed to load.</div></td></tr>'; return; }
       state.targets = d.targets || [];
       if (!state.targets.length) {
-        body.innerHTML = '<tr><td colspan="7"><div class="empty">No connections yet. Import the researched list or add the first one below.</div></td></tr>';
+        body.innerHTML = '<tr><td colspan="8"><div class="empty">No connections yet. Import the researched list or add the first one below.</div></td></tr>';
       } else {
         body.innerHTML = state.targets.map(function (t) {
+          var parked = t.status === 'do_not_pitch'
+            ? ' <span style="color:#e08a8a;font-weight:700;font-size:11px">DO NOT PITCH</span>' : '';
           return '<tr style="border-top:1px solid var(--border2)">' +
-            '<td style="padding:6px"><strong>' + esc(t.publication) + '</strong>' +
+            '<td style="padding:6px"><strong>' + esc(t.publication) + '</strong>' + parked +
             (t.status === 'archived' ? ' <span style="color:var(--text3)">(archived)</span>' : '') + '</td>' +
             '<td style="padding:6px">' + esc(t.contact_name || '') +
             (t.role ? '<div style="color:var(--text3);font-size:12px">' + esc(t.role) + '</div>' : '') + '</td>' +
             '<td style="padding:6px">' + esc(t.beat || '') + '</td>' +
             '<td style="padding:6px">' + routeChip(t) + '</td>' +
+            '<td style="padding:6px">' + esc(CATEGORY_LABEL[t.category] || t.category || '') + '</td>' +
             '<td style="padding:6px">' + esc(TIER_LABEL[t.tier] || t.tier) + '</td>' +
             '<td style="padding:6px;font-size:12px">' + esc(t.fit_note || '') + '</td>' +
             '<td style="padding:6px;white-space:nowrap"><button class="btn" data-pr-target-edit="' + t.id + '">Edit</button> ' +
@@ -218,6 +240,7 @@
     root.querySelector('#pr-t-contact').value = t.contact_name || '';
     root.querySelector('#pr-t-role').value = t.role || '';
     root.querySelector('#pr-t-beat').value = t.beat || '';
+    root.querySelector('#pr-t-category').value = t.category || 'faith_based';
     root.querySelector('#pr-t-tier').value = t.tier || 'niche';
     root.querySelector('#pr-t-route').value = t.contact_route || '';
     root.querySelector('#pr-t-source').value = t.source || '';
@@ -238,15 +261,18 @@
 
   function loadReleases(root) {
     var el = root.querySelector('[data-pr-releases]');
-    get(API + '/releases').then(function (d) {
+    var catSel = root.querySelector('#pr-rel-filter-category');
+    var cat = catSel ? catSel.value : '';
+    get(API + '/releases' + (cat ? '?category=' + encodeURIComponent(cat) : '')).then(function (d) {
       if (!d.ok) { el.innerHTML = '<div class="empty">Failed to load.</div>'; return; }
       state.releases = d.releases || [];
       if (!state.releases.length) {
-        el.innerHTML = '<div class="empty">No releases yet. The first one gets written below.</div>';
+        el.innerHTML = '<div class="empty">No releases on this shelf yet. The first one gets written below.</div>';
       } else {
         el.innerHTML = state.releases.map(function (r) {
           return '<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-bottom:8px">' +
             '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><strong>' + esc(r.title) + '</strong>' +
+            '<span style="font-size:11px;font-weight:700;color:var(--text2)">' + esc(CATEGORY_LABEL[r.category] || r.category || '') + '</span>' +
             '<span style="font-size:11px;font-weight:700;color:var(--text2)">' + esc(STATUS_LABEL[r.status] || r.status) + '</span>' +
             (r.subject_line ? '<span style="color:var(--text3);font-size:12px">Subject: ' + esc(r.subject_line) + '</span>' : '') +
             '<span style="margin-left:auto"><button class="btn" data-pr-release-edit="' + r.id + '">Edit</button> ' +
@@ -274,6 +300,7 @@
     state.editRelease = id;
     root.querySelector('#pr-r-title').value = r.title || '';
     root.querySelector('#pr-r-subject').value = r.subject_line || '';
+    root.querySelector('#pr-r-category').value = r.category || 'faith_based';
     root.querySelector('#pr-r-status').value = r.status || 'draft';
     root.querySelector('#pr-r-body').value = r.body || '';
     root.querySelector('[data-pr-release-form-title]').textContent = 'Edit release';
@@ -293,12 +320,40 @@
     var tSel = root.querySelector('#pr-p-target');
     var rSel = root.querySelector('#pr-p-release');
     if (tSel) {
+      var keepT = tSel.value;
       tSel.innerHTML = state.targets.filter(function (t) { return t.status === 'active'; })
         .map(function (t) { return '<option value="' + t.id + '">' + esc(t.publication + (t.contact_name ? ' · ' + t.contact_name : '')) + '</option>'; }).join('');
+      if (keepT && state.targets.some(function (t) { return String(t.id) === keepT && t.status === 'active'; })) {
+        tSel.value = keepT;
+      }
     }
-    if (rSel) {
-      rSel.innerHTML = '<option value="">No release linked</option>' + state.releases
-        .map(function (r) { return '<option value="' + r.id + '">' + esc(r.title) + '</option>'; }).join('');
+    refreshReleaseOptions(root);
+  }
+
+  /* The release dropdown defaults to the selected connection's own
+     shelf (Faith-Based releases for Faith-Based connections,
+     Mainstream for Mainstream), newest first, with the newest
+     same-shelf release preselected. The "Both shelves" checkbox is
+     the operator's override and lists everything. */
+  function refreshReleaseOptions(root) {
+    var tSel = root.querySelector('#pr-p-target');
+    var rSel = root.querySelector('#pr-p-release');
+    if (!rSel) return;
+    var all = root.querySelector('#pr-p-release-all');
+    var showAll = !!(all && all.checked);
+    var target = tSel ? state.targets.find(function (t) { return String(t.id) === tSel.value; }) : null;
+    var keep = rSel.value;
+    var pool = state.releases.filter(function (r) {
+      return showAll || !target || r.category === target.category;
+    });
+    rSel.innerHTML = '<option value="">No release linked</option>' + pool
+      .map(function (r) {
+        return '<option value="' + r.id + '">' + esc(r.title) + ' (' + esc(CATEGORY_LABEL[r.category] || r.category || '') + ')</option>';
+      }).join('');
+    if (keep && pool.some(function (r) { return String(r.id) === keep; })) {
+      rSel.value = keep;
+    } else if (!showAll && pool.length) {
+      rSel.value = String(pool[0].id);
     }
   }
 
@@ -376,9 +431,12 @@
         loadAll(root);
       });
     });
-    ['#pr-filter-tier', '#pr-filter-status'].forEach(function (s) {
+    ['#pr-filter-category', '#pr-filter-tier', '#pr-filter-status'].forEach(function (s) {
       root.querySelector(s).addEventListener('change', function () { loadTargets(root); });
     });
+    root.querySelector('#pr-rel-filter-category').addEventListener('change', function () { loadReleases(root); });
+    root.querySelector('#pr-p-target').addEventListener('change', function () { refreshReleaseOptions(root); });
+    root.querySelector('#pr-p-release-all').addEventListener('change', function () { refreshReleaseOptions(root); });
     var searchTimer = null;
     root.querySelector('#pr-filter-q').addEventListener('input', function () {
       clearTimeout(searchTimer);
@@ -390,6 +448,7 @@
         contact_name: root.querySelector('#pr-t-contact').value,
         role: root.querySelector('#pr-t-role').value,
         beat: root.querySelector('#pr-t-beat').value,
+        category: root.querySelector('#pr-t-category').value,
         tier: root.querySelector('#pr-t-tier').value,
         contact_route: root.querySelector('#pr-t-route').value,
         source: root.querySelector('#pr-t-source').value,
@@ -408,6 +467,7 @@
       var payload = {
         title: root.querySelector('#pr-r-title').value,
         subject_line: root.querySelector('#pr-r-subject').value,
+        category: root.querySelector('#pr-r-category').value,
         status: root.querySelector('#pr-r-status').value,
         body: root.querySelector('#pr-r-body').value,
       };

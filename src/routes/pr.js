@@ -3,17 +3,19 @@
  * PR API — press connections, releases, pitches.
  *
  *   GET    /api/pr/summary
- *   GET    /api/pr/targets?tier=&status=&q=
+ *   GET    /api/pr/targets?tier=&category=&status=&q=
  *   POST   /api/pr/targets            {publication, contact_name?, role?,
  *                                      beat?, contact_route?, route_verified?,
- *                                      tier?, fit_note?, source?, status?}
+ *                                      tier?, category?, fit_note?, source?,
+ *                                      status?}
  *   PUT    /api/pr/targets/:id        (any target field)
  *   DELETE /api/pr/targets/:id
  *   POST   /api/pr/targets/import     (seed the connections list from
  *                                      ~/workspace/press/targets-2026-11-01.md
  *                                      into the caller's tenant; idempotent)
- *   GET    /api/pr/releases?status=
- *   POST   /api/pr/releases           {title, subject_line?, body?, status?}
+ *   GET    /api/pr/releases?status=&category=
+ *   POST   /api/pr/releases           {title, subject_line?, body?, status?,
+ *                                      category?}
  *   PUT    /api/pr/releases/:id
  *   DELETE /api/pr/releases/:id
  *   GET    /api/pr/pitches?status=&target_id=
@@ -22,6 +24,20 @@
  *   PATCH  /api/pr/pitches/:id        {status?, release_id?, follow_up_due?,
  *                                      notes?, sent_at?, reply_at?}
  *   DELETE /api/pr/pitches/:id
+ *
+ * CATEGORIES (Michael, 2026-11-01): targets and releases both carry
+ * a category, 'faith_based' ("Faith-Based") or 'mainstream'
+ * ("Mainstream"). A target created without one takes its shelf from
+ * its tier (tech -> mainstream, faith tiers -> faith_based). When a
+ * pitch is created WITHOUT a release_id, it defaults to the newest
+ * unarchived release on the target's own shelf, because "those
+ * releases are different": the Faith-Based cut leads with the
+ * ministry angle, the Mainstream cut with the tech story. Naming a
+ * release_id explicitly overrides, cross-shelf included.
+ *
+ * DO NOT PITCH: a target parked at status 'do_not_pitch' (the
+ * owner's rule: no published route, no story) refuses pitch creation
+ * outright with 400 target_do_not_pitch.
  *
  * ACCESS: admin/whitelisted only (src/lib/pr.js requirePrAdmin). This
  * is the private D2RM dashboard's PR section (Michael, 2026-11-01:
@@ -39,7 +55,7 @@
  */
 const express = require('express');
 const {
-  PR_TIERS, TARGET_STATUSES, RELEASE_STATUSES, PITCH_STATUSES, requirePrAdmin,
+  PR_TIERS, PR_CATEGORIES, TARGET_STATUSES, RELEASE_STATUSES, PITCH_STATUSES, requirePrAdmin,
 } = require('../lib/pr');
 const { seedPrTargets, defaultTargetsPath } = require('../lib/prTargetsSeed');
 
@@ -68,6 +84,14 @@ function cleanTarget(body, { partial = false } = {}) {
     if (!PR_TIERS.includes(b.tier)) return { error: 'invalid_tier', valid: PR_TIERS };
     f.tier = b.tier;
   } else if (!partial) f.tier = 'niche';
+  if (b.category !== undefined) {
+    if (!PR_CATEGORIES.includes(b.category)) return { error: 'invalid_category', valid: PR_CATEGORIES };
+    f.category = b.category;
+  } else if (!partial) {
+    // No shelf named: the tier decides (tech sits on the Mainstream
+    // shelf, the faith tiers on the Faith-Based shelf).
+    f.category = (b.tier === 'tech') ? 'mainstream' : 'faith_based';
+  }
   if (b.status !== undefined) {
     if (!TARGET_STATUSES.includes(b.status)) return { error: 'invalid_status', valid: TARGET_STATUSES };
     f.status = b.status;
@@ -88,6 +112,10 @@ function cleanRelease(body, { partial = false } = {}) {
     if (!RELEASE_STATUSES.includes(b.status)) return { error: 'invalid_status', valid: RELEASE_STATUSES };
     f.status = b.status;
   } else if (!partial) f.status = 'draft';
+  if (b.category !== undefined) {
+    if (!PR_CATEGORIES.includes(b.category)) return { error: 'invalid_category', valid: PR_CATEGORIES };
+    f.category = b.category;
+  } else if (!partial) f.category = 'faith_based';
   return { fields: f };
 }
 
@@ -100,11 +128,13 @@ router.get('/summary', (req, res) => {
 // --- Targets -------------------------------------------------------------
 
 router.get('/targets', (req, res) => {
-  const { tier, status, q } = req.query;
+  const { tier, category, status, q } = req.query;
   if (tier && !PR_TIERS.includes(tier)) return badEnum(res, 'tier', PR_TIERS);
+  if (category && !PR_CATEGORIES.includes(category)) return badEnum(res, 'category', PR_CATEGORIES);
   if (status && !TARGET_STATUSES.includes(status)) return badEnum(res, 'status', TARGET_STATUSES);
   const targets = req.tdb.listPrTargets({
     tier: tier || undefined,
+    category: category || undefined,
     status: status || undefined,
     q: typeof q === 'string' && q.trim() ? q.trim().slice(0, 100) : undefined,
   });
@@ -156,9 +186,16 @@ router.post('/targets/import', (req, res) => {
 // --- Releases ------------------------------------------------------------
 
 router.get('/releases', (req, res) => {
-  const { status } = req.query;
+  const { status, category } = req.query;
   if (status && !RELEASE_STATUSES.includes(status)) return badEnum(res, 'status', RELEASE_STATUSES);
-  res.json({ ok: true, releases: req.tdb.listPrReleases({ status: status || undefined }) });
+  if (category && !PR_CATEGORIES.includes(category)) return badEnum(res, 'category', PR_CATEGORIES);
+  res.json({
+    ok: true,
+    releases: req.tdb.listPrReleases({
+      status: status || undefined,
+      category: category || undefined,
+    }),
+  });
 });
 
 router.post('/releases', (req, res) => {
@@ -200,8 +237,14 @@ router.get('/pitches', (req, res) => {
 router.post('/pitches', (req, res) => {
   const b = req.body || {};
   const targetId = Number(b.target_id);
-  if (!targetId || !req.tdb.getPrTarget(targetId)) {
+  const target = targetId ? req.tdb.getPrTarget(targetId) : null;
+  if (!target) {
     return res.status(400).json({ ok: false, error: 'invalid_target' });
+  }
+  if (target.status === 'do_not_pitch') {
+    // The owner's rule, enforced, not just displayed: no published
+    // route, no story. The target stays on the list, parked.
+    return res.status(400).json({ ok: false, error: 'target_do_not_pitch' });
   }
   let releaseId = null;
   if (b.release_id !== undefined && b.release_id !== null) {
@@ -209,6 +252,12 @@ router.post('/pitches', (req, res) => {
     if (!releaseId || !req.tdb.getPrRelease(releaseId)) {
       return res.status(400).json({ ok: false, error: 'invalid_release' });
     }
+  } else {
+    // Default pairing: the newest unarchived release on the target's
+    // own shelf. "Those releases are different" (Michael, 2026-11-01).
+    const shelf = req.tdb.listPrReleases({ category: target.category })
+      .find(r => r.status !== 'archived');
+    if (shelf) releaseId = shelf.id;
   }
   const status = b.status || 'drafted';
   if (!PITCH_STATUSES.includes(status)) return badEnum(res, 'status', PITCH_STATUSES);

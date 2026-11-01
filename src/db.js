@@ -810,17 +810,21 @@ function forTenant(tenantId) {
         .run(status, decidedBy || null, t, id);
       return r.changes > 0;
     },
-    // -- PR: connections, releases, pitches (migration 031) -------------
+    // -- PR: connections, releases, pitches (migrations 031, 032) ------
     // The private D2RM dashboard's PR section. Routes are gated to
     // admin/whitelisted users (src/lib/pr.js); the data stays
     // tenant-scoped like everything else so the section can migrate
-    // into Manna per-tenant later with no schema change.
-    listPrTargets({ tier, status, q, limit = 500 } = {}) {
+    // into Manna per-tenant later with no schema change. Targets and
+    // releases both carry Michael's category ('faith_based' |
+    // 'mainstream', migration 032): the shelf a connection sits on,
+    // and the shelf a release was written for.
+    listPrTargets({ tier, category, status, q, limit = 500 } = {}) {
       let sql = `SELECT id, publication, contact_name, role, beat, contact_route,
-                        route_verified, tier, fit_note, source, status, created_at, updated_at
+                        route_verified, tier, category, fit_note, source, status, created_at, updated_at
                  FROM pr_targets WHERE tenant_id = ?`;
       const params = [t];
       if (tier) { sql += ' AND tier = ?'; params.push(tier); }
+      if (category) { sql += ' AND category = ?'; params.push(category); }
       if (status) { sql += ' AND status = ?'; params.push(status); }
       if (q) {
         sql += ' AND (publication LIKE ? OR contact_name LIKE ? OR beat LIKE ?)';
@@ -834,23 +838,24 @@ function forTenant(tenantId) {
     getPrTarget(id) {
       return db.prepare(`
         SELECT id, publication, contact_name, role, beat, contact_route,
-               route_verified, tier, fit_note, source, status, created_at, updated_at
+               route_verified, tier, category, fit_note, source, status, created_at, updated_at
         FROM pr_targets WHERE tenant_id = ? AND id = ?`).get(t, id) || null;
     },
     insertPrTarget(f) {
       const r = db.prepare(`
         INSERT INTO pr_targets
           (tenant_id, publication, contact_name, role, beat, contact_route,
-           route_verified, tier, fit_note, source, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+           route_verified, tier, category, fit_note, source, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(t, f.publication, f.contact_name || null, f.role || null, f.beat || null,
           f.contact_route || null, f.route_verified ? 1 : 0, f.tier || 'niche',
+          f.category || 'faith_based',
           f.fit_note || null, f.source || null, f.status || 'active');
       return Number(r.lastInsertRowid);
     },
     updatePrTarget(id, f) {
       const cols = ['publication', 'contact_name', 'role', 'beat', 'contact_route',
-        'route_verified', 'tier', 'fit_note', 'source', 'status'];
+        'route_verified', 'tier', 'category', 'fit_note', 'source', 'status'];
       const sets = [];
       const params = [];
       for (const c of cols) {
@@ -869,29 +874,31 @@ function forTenant(tenantId) {
       const r = db.prepare('DELETE FROM pr_targets WHERE tenant_id = ? AND id = ?').run(t, id);
       return r.changes > 0;
     },
-    listPrReleases({ status, limit = 200 } = {}) {
-      let sql = `SELECT id, title, subject_line, body, status, created_at, updated_at
+    listPrReleases({ status, category, limit = 200 } = {}) {
+      let sql = `SELECT id, title, subject_line, body, status, category, created_at, updated_at
                  FROM pr_releases WHERE tenant_id = ?`;
       const params = [t];
       if (status) { sql += ' AND status = ?'; params.push(status); }
+      if (category) { sql += ' AND category = ?'; params.push(category); }
       sql += ' ORDER BY id DESC LIMIT ?';
       params.push(limit);
       return db.prepare(sql).all(...params);
     },
     getPrRelease(id) {
       return db.prepare(`
-        SELECT id, title, subject_line, body, status, created_at, updated_at
+        SELECT id, title, subject_line, body, status, category, created_at, updated_at
         FROM pr_releases WHERE tenant_id = ? AND id = ?`).get(t, id) || null;
     },
     insertPrRelease(f) {
       const r = db.prepare(`
-        INSERT INTO pr_releases (tenant_id, title, subject_line, body, status)
-        VALUES (?, ?, ?, ?, ?)`)
-        .run(t, f.title, f.subject_line || null, f.body || null, f.status || 'draft');
+        INSERT INTO pr_releases (tenant_id, title, subject_line, body, status, category)
+        VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(t, f.title, f.subject_line || null, f.body || null, f.status || 'draft',
+          f.category || 'faith_based');
       return Number(r.lastInsertRowid);
     },
     updatePrRelease(id, f) {
-      const cols = ['title', 'subject_line', 'body', 'status'];
+      const cols = ['title', 'subject_line', 'body', 'status', 'category'];
       const sets = [];
       const params = [];
       for (const c of cols) {
@@ -972,6 +979,7 @@ function forTenant(tenantId) {
       return {
         targets: one('SELECT COUNT(*) AS n FROM pr_targets WHERE tenant_id = ?'),
         targets_unverified: one('SELECT COUNT(*) AS n FROM pr_targets WHERE tenant_id = ? AND route_verified = 0 AND status = \'active\''),
+        targets_do_not_pitch: one('SELECT COUNT(*) AS n FROM pr_targets WHERE tenant_id = ? AND status = \'do_not_pitch\''),
         releases: one('SELECT COUNT(*) AS n FROM pr_releases WHERE tenant_id = ?'),
         pitches: one('SELECT COUNT(*) AS n FROM pr_pitches WHERE tenant_id = ?'),
         pitches_sent: one("SELECT COUNT(*) AS n FROM pr_pitches WHERE tenant_id = ? AND status IN ('sent','replied','covered')"),

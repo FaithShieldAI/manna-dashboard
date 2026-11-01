@@ -40,7 +40,21 @@ const PR_TIER_LABELS = {
   tech: 'Tech and mainstream',
   niche: 'Faith-tech niche',
 };
-const TARGET_STATUSES = ['active', 'archived'];
+// Categories (Michael, 2026-11-01): the connections list sits on two
+// shelves, his labels: "Faith-Based" and "Mainstream" ("Regular" was
+// ruled "kinda plain"). Tier is the finer classification underneath.
+// Releases carry the same category: "Those releases are different" —
+// a Faith-Based release leads with the ministry angle, a Mainstream
+// release leads with the tech/agent story.
+const PR_CATEGORIES = ['faith_based', 'mainstream'];
+const PR_CATEGORY_LABELS = {
+  faith_based: 'Faith-Based',
+  mainstream: 'Mainstream',
+};
+// 'do_not_pitch' is the owner's press rule made a status: "The ones
+// that don't publish don't get the story." A target whose pitch route
+// is not published is parked, visible on the list, never pitchable.
+const TARGET_STATUSES = ['active', 'archived', 'do_not_pitch'];
 const RELEASE_STATUSES = ['draft', 'approved', 'sent', 'archived'];
 const PITCH_STATUSES = ['drafted', 'approved', 'sent', 'replied', 'covered', 'declined', 'no_response'];
 
@@ -64,6 +78,8 @@ module.exports = {
   PR_OWNER_EMAILS,
   PR_TIERS,
   PR_TIER_LABELS,
+  PR_CATEGORIES,
+  PR_CATEGORY_LABELS,
   TARGET_STATUSES,
   RELEASE_STATUSES,
   PITCH_STATUSES,
