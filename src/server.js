@@ -221,6 +221,7 @@ api.use('/assistant', require('./routes/assistant'));
 api.use('/scribe', require('./routes/scribe'));
 api.use('/videos', require('./routes/videos'));
 api.use('/admin', require('./routes/admin'));
+api.use('/pr', require('./routes/pr'));
 api.use('/growth', require('./routes/growth'));
 api.use('/facebook', require('./routes/facebook'));
 api.use('/social', require('./routes/socialConnect'));
@@ -342,6 +343,21 @@ if (process.env.MANNA_SKIP_MEDIA_SEED !== '1') {
     if (n) console.log(`[seed] media library: registered ${n} film(s)`);
   } catch (e) {
     console.error('[seed] Media library seed failed:', e.message);
+  }
+}
+
+// Import the press connections list into the house tenant's PR tab
+// (Michael, 2026-11-01: "The list of connections goes there"). The
+// seeder is a no-op until ~/workspace/press/targets-2026-11-01.md
+// exists, and idempotent once it does.
+if (process.env.MANNA_SKIP_PR_SEED !== '1') {
+  try {
+    const { seedPrTargets } = require('./lib/prTargetsSeed');
+    const { db } = require('./db');
+    const r = seedPrTargets(db);
+    if (r.inserted) console.log(`[seed] PR targets: imported ${r.inserted} connection(s)`);
+  } catch (e) {
+    console.error('[seed] PR targets seed failed:', e.message);
   }
 }
 
