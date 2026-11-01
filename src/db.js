@@ -810,6 +810,174 @@ function forTenant(tenantId) {
         .run(status, decidedBy || null, t, id);
       return r.changes > 0;
     },
+    // -- PR: connections, releases, pitches (migration 031) -------------
+    // The private D2RM dashboard's PR section. Routes are gated to
+    // admin/whitelisted users (src/lib/pr.js); the data stays
+    // tenant-scoped like everything else so the section can migrate
+    // into Manna per-tenant later with no schema change.
+    listPrTargets({ tier, status, q, limit = 500 } = {}) {
+      let sql = `SELECT id, publication, contact_name, role, beat, contact_route,
+                        route_verified, tier, fit_note, source, status, created_at, updated_at
+                 FROM pr_targets WHERE tenant_id = ?`;
+      const params = [t];
+      if (tier) { sql += ' AND tier = ?'; params.push(tier); }
+      if (status) { sql += ' AND status = ?'; params.push(status); }
+      if (q) {
+        sql += ' AND (publication LIKE ? OR contact_name LIKE ? OR beat LIKE ?)';
+        const like = `%${q}%`;
+        params.push(like, like, like);
+      }
+      sql += ' ORDER BY publication COLLATE NOCASE, contact_name COLLATE NOCASE LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params);
+    },
+    getPrTarget(id) {
+      return db.prepare(`
+        SELECT id, publication, contact_name, role, beat, contact_route,
+               route_verified, tier, fit_note, source, status, created_at, updated_at
+        FROM pr_targets WHERE tenant_id = ? AND id = ?`).get(t, id) || null;
+    },
+    insertPrTarget(f) {
+      const r = db.prepare(`
+        INSERT INTO pr_targets
+          (tenant_id, publication, contact_name, role, beat, contact_route,
+           route_verified, tier, fit_note, source, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(t, f.publication, f.contact_name || null, f.role || null, f.beat || null,
+          f.contact_route || null, f.route_verified ? 1 : 0, f.tier || 'niche',
+          f.fit_note || null, f.source || null, f.status || 'active');
+      return Number(r.lastInsertRowid);
+    },
+    updatePrTarget(id, f) {
+      const cols = ['publication', 'contact_name', 'role', 'beat', 'contact_route',
+        'route_verified', 'tier', 'fit_note', 'source', 'status'];
+      const sets = [];
+      const params = [];
+      for (const c of cols) {
+        if (f[c] === undefined) continue;
+        sets.push(`${c} = ?`);
+        params.push(c === 'route_verified' ? (f[c] ? 1 : 0) : f[c]);
+      }
+      if (!sets.length) return false;
+      sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+      const r = db.prepare(
+        `UPDATE pr_targets SET ${sets.join(', ')} WHERE tenant_id = ? AND id = ?`
+      ).run(...params, t, id);
+      return r.changes > 0;
+    },
+    deletePrTarget(id) {
+      const r = db.prepare('DELETE FROM pr_targets WHERE tenant_id = ? AND id = ?').run(t, id);
+      return r.changes > 0;
+    },
+    listPrReleases({ status, limit = 200 } = {}) {
+      let sql = `SELECT id, title, subject_line, body, status, created_at, updated_at
+                 FROM pr_releases WHERE tenant_id = ?`;
+      const params = [t];
+      if (status) { sql += ' AND status = ?'; params.push(status); }
+      sql += ' ORDER BY id DESC LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params);
+    },
+    getPrRelease(id) {
+      return db.prepare(`
+        SELECT id, title, subject_line, body, status, created_at, updated_at
+        FROM pr_releases WHERE tenant_id = ? AND id = ?`).get(t, id) || null;
+    },
+    insertPrRelease(f) {
+      const r = db.prepare(`
+        INSERT INTO pr_releases (tenant_id, title, subject_line, body, status)
+        VALUES (?, ?, ?, ?, ?)`)
+        .run(t, f.title, f.subject_line || null, f.body || null, f.status || 'draft');
+      return Number(r.lastInsertRowid);
+    },
+    updatePrRelease(id, f) {
+      const cols = ['title', 'subject_line', 'body', 'status'];
+      const sets = [];
+      const params = [];
+      for (const c of cols) {
+        if (f[c] === undefined) continue;
+        sets.push(`${c} = ?`);
+        params.push(f[c]);
+      }
+      if (!sets.length) return false;
+      sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+      const r = db.prepare(
+        `UPDATE pr_releases SET ${sets.join(', ')} WHERE tenant_id = ? AND id = ?`
+      ).run(...params, t, id);
+      return r.changes > 0;
+    },
+    deletePrRelease(id) {
+      const r = db.prepare('DELETE FROM pr_releases WHERE tenant_id = ? AND id = ?').run(t, id);
+      return r.changes > 0;
+    },
+    listPrPitches({ status, targetId, limit = 200 } = {}) {
+      let sql = `SELECT p.id, p.target_id, p.release_id, p.status, p.sent_at, p.reply_at,
+                        p.follow_up_due, p.notes, p.created_at, p.updated_at,
+                        tg.publication AS target_publication, tg.contact_name AS target_contact_name,
+                        rl.title AS release_title
+                 FROM pr_pitches p
+                 JOIN pr_targets tg ON tg.id = p.target_id AND tg.tenant_id = p.tenant_id
+                 LEFT JOIN pr_releases rl ON rl.id = p.release_id AND rl.tenant_id = p.tenant_id
+                 WHERE p.tenant_id = ?`;
+      const params = [t];
+      if (status) { sql += ' AND p.status = ?'; params.push(status); }
+      if (targetId) { sql += ' AND p.target_id = ?'; params.push(targetId); }
+      sql += ' ORDER BY p.id DESC LIMIT ?';
+      params.push(limit);
+      return db.prepare(sql).all(...params);
+    },
+    getPrPitch(id) {
+      const r = db.prepare(`
+        SELECT p.id, p.target_id, p.release_id, p.status, p.sent_at, p.reply_at,
+               p.follow_up_due, p.notes, p.created_at, p.updated_at,
+               tg.publication AS target_publication, tg.contact_name AS target_contact_name,
+               rl.title AS release_title
+        FROM pr_pitches p
+        JOIN pr_targets tg ON tg.id = p.target_id AND tg.tenant_id = p.tenant_id
+        LEFT JOIN pr_releases rl ON rl.id = p.release_id AND rl.tenant_id = p.tenant_id
+        WHERE p.tenant_id = ? AND p.id = ?`).get(t, id);
+      return r || null;
+    },
+    insertPrPitch(f) {
+      const r = db.prepare(`
+        INSERT INTO pr_pitches
+          (tenant_id, target_id, release_id, status, sent_at, reply_at, follow_up_due, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(t, f.target_id, f.release_id || null, f.status || 'drafted',
+          f.sent_at || null, f.reply_at || null, f.follow_up_due || null, f.notes || null);
+      return Number(r.lastInsertRowid);
+    },
+    updatePrPitch(id, f) {
+      const cols = ['release_id', 'status', 'sent_at', 'reply_at', 'follow_up_due', 'notes'];
+      const sets = [];
+      const params = [];
+      for (const c of cols) {
+        if (f[c] === undefined) continue;
+        sets.push(`${c} = ?`);
+        params.push(f[c]);
+      }
+      if (!sets.length) return false;
+      sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+      const r = db.prepare(
+        `UPDATE pr_pitches SET ${sets.join(', ')} WHERE tenant_id = ? AND id = ?`
+      ).run(...params, t, id);
+      return r.changes > 0;
+    },
+    deletePrPitch(id) {
+      const r = db.prepare('DELETE FROM pr_pitches WHERE tenant_id = ? AND id = ?').run(t, id);
+      return r.changes > 0;
+    },
+    prSummary() {
+      const one = (sql) => db.prepare(sql).get(t).n;
+      return {
+        targets: one('SELECT COUNT(*) AS n FROM pr_targets WHERE tenant_id = ?'),
+        targets_unverified: one('SELECT COUNT(*) AS n FROM pr_targets WHERE tenant_id = ? AND route_verified = 0 AND status = \'active\''),
+        releases: one('SELECT COUNT(*) AS n FROM pr_releases WHERE tenant_id = ?'),
+        pitches: one('SELECT COUNT(*) AS n FROM pr_pitches WHERE tenant_id = ?'),
+        pitches_sent: one("SELECT COUNT(*) AS n FROM pr_pitches WHERE tenant_id = ? AND status IN ('sent','replied','covered')"),
+        followups_due: one("SELECT COUNT(*) AS n FROM pr_pitches WHERE tenant_id = ? AND follow_up_due IS NOT NULL AND follow_up_due != '' AND follow_up_due <= date('now') AND status NOT IN ('covered','declined','no_response')"),
+      };
+    },
   };
 }
 

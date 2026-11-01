@@ -258,6 +258,7 @@
     <button data-i18n="dash.tabs.social" class="main-tab" data-tab="social">&#128248; Social</button>
     <button class="main-tab" data-tab="content">&#127916; Content Library</button>
     <button class="main-tab" data-tab="engagement">&#11088; Engagement</button>
+    <button class="main-tab" data-tab="pr" id="tab-pr" style="display:none">&#128240; PR</button>
     <button data-i18n="dash.tabs.ip_registry" class="main-tab" data-tab="ipregistry">&#128274; IP Registry</button>
     <button data-i18n="dash.tabs.billing" class="main-tab" data-tab="billing">&#128179; Billing</button>
   </nav>
@@ -768,6 +769,10 @@
   <div class="main-tab-panel" id="panel-engagement" style="display:none">
     <div id="engagement-panel"></div>
   </div><!-- /panel-engagement -->
+
+  <div class="main-tab-panel" id="panel-pr" style="display:none">
+    <div id="pr-panel"></div>
+  </div><!-- /panel-pr -->
 
   <!-- ============ TAB: IP REGISTRY ============ -->
   <div class="main-tab-panel" id="panel-ipregistry" style="display:none">
@@ -2445,6 +2450,7 @@ document.querySelectorAll('.main-tab').forEach(function(b){
 <script src="/js/content.js"></script>
 <script src="/js/drips.js"></script>
 <script src="/js/engagement.js"></script>
+<script src="/js/pr.js"></script>
 <script>
 // Auto-init tab modules when their panels are shown
 document.querySelectorAll('.main-tab').forEach(function(b){
@@ -2452,8 +2458,16 @@ document.querySelectorAll('.main-tab').forEach(function(b){
     var tab = b.getAttribute('data-tab');
     if (tab === 'drips' && window.D2RMDrips) window.D2RMDrips.init('drips-app');
     if (tab === 'engagement' && window.EngagementUI) window.EngagementUI.init('engagement-panel');
+    if (tab === 'pr' && window.PrUI) window.PrUI.init('pr-panel');
   });
 });
+// PR tab: private D2RM section, not part of MannaAi. The button stays
+// hidden unless the PR API answers for this account; every /api/pr
+// route is admin-gated server-side as well.
+fetch('/api/pr/summary', { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+  .then(function(r){ return r.json(); })
+  .then(function(d){ if (d && d.ok) { var b = document.getElementById('tab-pr'); if (b) b.style.display = ''; } })
+  .catch(function(){});
 </script>
 </body>
 </html>

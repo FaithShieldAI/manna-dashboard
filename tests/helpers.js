@@ -26,6 +26,9 @@ function setupTestEnv() {
   // Media-library startup seed is skipped in tests for the same reason;
   // tests/mediaLibrarySeed.test.js covers the seeder directly.
   process.env.MANNA_SKIP_MEDIA_SEED = '1';
+  // PR-targets startup import is skipped in tests too;
+  // tests/pr.test.js covers the seeder directly.
+  process.env.MANNA_SKIP_PR_SEED = '1';
 }
 
 async function startServer() {
