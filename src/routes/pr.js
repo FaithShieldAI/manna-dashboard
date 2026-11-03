@@ -3,6 +3,8 @@
  * PR API — press connections, releases, pitches.
  *
  *   GET    /api/pr/summary
+ *   GET    /api/pr/tracking           (opens/clicks per recipient,
+ *                                      from pr_events; migration 033)
  *   GET    /api/pr/targets?tier=&category=&status=&q=
  *   POST   /api/pr/targets            {publication, contact_name?, role?,
  *                                      beat?, contact_route?, route_verified?,
@@ -123,6 +125,44 @@ function cleanRelease(body, { partial = false } = {}) {
 
 router.get('/summary', (req, res) => {
   res.json({ ok: true, summary: req.tdb.prSummary() });
+});
+
+// --- Email tracking --------------------------------------------------------
+// Opens and clicks recorded by the public tracking routes
+// (src/routes/track.js) into pr_events (migration 033), aggregated
+// per recipient. Not tenant-scoped: pr_events carries no tenant_id
+// (the events arrive pre-auth from mail clients), and this whole
+// router is already behind requirePrAdmin above.
+
+router.get('/tracking', (req, res) => {
+  const { db } = require('../db');
+  const rows = db.prepare(`
+    SELECT email,
+           MAX(outlet)  AS outlet,
+           MAX(version) AS version,
+           COALESCE(SUM(kind = 'open'), 0)  AS opens,
+           MIN(CASE WHEN kind = 'open'  THEN ts END) AS first_open,
+           MAX(CASE WHEN kind = 'open'  THEN ts END) AS last_open,
+           COALESCE(SUM(kind = 'click'), 0) AS clicks,
+           MAX(CASE WHEN kind = 'click' THEN ts END) AS last_click,
+           MAX(ts) AS last_event
+    FROM pr_events
+    WHERE email IS NOT NULL
+    GROUP BY email
+    ORDER BY last_event DESC`).all();
+  res.json({
+    ok: true,
+    rows: rows.map(r => ({
+      outlet: r.outlet,
+      email: r.email,
+      version: r.version,
+      opens: r.opens,
+      first_open: r.first_open,
+      last_open: r.last_open,
+      clicks: r.clicks,
+      last_click: r.last_click,
+    })),
+  });
 });
 
 // --- Targets -------------------------------------------------------------
