@@ -49,7 +49,11 @@ router.get('/', (req, res) => {
       sites: sites.length,
       socialAccounts: social.length,
       ipAssets: ipCount,
-      influencers: influencerCounts.reduce((a, c) => a + c.n, 0),
+      // Podcasters are their own category (Michael, 2026-11-03): the
+      // Influencers headline counts category 'influencer' only, never a
+      // sum across categories, and podcasters get their own count.
+      influencers: (influencerCounts.find(c => c.category === 'influencer') || {}).n || 0,
+      podcasters: (influencerCounts.find(c => c.category === 'podcast') || {}).n || 0,
       influencersByCategory: Object.fromEntries(influencerCounts.map(c => [c.category, c.n])),
     },
   });
