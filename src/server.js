@@ -153,6 +153,12 @@ app.get('/', (req, res) => {
 
 // --- public ----------------------------------------------------------------
 app.get('/health', (req, res) => res.json({ ok: true, service: 'd2rm-dashboard-saas', version: '0.1.0' }));
+// PR email tracking: GET /t/o/:token (open pixel) and /t/c/:token
+// (click redirect). PUBLIC and pre-auth by design — a mail client
+// has no session; the HMAC-signed token is the credential. Mounted
+// at the root so the paths in sent mail are exactly /t/o/... and
+// /t/c/... on the Manna public domain. See src/routes/track.js.
+app.use(require('./routes/track'));
 // Auth endpoints also require the X-Requested-With header on mutations:
 // uniform CSRF posture, no pre-auth token dance needed since we control the
 // frontend and always send the header.

@@ -180,6 +180,15 @@
       '<tbody data-pr-pitches><tr><td colspan="8"><div class="empty">Loading…</div></td></tr></tbody></table></div>' +
       '</div>';
 
+    html += '<div class="card"><div class="card-header"><div><div class="card-title">Email tracking</div>' +
+      '<div class="card-sub">Opens and clicks on the press emails, recorded by the tracking pixel and links in each send (one row per recipient).</div></div></div>' +
+      '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>' +
+      '<th style="text-align:left;padding:6px">Outlet</th><th style="text-align:left;padding:6px">Email</th>' +
+      '<th style="text-align:left;padding:6px">Opens</th><th style="text-align:left;padding:6px">First open</th>' +
+      '<th style="text-align:left;padding:6px">Clicks</th><th style="text-align:left;padding:6px">Last activity</th></tr></thead>' +
+      '<tbody data-pr-tracking><tr><td colspan="6"><div class="empty">Loading…</div></td></tr></tbody></table></div>' +
+      '</div>';
+
     root.innerHTML = html;
     wire(root);
     loadAll(root);
@@ -409,11 +418,42 @@
     });
   }
 
+  function fmtTs(ts) {
+    if (!ts) return '—';
+    var d = new Date(ts * 1000);
+    return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  }
+
+  function loadTracking(root) {
+    var body = root.querySelector('[data-pr-tracking]');
+    if (!body) return;
+    get(API + '/tracking').then(function (d) {
+      var rows = (d && d.ok && d.rows) || [];
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="6"><div class="empty">No tracking events yet.</div></td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map(function (r) {
+        var last = Math.max(r.last_open || 0, r.last_click || 0);
+        return '<tr>' +
+          '<td style="padding:6px">' + esc(r.outlet || '') + '</td>' +
+          '<td style="padding:6px">' + esc(r.email || '') + '</td>' +
+          '<td style="padding:6px">' + (r.opens || 0) + '</td>' +
+          '<td style="padding:6px">' + fmtTs(r.first_open) + '</td>' +
+          '<td style="padding:6px">' + (r.clicks || 0) + '</td>' +
+          '<td style="padding:6px">' + fmtTs(last) + '</td></tr>';
+      }).join('');
+    }).catch(function () {
+      body.innerHTML = '<tr><td colspan="6"><div class="empty">No tracking events yet.</div></td></tr>';
+    });
+  }
+
   function loadAll(root) {
     loadSummary(root);
     loadTargets(root);
     loadReleases(root);
     loadPitches(root);
+    loadTracking(root);
   }
 
   function wire(root) {
