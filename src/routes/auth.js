@@ -660,6 +660,93 @@ router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json(
 });
 
 // Migration: import migrated data (backup/self-heal only — token-gated, B1)
+// Live windows sync (token-gated, same MIGRATION_TOKEN pattern as the
+// snapshot sync above): the analytics VM's live service
+// (email_analytics/live_windows.py) computes the combined outgoing-mail
+// windows from fresh pipe pulls every ~60s and pushes the payload here.
+// Stored per tenant in live_windows (migration 035). Read paths serve
+// it while fresh and label it 'live' with its as_of; the snapshot rows
+// stay as the labeled fallback. Validation mirrors the snapshot sync:
+// the standard column set must be present and numeric per window.
+router.post('/live-windows-sync/:token', requireMigrationToken, express.json({ limit: '1mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    const payload = body.payload;
+    if (!payload || typeof payload !== 'object' || !payload.windows || typeof payload.windows !== 'object') {
+      return res.status(400).json({ ok: false, error: 'payload_required' });
+    }
+    for (const key of EMAIL_WINDOW_KEYS) {
+      const w = payload.windows[key];
+      if (!w || typeof w !== 'object') {
+        return res.status(400).json({ ok: false, error: `window_missing:${key}` });
+      }
+      for (const field of ['sent', 'opens', 'clicks', 'unsub', 'bounces', 'replies']) {
+        if (_snapshotCount(w[field]) === null) {
+          return res.status(400).json({ ok: false, error: `invalid_metric:${key}.${field}` });
+        }
+      }
+    }
+    const { storeLiveWindows } = require('../lib/liveWindows');
+    const receivedAt = storeLiveWindows(tenantId, {
+      as_of: typeof payload.as_of === 'string' ? payload.as_of : null,
+      windows: payload.windows,
+      sources: (payload.sources && typeof payload.sources === 'object') ? payload.sources : {},
+    });
+    res.json({ ok: true, tenant_id: tenantId, received_at: receivedAt, as_of: payload.as_of || null });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Public live-windows read for the private dashboard page: a static
+// page on another origin, holding no session, so it is guarded by its
+// own read token (LIVE_WINDOWS_READ_TOKEN) and serves aggregate house
+// counts only. The stored payload is served as-is with its as_of: the
+// page displays that as_of as data, so staleness is visible, never
+// hidden. 404 (not 403) on any token problem, same don't-oracle rule
+// as the tracker beacon.
+router.get('/live-windows', (req, res) => {
+  const expected = process.env.LIVE_WINDOWS_READ_TOKEN;
+  if (!expected) return res.status(404).json({ ok: false, error: 'not_found' });
+  const provided = Buffer.from(String(req.query.k || ''));
+  const wanted = Buffer.from(expected);
+  if (provided.length !== wanted.length || !crypto.timingSafeEqual(provided, wanted)) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+  const email = process.env.LIVE_WINDOWS_TENANT_EMAIL || 'michael@faithshield.ai';
+  const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+  if (!user) return res.status(404).json({ ok: false, error: 'not_found' });
+  const { readLiveWindows } = require('../lib/liveWindows');
+  const live = readLiveWindows(Number(user.tenant_id));
+  if (!live) return res.status(404).json({ ok: false, error: 'no_live_windows' });
+  res.set('Access-Control-Allow-Origin', 'https://dashboard.d2rmmedia.com');
+  res.json({
+    ok: true,
+    as_of: live.payload.as_of || null,
+    received_at: live.received_at,
+    fresh: live.fresh,
+    windows: live.payload.windows,
+    sources: live.payload.sources || {},
+  });
+});
+
 router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {
   try {
     const importData = req.body.data;

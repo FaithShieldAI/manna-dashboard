@@ -59,11 +59,14 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 34);
+  assert.equal(v, 35);
   const snapshotCols = db.prepare('PRAGMA table_info(email_snapshots)').all().map(r => r.name);
   assert.ok(snapshotCols.includes('replies'), 'email_snapshots carries replies');
+  const liveCols = db.prepare('PRAGMA table_info(live_windows)').all().map(r => r.name);
+  assert.deepEqual(liveCols, ['tenant_id', 'payload_json', 'received_at'],
+    'live_windows carries the pushed live payload per tenant');
   const tables = db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('pr_targets', 'pr_releases', 'pr_pitches') ORDER BY name"
   ).all().map(r => r.name);
@@ -490,11 +493,41 @@ test('pitch default pairing: a pitch takes the newest release on the target shel
 // supplement (10), then Supplement 2, small Christian publications
 // (15): 47 in all. If the file is edited, these numbers are the
 // tripwire.
+//
+// The file did get edited, by standing order: since 2026-11-01 an
+// hourly runner appends a new supplement wave to it, and the waves
+// never touch the original sections. So the census below runs in two
+// layers. The original 47-entry census is asserted at full strength
+// against the original sections (everything before Supplement 3),
+// and the grown file is asserted by exact invariants counted
+// independently from the raw markdown, so a parser regression on
+// either layer still fails here.
 
 test('seeder: the real 2026-11-01 file parses shelved and parked correctly', () => {
   const { parsePrTargetsMarkdown: parse, defaultTargetsPath: targetsPath } = require('../src/lib/prTargetsSeed');
   const md = fs.readFileSync(targetsPath(), 'utf8');
-  const entries = parse(md);
+
+  // The whole grown file: every numbered entry heading in the raw
+  // file parses, exactly once. The heading count is computed from
+  // the raw text here, not by the parser, so the two can disagree
+  // and fail.
+  const all = parse(md);
+  const headingCount = (md.match(/^### \d+[.)]\s/gm) || []).length;
+  assert.equal(all.length, headingCount, 'every numbered entry in the grown file parses');
+  assert.equal(all.filter(e => e.category === 'faith_based').length
+    + all.filter(e => e.category === 'mainstream').length, all.length,
+    'every parsed entry lands on one of the two shelves');
+  assert.ok(all.filter(e => e.status !== 'do_not_pitch').every(e => e.status === 'active'));
+  for (const name of ['ASSIST News Service', 'Axios', 'CBN News', 'Christian Today', 'Ministry Tech', 'Religion Unplugged', 'TIME']) {
+    const e = all.find(x => x.publication === name);
+    assert.ok(e && e.status === 'do_not_pitch', `the owner rule still parks ${name} in the grown file`);
+  }
+
+  // The original census: the file as this test was written against
+  // it, everything before the Supplement 3 heading.
+  const cut = md.search(/^## Supplement 3,/m);
+  assert.ok(cut > 0, 'the Supplement 3 boundary is present in the file');
+  const entries = parse(md.slice(0, cut));
   assert.equal(entries.length, 47, 'all 47 researched entries parse');
 
   const byCat = { faith_based: 0, mainstream: 0 };
@@ -530,15 +563,34 @@ test('seeder: the real 2026-11-01 file parses shelved and parked correctly', () 
 });
 
 test('seeder: the real file seeds a tenant with the census intact, idempotently', () => {
+  const { parsePrTargetsMarkdown: parse, defaultTargetsPath: targetsPath } = require('../src/lib/prTargetsSeed');
+  const entries = parse(fs.readFileSync(targetsPath(), 'utf8'));
+  // The seeder inserts an entry only when no row exists for its
+  // (publication, contact) pair, first occurrence wins. The grown
+  // file boards a few outlets twice (a later wave re-researched an
+  // outlet instead of updating its earlier entry), so the seeded
+  // census is the parse deduplicated by that same rule.
+  const seen = new Set();
+  const census = [];
+  for (const e of entries) {
+    const k = `${e.publication}|${e.contact_name || ''}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    census.push(e);
+  }
   const tenantId = freshTenantId('pr-real-file-co');
   const tdb = forTenant(tenantId);
   const r1 = seedPrTargets(db, { tenantId });
-  assert.equal(r1.total, 47);
-  assert.equal(r1.inserted, 47);
-  assert.equal(tdb.listPrTargets({ category: 'faith_based' }).length, 32);
-  assert.equal(tdb.listPrTargets({ category: 'mainstream' }).length, 15);
-  assert.equal(tdb.listPrTargets({ status: 'do_not_pitch' }).length, 7);
+  assert.equal(r1.total, entries.length);
+  assert.equal(r1.inserted, census.length);
+  assert.equal(r1.skipped, entries.length - census.length);
+  assert.equal(tdb.listPrTargets({ category: 'faith_based', limit: 100000 }).length,
+    census.filter(e => e.category === 'faith_based').length);
+  assert.equal(tdb.listPrTargets({ category: 'mainstream', limit: 100000 }).length,
+    census.filter(e => e.category === 'mainstream').length);
+  assert.equal(tdb.listPrTargets({ status: 'do_not_pitch', limit: 100000 }).length,
+    census.filter(e => e.status === 'do_not_pitch').length);
   const r2 = seedPrTargets(db, { tenantId });
   assert.equal(r2.inserted, 0);
-  assert.equal(r2.skipped, 47);
+  assert.equal(r2.skipped, entries.length);
 });

@@ -18,6 +18,23 @@ const mailer = require('../lib/mailer');
 const router = express.Router();
 
 router.get('/windows', (req, res) => {
+  // Live first (2026-11-05): when a fresh live-computed payload exists
+  // for this tenant, serve it and say so. The response also carries the
+  // payload's builder-shaped windows as live_windows for clients (the
+  // /app template) that render the full provider split. Otherwise the
+  // stored snapshots below, labeled source:'snapshot' — never blurred.
+  const { readLiveWindows, shapeForEmailRoute } = require('../lib/liveWindows');
+  const live = readLiveWindows(req.tenant.id);
+  if (live && live.fresh) {
+    return res.json({
+      ok: true,
+      source: 'live',
+      as_of: live.payload.as_of || null,
+      received_at: live.received_at,
+      windows: shapeForEmailRoute(live.payload),
+      live_windows: live.payload.windows,
+    });
+  }
   const rows = req.tdb.emailSnapshots();
   const windows = {};
   for (const r of rows) {
@@ -36,7 +53,7 @@ router.get('/windows', (req, res) => {
       captured_at: r.captured_at,
     };
   }
-  res.json({ ok: true, windows });
+  res.json({ ok: true, source: 'snapshot', windows });
 });
 
 router.get('/campaigns', (req, res) => {
