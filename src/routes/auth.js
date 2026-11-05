@@ -482,7 +482,7 @@ router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
       'funnels', 'funnel_stages', 'influencers', 'ip_assets', 'social_accounts',
       'goals', 'tenant_usage', 'collection_jobs', 'tenant_onboarding',
       'connected_socials', 'email_templates', 'social_templates',
-      'content_items', 'content_postings'];
+      'content_items', 'content_postings', 'pr_events'];
     
     const result = {};
     for (const t of tables) {
