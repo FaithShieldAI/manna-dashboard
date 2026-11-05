@@ -503,6 +503,162 @@ router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
   }
 });
 
+// Email snapshot sync (token-gated, same MIGRATION_TOKEN pattern as the
+// migration routes above): the external mail-truth chain
+// (hidden_files/email_analytics/manna_snapshot_refresh.py) computes the
+// combined outgoing-mail windows from every sending pipe — the four
+// provider APIs, the Amazon SES ledgers, Outlook sends, the mailbox
+// bounce/reply harvest, and Manna's own pr_events export — using the same
+// math as the private dashboard generator, and posts them here. This
+// endpoint validates and upserts them into email_snapshots for ONE tenant
+// (resolved by tenant_email or tenant_id) so GET /api/email/windows and
+// the private dashboard show identical combined numbers on the same
+// cycle. It deliberately does NOT add this app's email_campaigns rows on
+// top: those rows are a seeded subset and do not reconcile to the
+// provider totals (verified 2026-11-04 against a live export), so adding
+// them would double-count. As an independent check, the response carries
+// pr_events window totals computed from this app's own pr_events table.
+const EMAIL_WINDOW_KEYS = ['24h', '7d', '30d', 'all'];
+const EMAIL_WINDOW_DAYS = { '24h': 1, '7d': 7, '30d': 30, 'all': null };
+
+function _snapshotCount(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 100000000 ? n : null;
+}
+
+function _prEventWindows() {
+  const cutoff = (days) => (days == null ? null : Math.floor(Date.now() / 1000) - days * 86400);
+  const out = {};
+  for (const key of EMAIL_WINDOW_KEYS) {
+    const since = cutoff(EMAIL_WINDOW_DAYS[key]);
+    const row = db.prepare(`
+      SELECT COALESCE(SUM(kind = 'open'), 0) AS opens,
+             COALESCE(SUM(kind = 'click'), 0) AS clicks
+      FROM pr_events
+      WHERE email IS NOT NULL AND (? IS NULL OR ts >= ?)`).get(since, since);
+    out[key] = { opens: row.opens, clicks: row.clicks };
+  }
+  return out;
+}
+
+router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json({ limit: '1mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    const windows = body.windows;
+    if (!windows || typeof windows !== 'object') {
+      return res.status(400).json({ ok: false, error: 'windows_required' });
+    }
+    const cleaned = {};
+    for (const key of EMAIL_WINDOW_KEYS) {
+      const w = windows[key];
+      if (!w || typeof w !== 'object') {
+        return res.status(400).json({ ok: false, error: `window_missing:${key}` });
+      }
+      const unsubs = w.unsubs !== undefined ? w.unsubs : w.opt_outs;
+      const metrics = {
+        sent: _snapshotCount(w.sent),
+        opens: _snapshotCount(w.opens),
+        clicks: _snapshotCount(w.clicks),
+        unsubs: _snapshotCount(unsubs),
+        bounces: _snapshotCount(w.bounces),
+        replies: _snapshotCount(w.replies),
+      };
+      for (const [field, value] of Object.entries(metrics)) {
+        if (value === null) {
+          return res.status(400).json({ ok: false, error: `invalid_metric:${key}.${field}` });
+        }
+      }
+      let warmTotal = null;
+      let warmByLangJson = null;
+      if (w.warm_total !== undefined) {
+        warmTotal = _snapshotCount(w.warm_total);
+        if (warmTotal === null) {
+          return res.status(400).json({ ok: false, error: `invalid_metric:${key}.warm_total` });
+        }
+      }
+      if (w.warm_by_lang !== undefined) {
+        if (!w.warm_by_lang || typeof w.warm_by_lang !== 'object' || Array.isArray(w.warm_by_lang)) {
+          return res.status(400).json({ ok: false, error: `invalid_metric:${key}.warm_by_lang` });
+        }
+        const byLang = {};
+        for (const [lang, count] of Object.entries(w.warm_by_lang)) {
+          const c = _snapshotCount(count);
+          if (c === null) {
+            return res.status(400).json({ ok: false, error: `invalid_metric:${key}.warm_by_lang` });
+          }
+          byLang[String(lang).slice(0, 40)] = c;
+        }
+        warmByLangJson = JSON.stringify(byLang);
+        if (warmTotal === null) warmTotal = Object.values(byLang).reduce((a, b) => a + b, 0);
+      }
+      cleaned[key] = { ...metrics, warmTotal, warmByLangJson };
+    }
+
+    const existing = {};
+    for (const r of db.prepare('SELECT window_key, warm_total, warm_by_lang_json FROM email_snapshots WHERE tenant_id = ?').all(tenantId)) {
+      existing[r.window_key] = r;
+    }
+    const upsert = db.prepare(`
+      INSERT INTO email_snapshots
+        (tenant_id, window_key, sent, opens, clicks, unsubs, bounces, replies, warm_total, warm_by_lang_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (tenant_id, window_key) DO UPDATE SET
+        sent = excluded.sent, opens = excluded.opens, clicks = excluded.clicks,
+        unsubs = excluded.unsubs, bounces = excluded.bounces, replies = excluded.replies,
+        warm_total = excluded.warm_total, warm_by_lang_json = excluded.warm_by_lang_json,
+        captured_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`);
+    transaction(() => {
+      for (const key of EMAIL_WINDOW_KEYS) {
+        const c = cleaned[key];
+        upsert.run(tenantId, key, c.sent, c.opens, c.clicks, c.unsubs, c.bounces, c.replies,
+          c.warmTotal !== null ? c.warmTotal : (existing[key] ? existing[key].warm_total : 0),
+          c.warmByLangJson !== null ? c.warmByLangJson : (existing[key] ? existing[key].warm_by_lang_json : '{}'));
+      }
+    });
+
+    const rows = db.prepare(
+      'SELECT window_key, sent, opens, clicks, unsubs, bounces, replies, warm_total, warm_by_lang_json, captured_at FROM email_snapshots WHERE tenant_id = ?'
+    ).all(tenantId);
+    const stored = {};
+    for (const r of rows) {
+      stored[r.window_key] = {
+        sent: r.sent, opens: r.opens, clicks: r.clicks,
+        unsubs: r.unsubs, opt_outs: r.unsubs,
+        bounces: r.bounces, replies: r.replies,
+        open_rate: r.sent > 0 ? +(100 * r.opens / r.sent).toFixed(1) : 0,
+        click_rate: r.sent > 0 ? +(100 * r.clicks / r.sent).toFixed(1) : 0,
+        optout_rate: r.sent > 0 ? +(100 * r.unsubs / r.sent).toFixed(2) : 0,
+        captured_at: r.captured_at,
+      };
+    }
+    res.json({
+      ok: true,
+      tenant_id: tenantId,
+      windows: stored,
+      server_pr_event_windows: _prEventWindows(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Migration: import migrated data (backup/self-heal only — token-gated, B1)
 router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {
   try {
@@ -524,7 +680,7 @@ router.post('/migration-import/:token', requireMigrationToken, express.json({ li
     // content_items handled separately via video loader; users/tenants handled below
     const tables = {
       'email_campaigns': ['name', 'provider', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'sent_at', 'created_at', 'cost_cents', 'revenue_cents', 'product', 'language', 'audience', 'template_key', 'target_description'],
-      'email_snapshots': ['window_key', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'warm_total', 'warm_by_lang_json', 'captured_at'],
+      'email_snapshots': ['window_key', 'sent', 'opens', 'clicks', 'unsubs', 'bounces', 'replies', 'warm_total', 'warm_by_lang_json', 'captured_at'],
       'goals': null, // get columns dynamically
       'site_visits': null,
       'sites': null,

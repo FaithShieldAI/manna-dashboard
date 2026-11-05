@@ -244,7 +244,7 @@ function forTenant(tenantId) {
     // -- email ------------------------------------------------------------
     emailSnapshots() {
       return db.prepare(
-        'SELECT window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang_json, captured_at FROM email_snapshots WHERE tenant_id = ?'
+        'SELECT window_key, sent, opens, clicks, unsubs, bounces, replies, warm_total, warm_by_lang_json, captured_at FROM email_snapshots WHERE tenant_id = ?'
       ).all(t);
     },
     emailCampaigns(limit = 50, { product, language, audience } = {}) {

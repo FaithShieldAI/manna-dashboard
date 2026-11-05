@@ -47,6 +47,7 @@ function mapWindows(snapshots) {
     const optoutRate = r.sent > 0 ? +(100 * r.unsubs / r.sent).toFixed(2) : 0;
     out[r.window_key] = {
       sent: r.sent, opens: r.opens, clicks: r.clicks, unsub: r.unsubs,
+      bounces: r.bounces, replies: r.replies || 0,
       open_rate: openRate, click_rate: clickRate, optout_rate: optoutRate,
       // SaaS v1 has no provider split — map everything to the ml_* fields
       // the dashboard template reads, zero the kit_* fields.
