@@ -241,8 +241,15 @@ function serveApp(req, res) {
     'var SITES = ' + JSON.stringify(sites) + ';'
   );
 
-  // 3. Live email windows.
-  const windows = mapWindows(tdb.emailSnapshots());
+  // 3. Email windows: the live-computed payload while it is fresh
+  // (2026-11-05), else the stored snapshots. The payload already
+  // carries the template's EMAIL_WINDOWS shape (it is produced by the
+  // private dashboard builder's own math), so it injects directly.
+  const { readLiveWindows } = require('./lib/liveWindows');
+  const liveRead = readLiveWindows(tenant.id);
+  const windows = (liveRead && liveRead.fresh)
+    ? liveRead.payload.windows
+    : mapWindows(tdb.emailSnapshots());
   html = html.replace(
     /var EMAIL_WINDOWS = \{[\s\S]*?\};/,
     'var EMAIL_WINDOWS = ' + JSON.stringify(windows) + ';'
@@ -292,6 +299,17 @@ function serveApp(req, res) {
         +'<div style="font-size:11px;color:var(--text3)">'+pct.toFixed(1)+'% of goal</div></div>';
     }).join('');
   }).catch(function(){});
+  // Email windows: while the page is open, re-fetch every 60s; when
+  // the API serves the live computation, swap it in and re-render the
+  // active range through the template's own setRange().
+  setInterval(function(){
+    fetch('/api/email/windows',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.json();}).then(function(j){
+      if(!j||!j.ok||j.source!=='live'||!j.live_windows||typeof setRange!=='function') return;
+      EMAIL_WINDOWS = j.live_windows;
+      var active=document.querySelector('.range-tab.active');
+      setRange(active?active.getAttribute('data-range'):'30d');
+    }).catch(function(){});
+  }, 60000);
   // Logout
   var lo=document.getElementById('d2rm-logout');
   if(lo){lo.addEventListener('click',function(e){e.preventDefault();fetch('/api/auth/logout',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(){location.href='/login';});});}
