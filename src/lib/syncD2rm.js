@@ -181,11 +181,11 @@ function syncCampaigns(db, tenantId) {
 function syncSnapshots(db, tenantId) {
   const upsert = db.prepare(`
     INSERT INTO email_snapshots
-      (tenant_id, window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (tenant_id, window_key, sent, opens, clicks, unsubs, bounces, replies, warm_total, warm_by_lang_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
     ON CONFLICT (tenant_id, window_key) DO UPDATE SET
       sent = excluded.sent, opens = excluded.opens, clicks = excluded.clicks,
-      unsubs = excluded.unsubs, bounces = excluded.bounces,
+      unsubs = excluded.unsubs, bounces = excluded.bounces, replies = excluded.replies,
       warm_total = excluded.warm_total, warm_by_lang_json = excluded.warm_by_lang_json,
       captured_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   `);

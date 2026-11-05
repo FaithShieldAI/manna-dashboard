@@ -59,9 +59,11 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 33);
+  assert.equal(v, 34);
+  const snapshotCols = db.prepare('PRAGMA table_info(email_snapshots)').all().map(r => r.name);
+  assert.ok(snapshotCols.includes('replies'), 'email_snapshots carries replies');
   const tables = db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('pr_targets', 'pr_releases', 'pr_pitches') ORDER BY name"
   ).all().map(r => r.name);

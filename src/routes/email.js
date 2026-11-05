@@ -28,8 +28,10 @@ router.get('/windows', (req, res) => {
     const optoutRate = r.sent > 0 ? +(100 * r.unsubs / r.sent).toFixed(2) : 0;
     windows[r.window_key] = {
       sent: r.sent, opens: r.opens, clicks: r.clicks,
-      unsubs: r.unsubs, bounces: r.bounces,
+      unsubs: r.unsubs, opt_outs: r.unsubs, bounces: r.bounces,
+      replies: r.replies || 0,
       open_rate: openRate, click_rate: clickRate, optout_rate: optoutRate,
+      reply_rate: r.sent > 0 ? +(100 * (r.replies || 0) / r.sent).toFixed(2) : 0,
       warm: { total: r.warm_total, by_lang: warmByLang },
       captured_at: r.captured_at,
     };
