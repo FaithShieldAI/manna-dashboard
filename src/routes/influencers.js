@@ -7,7 +7,7 @@
 const express = require('express');
 
 const router = express.Router();
-const CATEGORIES = ['influencer', 'podcast', 'pastor', 'church', 'attorney'];
+const CATEGORIES = ['influencer', 'podcast', 'pastor', 'church', 'attorney', 'individual', 'family_office'];
 const STATUSES = ['unvetted', 'vetted', 'contacted', 'active', 'rejected'];
 
 router.get('/counts', (req, res) => {

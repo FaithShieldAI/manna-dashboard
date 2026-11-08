@@ -54,6 +54,13 @@ const SOURCES = {
     input: 'query',
     example: ['AV integrators in Texas', 'coffee roasters near Portland'],
   },
+  family_office: {
+    key: 'family_office',
+    name: 'Family office list',
+    description: 'Paste family office websites — we extract the public contact emails they publish and file them under Family Offices, separate from influencers.',
+    input: 'seeds',
+    example: ['https://example-family-office.com'],
+  },
 };
 
 const MAX_ACTIVE_JOBS = 10; // per tenant; keeps the shared server polite
@@ -92,17 +99,20 @@ function ingestLeads(tdb, job, leads) {
       known.add(e);
       const isYt = source === 'youtube';
       const isAi = source === 'aisearch';
+      const isFo = source === 'family_office';
       const notes = isYt
         ? `Collected ${(lead.keyword ? `for keyword "${lead.keyword}" ` : '')}from YouTube channel "${lead.name}"`
         : isAi
           ? `AI search "${job.query_text || ''}" → ${lead.name || lead.url}${lead.location ? ` (${lead.location})` : ''}`
-          : `Collected from seed URL ${lead.url}`;
+          : isFo
+            ? `Family office lead collected from ${lead.url} — public contact email published on the office's own site; UNVERIFIED route, confirm before any outreach`
+            : `Collected from seed URL ${lead.url}`;
       tdb.createInfluencer({
         handle: isYt ? (lead.handle || lead.name) : (lead.name || lead.title || lead.url),
         platform: isYt ? 'youtube' : 'web',
         email: e,
         tier: null,
-        category: 'influencer',
+        category: isFo ? 'family_office' : 'influencer',
         status: 'unvetted',
         notes,
         source: `lead-collect:${source}`,
@@ -133,7 +143,11 @@ async function runJob(tdb, job) {
     const known = tdb.influencerEmails();
     if (job.source === 'youtube') {
       leads = await youtube.collect({ keywords, maxPerKeyword: 8, maxLeads: maxResults, noDelay: false, knownEmails: known });
-    } else if (job.source === 'weblist') {
+    } else if (job.source === 'weblist' || job.source === 'family_office') {
+      // family_office (migration 037): Michael's investor-lead
+      // collection (2026-11-08) — the web-list collector run under its
+      // own job source so the leads land in the family_office category
+      // (ingestLeads) instead of the influencer pile.
       const raw = await weblist.collect({ seeds, knownEmails: known });
       leads = raw.slice(0, maxResults);
     } else if (job.source === 'aisearch') {
@@ -185,7 +199,7 @@ function createJob(tdb, { source, query, keywords, seeds, maxResults }) {
   if (source === 'youtube' && kw.length === 0) {
     return { error: { status: 400, body: { ok: false, error: 'keywords_required' } } };
   }
-  if (source === 'weblist' && sd.length === 0) {
+  if ((source === 'weblist' || source === 'family_office') && sd.length === 0) {
     return { error: { status: 400, body: { ok: false, error: 'seeds_required' } } };
   }
   if (source === 'aisearch' && !q) {
@@ -285,3 +299,10 @@ router.post('/jobs/:id/cancel', (req, res) => {
 });
 
 module.exports = router;
+// Exported for the token-gated operator sync in routes/auth.js
+// (POST /api/auth/lead-collect-sync/:token), which runs a job through
+// this same pipeline so VM-side automation collects exactly the way
+// the in-app Leads page does.
+module.exports.runJob = runJob;
+module.exports.createJob = createJob;
+module.exports.publicJob = publicJob;

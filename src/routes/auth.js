@@ -8,7 +8,7 @@
  */
 const express = require('express');
 const crypto = require('crypto');
-const { unscoped, db, transaction } = require('../db');
+const { unscoped, db, transaction, forTenant } = require('../db');
 const password = require('../lib/password');
 const sessions = require('../lib/sessions');
 const { referralLinkFor } = require('../lib/referral');
@@ -826,6 +826,95 @@ router.get('/dashboard-payload', (req, res) => {
     fresh: stored.fresh,
     sections: stored.payload.sections,
   });
+});
+
+// Lead collect sync (token-gated, same MIGRATION_TOKEN pattern as the
+// sync routes above): runs one of Manna's own lead collectors on the
+// server for one tenant, so VM-side automation collects exactly the
+// way the in-app Leads page does (same job pipeline: validation, the
+// active-job cap, the collector, deduped ingest, a collection_jobs
+// record the tenant sees on the Leads page). Michael (2026-11-08):
+// family office investor lead collection runs through MannaAi instead
+// of Muse-side browser work ("Use MannaAi to do this. Saves me
+// approving cards and gets us using MannaAi").
+//
+// The 'family_office' source (migration 037) runs the web-list
+// collector over published seed URLs and files the leads under the
+// family_office category. Run in background like
+// POST /api/leads/jobs/:id/run: acknowledge with the job, then ingest;
+// poll GET /api/auth/lead-collect-sync/:token/jobs/:id for the result.
+// NOTE: this path must skip the global 256kb JSON parser exactly like
+// dashboard-payload-sync (see src/server.js): the route mounts its
+// own parser below, and seed payloads stay small regardless.
+router.post('/lead-collect-sync/:token', requireMigrationToken, express.json({ limit: '1mb' }), async (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    const source = String(body.source || '');
+    if (source !== 'family_office') {
+      return res.status(400).json({ ok: false, error: 'invalid_source', valid: ['family_office'] });
+    }
+    const seeds = Array.isArray(body.seeds)
+      ? body.seeds.map(String).map(s => s.trim()).filter(Boolean).slice(0, 25)
+      : [];
+    if (!seeds.length) {
+      return res.status(400).json({ ok: false, error: 'seeds_required' });
+    }
+    const maxResults = Math.min(Math.max(parseInt(body.max_results, 10) || 25, 1), 100);
+
+    const leadsRoute = require('./leads');
+    const tdb = forTenant(tenantId);
+    const created = leadsRoute.createJob(tdb, { source, seeds, maxResults });
+    if (created.error) return res.status(created.error.status).json(created.error.body);
+    const row = tdb.getCollectionJob(created.job.id);
+    tdb.updateCollectionJob(created.job.id, { status: 'running', started_at: new Date().toISOString(), error: null });
+    setImmediate(() => {
+      leadsRoute.runJob(tdb, { ...row, status: 'running' }).catch(e => {
+        console.error('[lead-collect-sync] background error:', e);
+      });
+    });
+    res.status(202).json({ ok: true, tenant_id: tenantId, job: created.job });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Poll a lead-collect-sync job (same token gate). Serves the job
+// status plus the tenant's family_office census, so the caller can
+// verify the collection landed without a session.
+router.get('/lead-collect-sync/:token/jobs/:id', requireMigrationToken, (req, res) => {
+  try {
+    const email = process.env.LIVE_WINDOWS_TENANT_EMAIL || 'michael@faithshield.ai';
+    const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+    if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+    const tdb = forTenant(Number(user.tenant_id));
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ ok: false, error: 'invalid_job_id' });
+    const leadsRoute = require('./leads');
+    const job = leadsRoute.publicJob(tdb.getCollectionJob(id));
+    if (!job) return res.status(404).json({ ok: false, error: 'job_not_found' });
+    const counts = tdb.influencerCategoryCounts();
+    const fo = counts.find(r => r.category === 'family_office');
+    res.json({ ok: true, job, family_office_count: fo ? fo.n : 0 });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {

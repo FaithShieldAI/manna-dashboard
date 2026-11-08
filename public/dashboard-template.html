@@ -642,20 +642,22 @@
       <div data-i18n="dash.vetted.sub" class="card-sub">review new leads by category, approve the good ones, reject the rest</div>
     </div></div>
     <div data-i18n="dash.vetted.section_vetted" class="card-sub" style="margin-bottom:0.5rem;font-weight:600">Vetted</div>
-    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)" id="vet-grid">
+    <div class="stats-grid" style="grid-template-columns:repeat(6,1fr)" id="vet-grid">
       <div class="stat-card"><div data-i18n="dash.vetted.vetted_influencers" class="stat-label">&#127793; Influencers</div><div class="stat-value" id="vet-influencer" style="color:var(--gold)">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.vetted_podcasts" class="stat-label">&#127908; Podcasts</div><div class="stat-value" id="vet-podcast" style="color:var(--gold)">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.vetted_pastors" class="stat-label">&#9978; Pastors</div><div class="stat-value" id="vet-pastor" style="color:var(--gold)">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.vetted_churches" class="stat-label">&#128591; Churches</div><div class="stat-value" id="vet-church" style="color:var(--gold)">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.vetted_attorneys" class="stat-label">&#9878; Attorneys</div><div class="stat-value" id="vet-attorney" style="color:var(--gold)">&mdash;</div></div>
+      <div class="stat-card"><div data-i18n="dash.vetted.vetted_family_offices" class="stat-label">&#127963; Family Offices</div><div class="stat-value" id="vet-family_office" style="color:var(--gold)">&mdash;</div></div>
     </div>
     <div data-i18n="dash.vetted.section_waiting" class="card-sub" style="margin:1rem 0 0.5rem;font-weight:600">Waiting for review</div>
-    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+    <div class="stats-grid" style="grid-template-columns:repeat(6,1fr)">
       <div class="stat-card"><div data-i18n="dash.vetted.waiting_influencers" class="stat-label">Influencers</div><div class="stat-value" id="vetu-influencer">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.waiting_podcasts" class="stat-label">Podcasts</div><div class="stat-value" id="vetu-podcast">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.waiting_pastors" class="stat-label">Pastors</div><div class="stat-value" id="vetu-pastor">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.waiting_churches" class="stat-label">Churches</div><div class="stat-value" id="vetu-church">&mdash;</div></div>
       <div class="stat-card"><div data-i18n="dash.vetted.waiting_attorneys" class="stat-label">Attorneys</div><div class="stat-value" id="vetu-attorney">&mdash;</div></div>
+      <div class="stat-card"><div data-i18n="dash.vetted.waiting_family_offices" class="stat-label">Family Offices</div><div class="stat-value" id="vetu-family_office">&mdash;</div></div>
     </div>
     <div style="margin:1rem 0 0.5rem"><label class="card-sub" for="vet-cat" style="font-weight:600" data-i18n="dash.vetted.category_label">Category:</label>
       <select id="vet-cat" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px">
@@ -665,6 +667,7 @@
         <option data-i18n="dash.vetted.cat_pastor" value="pastor">Pastors</option>
         <option data-i18n="dash.vetted.cat_church" value="church">Churches</option>
         <option data-i18n="dash.vetted.cat_attorney" value="attorney">Attorneys</option>
+        <option data-i18n="dash.vetted.cat_family_office" value="family_office">Family Offices</option>
       </select>
     </div>
     <div class="table-wrap"><table>
@@ -1768,7 +1771,7 @@ function parseFunnelStages(text){
 /* ---------- vetted ---------- */
 (function(){
   function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
-  var CATS = ['influencer','podcast','pastor','church','attorney'];
+  var CATS = ['influencer','podcast','pastor','church','attorney','family_office'];
   var catSel = document.getElementById('vet-cat');
   function loadStats(){
     fetch('/api/vetted/stats', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){

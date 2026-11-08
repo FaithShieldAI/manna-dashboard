@@ -46,10 +46,15 @@ const PR_TIER_LABELS = {
 // Releases carry the same category: "Those releases are different" —
 // a Faith-Based release leads with the ministry angle, a Mainstream
 // release leads with the tech/agent story.
-const PR_CATEGORIES = ['faith_based', 'mainstream'];
+const PR_CATEGORIES = ['faith_based', 'mainstream', 'family_office'];
 const PR_CATEGORY_LABELS = {
   faith_based: 'Faith-Based',
   mainstream: 'Mainstream',
+  // Family office investor connections (Michael, 2026-11-08): the
+  // press connections list also carries the faith-based family
+  // offices, on their own shelf, until the investor list gets a home
+  // of its own. Migration 037 widens the pr_targets shelf to say so.
+  family_office: 'Family Offices',
 };
 // 'do_not_pitch' is the owner's press rule made a status: "The ones
 // that don't publish don't get the story." A target whose pitch route
