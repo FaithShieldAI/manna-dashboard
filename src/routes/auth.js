@@ -747,6 +747,87 @@ router.get('/live-windows', (req, res) => {
   });
 });
 
+// Dashboard payload sync (token-gated, same MIGRATION_TOKEN pattern as
+// the snapshot sync above): the analytics VM's mail-truth chain rebuilds
+// the private dashboard's tab panels every ~10 minutes and pushes them
+// here (publish_dashboard_payload.py). The static dashboard page
+// fetches the payload at view time and swaps each panel's contents, so
+// a failed git push in the old chain can no longer stale the page. The
+// payload is exactly what the baked page already shows, nothing more.
+// Stored per tenant in dashboard_payloads (migration 036).
+router.post('/dashboard-payload-sync/:token', requireMigrationToken, express.json({ limit: '8mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    const payload = body.payload;
+    if (!payload || typeof payload !== 'object' || !payload.sections || typeof payload.sections !== 'object') {
+      return res.status(400).json({ ok: false, error: 'payload_required' });
+    }
+    const sectionIds = Object.keys(payload.sections);
+    if (!sectionIds.length) {
+      return res.status(400).json({ ok: false, error: 'sections_empty' });
+    }
+    for (const id of sectionIds) {
+      if (typeof payload.sections[id] !== 'string') {
+        return res.status(400).json({ ok: false, error: `section_not_string:${id}` });
+      }
+    }
+    const { storeDashboardPayload } = require('../lib/dashboardPayload');
+    const receivedAt = storeDashboardPayload(tenantId, {
+      generated_at: typeof payload.generated_at === 'string' ? payload.generated_at : null,
+      sections: payload.sections,
+    });
+    res.json({ ok: true, tenant_id: tenantId, received_at: receivedAt, generated_at: payload.generated_at || null, sections: sectionIds.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Public dashboard-payload read for the private dashboard page: same
+// read-token guard and don't-oracle rule as the live-windows read
+// above. Serves the stored payload as-is with its generated_at: the
+// page displays that stamp as data, so staleness is visible, never
+// hidden.
+router.get('/dashboard-payload', (req, res) => {
+  const expected = process.env.LIVE_WINDOWS_READ_TOKEN;
+  if (!expected) return res.status(404).json({ ok: false, error: 'not_found' });
+  const provided = Buffer.from(String(req.query.k || ''));
+  const wanted = Buffer.from(expected);
+  if (provided.length !== wanted.length || !crypto.timingSafeEqual(provided, wanted)) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+  const email = process.env.LIVE_WINDOWS_TENANT_EMAIL || 'michael@faithshield.ai';
+  const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+  if (!user) return res.status(404).json({ ok: false, error: 'not_found' });
+  const { readDashboardPayload } = require('../lib/dashboardPayload');
+  const stored = readDashboardPayload(Number(user.tenant_id));
+  if (!stored) return res.status(404).json({ ok: false, error: 'no_dashboard_payload' });
+  res.set('Access-Control-Allow-Origin', 'https://dashboard.d2rmmedia.com');
+  res.json({
+    ok: true,
+    as_of: stored.payload.generated_at || null,
+    received_at: stored.received_at,
+    fresh: stored.fresh,
+    sections: stored.payload.sections,
+  });
+});
+
 router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {
   try {
     const importData = req.body.data;
