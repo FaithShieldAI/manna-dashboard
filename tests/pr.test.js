@@ -59,14 +59,17 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 35);
+  assert.equal(v, 36);
   const snapshotCols = db.prepare('PRAGMA table_info(email_snapshots)').all().map(r => r.name);
   assert.ok(snapshotCols.includes('replies'), 'email_snapshots carries replies');
   const liveCols = db.prepare('PRAGMA table_info(live_windows)').all().map(r => r.name);
   assert.deepEqual(liveCols, ['tenant_id', 'payload_json', 'received_at'],
     'live_windows carries the pushed live payload per tenant');
+  const dashCols = db.prepare('PRAGMA table_info(dashboard_payloads)').all().map(r => r.name);
+  assert.deepEqual(dashCols, ['tenant_id', 'payload_json', 'received_at'],
+    'dashboard_payloads carries the pushed dashboard payload per tenant');
   const tables = db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('pr_targets', 'pr_releases', 'pr_pitches') ORDER BY name"
   ).all().map(r => r.name);
@@ -512,7 +515,7 @@ test('seeder: the real 2026-11-01 file parses shelved and parked correctly', () 
   // the raw text here, not by the parser, so the two can disagree
   // and fail.
   const all = parse(md);
-  const headingCount = (md.match(/^### \d+[.)]\s/gm) || []).length;
+  const headingCount = (md.match(/^### \d+[.)]\s?\S/gm) || []).length;
   assert.equal(all.length, headingCount, 'every numbered entry in the grown file parses');
   assert.equal(all.filter(e => e.category === 'faith_based').length
     + all.filter(e => e.category === 'mainstream').length, all.length,
