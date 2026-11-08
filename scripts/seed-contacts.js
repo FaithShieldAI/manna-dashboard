@@ -19,7 +19,7 @@ const { db } = require('../src/db');
 const CSV_PATH = path.join(__dirname, '..', 'data', 'seed', 'influencers.csv');
 
 const VALID_TIERS = new Set(['nano', 'micro', 'macro', 'mega']);
-const VALID_CATEGORIES = new Set(['influencer', 'podcast', 'pastor', 'church', 'attorney']);
+const VALID_CATEGORIES = new Set(['influencer', 'podcast', 'pastor', 'church', 'attorney', 'family_office']);
 const VALID_STATUSES = new Set(['unvetted', 'vetted', 'contacted', 'active', 'rejected']);
 
 /**

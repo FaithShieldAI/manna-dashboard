@@ -59,9 +59,9 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 36);
+  assert.equal(v, 37);
   const snapshotCols = db.prepare('PRAGMA table_info(email_snapshots)').all().map(r => r.name);
   assert.ok(snapshotCols.includes('replies'), 'email_snapshots carries replies');
   const liveCols = db.prepare('PRAGMA table_info(live_windows)').all().map(r => r.name);
@@ -70,6 +70,11 @@ test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds p
   const dashCols = db.prepare('PRAGMA table_info(dashboard_payloads)').all().map(r => r.name);
   assert.deepEqual(dashCols, ['tenant_id', 'payload_json', 'received_at'],
     'dashboard_payloads carries the pushed dashboard payload per tenant');
+  const foCols = db.prepare('PRAGMA table_info(pr_targets)').all().map(r => r.name);
+  assert.deepEqual(foCols, ['id', 'tenant_id', 'publication', 'contact_name', 'role', 'beat',
+    'contact_route', 'route_verified', 'tier', 'category', 'fit_note', 'source', 'status',
+    'created_at', 'updated_at'],
+    'pr_targets columns unchanged by the 037 shelf rebuild');
   const tables = db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('pr_targets', 'pr_releases', 'pr_pitches') ORDER BY name"
   ).all().map(r => r.name);

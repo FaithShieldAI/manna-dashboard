@@ -42,7 +42,17 @@ app.post('/api/billing/webhook',
 app.post('/api/billing/webhook/faithshield',
   express.raw({ type: 'application/json', limit: '1mb' }),
   require('./routes/faithshieldWebhook'));
-app.use(express.json({ limit: '256kb' }));
+const jsonBody = express.json({ limit: '256kb' });
+app.use((req, res, next) => {
+  // The dashboard payload sync carries ~0.5MB of panel HTML per push;
+  // its route mounts its own 8mb parser (token-gated, same pattern as
+  // the other sync routes). The global 256kb parser must not reject
+  // those bodies before the route sees them (found live 2026-11-07:
+  // every publish came back 413 payload_too_large).
+  if (req.path.startsWith('/api/auth/dashboard-payload-sync/')) return next();
+  if (req.path.startsWith('/api/auth/lead-collect-sync/')) return next();
+  return jsonBody(req, res, next);
+});
 // Influencer auto-provision webhook (Armor Bearer -> Manna). Mounted before
 // the authenticated /api router: the X-Webhook-Secret header IS the auth.
 // See src/routes/influencerWebhook.js.

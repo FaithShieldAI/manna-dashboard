@@ -10,7 +10,7 @@
 const express = require('express');
 
 const router = express.Router();
-const CATEGORIES = ['influencer', 'podcast', 'pastor', 'church', 'attorney'];
+const CATEGORIES = ['influencer', 'podcast', 'pastor', 'church', 'attorney', 'family_office'];
 const VETTED_STATUSES = ['vetted'];
 const UNVETTED_STATUSES = ['unvetted'];
 const REJECTED_STATUSES = ['rejected'];
