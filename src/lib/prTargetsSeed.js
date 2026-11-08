@@ -104,7 +104,7 @@ function shelfFromHeading(text) {
  *  "Ministry Tech (MinistryTech Magazine)" -> "Ministry Tech". */
 function cleanPublicationName(s) {
   return String(s || '')
-    .replace(/^\d+[.)]\s+/, '')
+    .replace(/^\d+[.)]\s*/, '')
     .replace(/\s*\([^)]*\)\s*$/, '')
     .trim();
 }
