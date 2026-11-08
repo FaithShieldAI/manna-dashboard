@@ -917,6 +917,45 @@ router.get('/lead-collect-sync/:token/jobs/:id', requireMigrationToken, (req, re
   }
 });
 
+// Reject one collected lead (same token gate): the vetting stage of
+// the family office funnel (Michael, 2026-11-08: "No job emails. Keep
+// those out." — the Blue Trust row the collector found is an HR
+// inbox, not an investor route). Reversible, same as the in-app
+// Vetted tab's reject: status flips to 'rejected', the row and its
+// provenance stay on record, and the dedupe set keeps the address
+// out of future runs.
+router.post('/lead-collect-sync/:token/reject', requireMigrationToken, express.json({ limit: '64kb' }), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const email = String(body.email || '').toLowerCase().trim();
+    if (!email) return res.status(400).json({ ok: false, error: 'email_required' });
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tdb = forTenant(tenantId);
+    const row = db.prepare('SELECT id FROM influencers WHERE tenant_id = ? AND LOWER(email) = ?')
+      .get(tenantId, email);
+    if (!row) return res.status(404).json({ ok: false, error: 'lead_not_found' });
+    tdb.setInfluencerStatus(row.id, 'rejected');
+    const counts = tdb.influencerCategoryCounts();
+    const fo = counts.find(r => r.category === 'family_office');
+    res.json({ ok: true, id: row.id, email, status: 'rejected', family_office_count: fo ? fo.n : 0 });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {
   try {
     const importData = req.body.data;

@@ -35,6 +35,7 @@ before(async () => {
       res.end(`<html><head><title>Acme Family Office — Home</title></head>
         <body><h1>Acme Family Office</h1>
         <p>For inquiries: hello@acmefamily.example</p>
+        <p>Work with us: jobs@acmefamily.example, careers@acmefamily.example</p>
         <p>Fake: test@example.com</p>
         </body></html>`);
     } else {
@@ -158,6 +159,48 @@ test('lead-collect-sync collects a family office lead into the tenant list', asy
   assert.equal(pending.json.leads.length, 1);
   const stats = await owner.get('/api/vetted/stats');
   assert.equal(stats.json.unvetted.family_office, 1);
+});
+
+test('lead-collect-sync reject pulls a lead at the vetting stage; job inboxes never ingest', async () => {
+  // The fixture page also publishes jobs@ and careers@ addresses;
+  // the collect test above filed exactly one lead (hello@), so the
+  // job-inbox filter held. Here: reject flow for a row like the
+  // HR inbox Michael ordered out (2026-11-08).
+  const c = await register('fo-reject@example.org');
+  const me = await c.get('/api/auth/me');
+  const { forTenant } = require('../src/db');
+  const tdb = forTenant(me.json.tenant.id);
+  tdb.createInfluencer({
+    handle: 'Some Trust', platform: 'web', email: 'employment@sometrust.example',
+    category: 'family_office', status: 'unvetted', source: 'lead-collect:family_office',
+    notes: 'fixture HR inbox',
+  });
+
+  const anon = client(base);
+  const wrong = await anon.post(`/api/auth/lead-collect-sync/wrong-token/reject`, {
+    tenant_email: 'fo-reject@example.org', email: 'employment@sometrust.example',
+  });
+  assert.equal(wrong.status, 403);
+
+  const tok = process.env.MIGRATION_TOKEN;
+  const missing = await anon.post(`/api/auth/lead-collect-sync/${tok}/reject`, {
+    tenant_email: 'fo-reject@example.org', email: 'nobody@sometrust.example',
+  });
+  assert.equal(missing.status, 404);
+
+  const r = await anon.post(`/api/auth/lead-collect-sync/${tok}/reject`, {
+    tenant_email: 'fo-reject@example.org', email: 'employment@sometrust.example',
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.status, 'rejected');
+
+  const pending = await c.get('/api/vetted/pending?category=family_office');
+  assert.equal(pending.json.leads.length, 0, 'rejected lead leaves the vetting queue');
+  const stats = await c.get('/api/vetted/stats');
+  assert.equal(stats.json.rejected.family_office, 1);
+  const list = await c.get('/api/influencers?category=family_office');
+  assert.equal(list.json.influencers.length, 1, 'the row stays on record');
+  assert.equal(list.json.influencers[0].status, 'rejected');
 });
 
 test('re-running the same collection dedupes by email', async () => {

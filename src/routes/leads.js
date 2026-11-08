@@ -87,6 +87,16 @@ function publicJob(row) {
   };
 }
 
+// Job-inbox local parts: hiring mailboxes are not investor routes.
+// Michael (2026-11-08, on the first family office run landing Blue
+// Trust's employment@ inbox): "No job emails. Keep those out." The
+// family_office ingest skips these at collection time, the same way
+// the collectors skip junk domains.
+const JOB_INBOX_LOCALPARTS = new Set([
+  'employment', 'careers', 'career', 'jobs', 'job', 'hr',
+  'recruiting', 'recruitment', 'talent', 'work',
+]);
+
 // --- insert leads into the tenant's influencers table (deduped by email) ---
 function ingestLeads(tdb, job, leads) {
   const known = tdb.influencerEmails();
@@ -96,6 +106,7 @@ function ingestLeads(tdb, job, leads) {
     for (const email of (lead.emails || [])) {
       const e = String(email).toLowerCase();
       if (known.has(e)) continue;
+      if (source === 'family_office' && JOB_INBOX_LOCALPARTS.has(e.split('@')[0])) continue;
       known.add(e);
       const isYt = source === 'youtube';
       const isAi = source === 'aisearch';
