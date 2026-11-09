@@ -24,6 +24,8 @@ function buildContext(tdb) {
   const overview = { email: null, goals: [], counts: null };
   try {
     const snaps = tdb.emailSnapshots();
+    // Email figures are the ALL-TIME snapshot window; every user-facing
+    // line built from them labels the window as such (briefing included).
     const all = snaps.find(s => s.window_key === 'all') || {};
     overview.email = {
       sent: all.sent || 0,
@@ -50,6 +52,21 @@ function buildContext(tdb) {
       })),
     }));
   } catch (e) { /* keep [] */ }
+  try {
+    // Lead pipelines (derived live from the leads table by the tenant
+    // query layer) count as funnels too: a tenant whose pipeline lives
+    // in lead collection (family offices, pastors, ...) has real funnels
+    // even when the manual funnels table is empty.
+    const pipelines = typeof tdb.leadPipelines === 'function' ? tdb.leadPipelines() : [];
+    for (const p of pipelines) {
+      funnels.push({
+        name: p.name,
+        stages: (p.stages || []).map(s => ({
+          label: s.label, current: s.current_value, goal: s.goal_value,
+        })),
+      });
+    }
+  } catch (e) { /* keep manual funnels only */ }
   let social = [];
   try {
     social = tdb.socialAccounts().map(a => ({
@@ -216,7 +233,7 @@ function insightReply(message, ctx) {
     // default: briefing
     const nudge = onboardingNudge();
     if (nudge) { parts.push(nudge); parts.push(''); }
-    parts.push(`Quick briefing: ${email.sent.toLocaleString()} emails sent (${email.open_rate}% open, ${email.click_rate}% click), ${ctx.funnels.length} funnel(s), ${ctx.goals.length} goal(s) tracked.`);
+    parts.push(`Quick briefing: ${email.sent.toLocaleString()} emails sent, all time (${email.open_rate}% open, ${email.click_rate}% click), ${ctx.funnels.length} funnel(s), ${ctx.goals.length} goal(s) tracked.`);
     parts.push('Top next action:');
     nextActions(1).forEach((a, i) => parts.push(`${i + 1}. ${a}`));
     parts.push('Ask me about email performance, funnels, goals, social — or ask "what should I do next?"');

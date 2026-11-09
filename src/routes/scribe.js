@@ -60,7 +60,7 @@ const analyzeLimiter = rateLimit({
     : ipKeyGenerator(req)),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  message: { ok: false, error: 'too_many_requests' },
+  message: { ok: false, error: 'too_many_requests', detail: 'Too many Scribe analysis runs in the last hour. Wait a bit, then try again.' },
 });
 
 router.get('/status', (req, res) => {

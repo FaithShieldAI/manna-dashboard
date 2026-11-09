@@ -102,6 +102,28 @@ function buildPrompt(signals) {
   return { system: SYSTEM_PROMPT, user };
 }
 
+/**
+ * Trimmed copy of the signals for the timeout retry in analyze(): the
+ * headline email windows stay whole (they are small and are what advice
+ * cites most), list sections shrink to their top items. Citation
+ * verification still runs against the FULL signals, so trimming the
+ * prompt can never make an invented number pass; it can only give the
+ * model less to reason over.
+ */
+function compactSignals(signals) {
+  const c = JSON.parse(JSON.stringify(signals || {}));
+  if (c.email) c.email.top_campaigns = (c.email.top_campaigns || []).slice(0, 3);
+  if (c.content) {
+    c.content.top_videos = (c.content.top_videos || []).slice(0, 3);
+    c.content.recent_postings = (c.content.recent_postings || []).slice(0, 3);
+    c.content.top_posts = (c.content.top_posts || []).slice(0, 3);
+  }
+  if (c.library) c.library.films = (c.library.films || []).slice(0, 5);
+  c.operator_answers = (c.operator_answers || []).slice(0, 2);
+  if (c.trending) c.trending.signals = (c.trending.signals || []).slice(0, 2);
+  return c;
+}
+
 // ---------------------------------------------------------------------------
 // Schema validation (hand-rolled; the repo has no schema library).
 // Returns { ok: true, advice } (normalized) or { ok: false, errors: [...] }.
@@ -387,16 +409,37 @@ async function analyze(tdb, opts = {}) {
   }
 
   const transport = client ? declaredTransport(client) : declaredTransport(sparkClient.chatCompletion);
-  const { system, user } = buildPrompt(signals);
   let text;
   try {
-    text = client
-      ? await client({ system, user })
-      : await sparkClient.chatCompletion({ system, user, maxTokens: 1800 });
+    const first = buildPrompt(signals);
+    try {
+      text = client
+        ? await client({ system: first.system, user: first.user })
+        : await sparkClient.chatCompletion({ system: first.system, user: first.user, maxTokens: 1800 });
+    } catch (e) {
+      if (!e || e.code !== 'spark_timeout') throw e;
+      // One retry on a timeout, with a trimmed payload (compactSignals):
+      // reasoning models overrun the cap on the full prompt (2026-10-29);
+      // a smaller prompt is the difference between slow and never. Any
+      // other failure is final: no retry, fail-closed as before.
+      const retry = buildPrompt(compactSignals(signals));
+      text = client
+        ? await client({ system: retry.system, user: retry.user })
+        : await sparkClient.chatCompletion({ system: retry.system, user: retry.user, maxTokens: 1200 });
+    }
   } catch (e) {
     return {
       ok: false, mode: 'live', transport,
-      error: { code: (e && e.code) || 'spark_error', message: 'Scribe could not reach Spark; no advice was produced.' },
+      error: {
+        code: (e && e.code) || 'spark_error',
+        // Pass the client's own message through: sparkClient's messages
+        // carry the diagnosis (HTTP status, timeout) and never the key,
+        // and the analyze UI shows this text to the operator. Swallowing
+        // it left every live failure reading as the same generic line.
+        message: e && typeof e.message === 'string' && e.message.trim()
+          ? e.message
+          : 'Scribe could not reach Spark; no advice was produced.',
+      },
       signals,
     };
   }
@@ -543,7 +586,7 @@ function status() {
 
 module.exports = {
   analyze, createDrafts, status,
-  validateAdvice, verifyCitations, parseModelJson, stubAdvice, buildPrompt,
+  validateAdvice, verifyCitations, parseModelJson, stubAdvice, buildPrompt, compactSignals,
   declaredTransport, sourceForTransport, TRANSPORTS,
   MAX_PENDING_DRAFTS_PER_TENANT,
   REC_TYPES,
