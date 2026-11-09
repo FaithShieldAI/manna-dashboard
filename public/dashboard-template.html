@@ -1081,7 +1081,11 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
     }).then(function(r){ return r.json(); }).then(function(j){
       typing.remove();
       if (!j || !j.ok || !j.advice) {
-        addMsg('Scribe could not complete the analysis just now — no advice was produced.', 'bot');
+        var failMsg = 'Scribe could not complete the analysis just now. No advice was produced.';
+        if (j && (j.detail || j.error)) {
+          failMsg = 'Scribe could not complete the analysis just now (' + (j.detail || j.error) + '). No advice was produced.';
+        }
+        addMsg(failMsg, 'bot');
         return;
       }
       lastScribeAdvice = j.advice;

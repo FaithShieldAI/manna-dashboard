@@ -287,6 +287,48 @@ function forTenant(tenantId) {
       });
       return funnelId;
     },
+    // -- lead pipelines (derived funnels) --------------------------------
+    // Lead categories ARE pipelines: a lead's status is its stage
+    // (unvetted -> vetted -> contacted -> active; 'rejected' is an exit,
+    // not a stage, and is left out). These funnels are DERIVED at read
+    // time from the influencers table, so stage counts are live on every
+    // read; nothing is written to funnels/funnel_stages and the manual
+    // funnels API is untouched. Stage shape matches funnels() so
+    // consumers (the assistant's context builder) treat both alike.
+    leadPipelines() {
+      const rows = db.prepare(
+        'SELECT category, status, COUNT(*) AS n FROM influencers WHERE tenant_id = ? GROUP BY category, status'
+      ).all(t);
+      const byCategory = new Map();
+      for (const r of rows) {
+        if (r.status === 'rejected') continue;
+        if (!byCategory.has(r.category)) byCategory.set(r.category, new Map());
+        byCategory.get(r.category).set(r.status, r.n);
+      }
+      const order = ['influencer', 'podcast', 'pastor', 'church', 'attorney', 'individual', 'family_office'];
+      const labels = {
+        influencer: 'Influencers', podcast: 'Podcasts', pastor: 'Pastors',
+        church: 'Churches', attorney: 'Attorneys', individual: 'Individuals',
+        family_office: 'Family Offices',
+      };
+      const stageLabels = [
+        ['unvetted', 'Collected'], ['vetted', 'Vetted'],
+        ['contacted', 'Contacted'], ['active', 'Active'],
+      ];
+      return order.filter(cat => byCategory.has(cat)).map(cat => {
+        const counts = byCategory.get(cat);
+        return {
+          funnel_key: `leads:${cat}`,
+          name: `${labels[cat]} pipeline`,
+          source: 'leads',
+          stages: stageLabels
+            .filter(([key]) => counts.has(key))
+            .map(([key, label]) => ({
+              stage_key: key, label, current_value: counts.get(key), goal_value: null,
+            })),
+        };
+      });
+    },
 
     // -- influencers ------------------------------------------------------
     influencers({ category, status, limit = 200 } = {}) {
