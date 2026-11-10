@@ -243,48 +243,45 @@ api.use('/facebook', require('./routes/facebook'));
 api.use('/social', require('./routes/socialConnect'));
 
 // Compat shim: query-param style tracker endpoints the dashboard HTML calls
-// (API_BASE + '/api/stats?site=KEY'). Same tenant-scoped data, tracker shape.
+// (API_BASE + '/api/stats?site=KEY'). Tenant-scoped site check first, then
+// the same house-tracker reads as routes/sites.js (2026-11-10: the old
+// shim summed the never-populated local tables and hardcoded the
+// breakdown arrays empty). Tracker failure -> 502, never zeros.
 const { activeNow } = require('./routes/sites');
-api.get('/stats', (req, res) => {
+const tracker = require('./lib/tracker');
+api.get('/stats', async (req, res) => {
   const key = String(req.query.site || '').toLowerCase();
   const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
   const site = req.tdb.getSite(key);
   if (!site) return res.status(404).json({ ok: false, error: 'site_not_found' });
-  const rows = req.tdb.siteMetrics(site.id, days);
-  const sum = rows.reduce((a, r) => ({ visitors: a.visitors + r.visitors, pageviews: a.pageviews + r.pageviews }), { visitors: 0, pageviews: 0 });
-  const half = Math.ceil(days / 2);
-  const cur = rows.slice(0, half).reduce((a, r) => a + r.visitors, 0);
-  const prev = rows.slice(half).reduce((a, r) => a + r.visitors, 0);
-  const changePct = prev > 0 ? +(((cur - prev) / prev) * 100).toFixed(1) : null;
-  const latest = rows[0] || {};
-  res.json({
-    ok: true, site: site.site_key, days,
-    metrics: {
-      visitors: { value: sum.visitors, change_pct: changePct },
-      views: { value: sum.pageviews, change_pct: null },
-      bounce_rate: { value: latest.bounce_rate ?? null, change_pct: null },
-      avg_duration_s: { value: latest.avg_duration_s ?? null, change_pct: null },
-    },
-    daily: rows,
-  });
+  try {
+    res.json(await tracker.fetchStats(site.site_key, days));
+  } catch (e) {
+    tracker.sendTrackerError(res, e, '[shim/stats]');
+  }
 });
-api.get('/realtime', (req, res) => {
+api.get('/realtime', async (req, res) => {
   const key = String(req.query.site || '').toLowerCase();
   const site = req.tdb.getSite(key);
   if (!site) return res.status(404).json({ ok: false, error: 'site_not_found' });
-  res.json({ ok: true, site: site.site_key, active_now: activeNow(req.tenant.id, site.id, 5) });
+  try {
+    const rt = await tracker.fetchRealtime(site.site_key);
+    const n = rt.unknownSite ? activeNow(req.tenant.id, site.id, 5) : rt.active_now;
+    res.json({ ok: true, site: site.site_key, active_now: n });
+  } catch (e) {
+    tracker.sendTrackerError(res, e, '[shim/realtime]');
+  }
 });
-api.get('/breakdown', (req, res) => {
+api.get('/breakdown', async (req, res) => {
   const key = String(req.query.site || '').toLowerCase();
   const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
   const site = req.tdb.getSite(key);
   if (!site) return res.status(404).json({ ok: false, error: 'site_not_found' });
-  const since = new Date(Date.now() - days * 864e5).toISOString();
-  const events = db.prepare(`
-    SELECT event_name AS label, COUNT(*) AS count FROM site_events
-    WHERE tenant_id = ? AND site_id = ? AND occurred_at >= ?
-    GROUP BY event_name ORDER BY count DESC`).all(req.tenant.id, site.id, since);
-  res.json({ ok: true, site: site.site_key, events, countries: [], referrers: [], utm_sources: [], utm_campaigns: [], devices: [] });
+  try {
+    res.json(await tracker.fetchBreakdown(site.site_key, days));
+  } catch (e) {
+    tracker.sendTrackerError(res, e, '[shim/breakdown]');
+  }
 });
 
 const { social, goals } = require('./routes/socialGoals');

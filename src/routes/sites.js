@@ -7,14 +7,21 @@
  *
  * Phase 2:
  *  - POST /api/sites — create a project/site (plan project-limit enforced)
- *  - GET /api/sites/:key/realtime — REAL: active_now from recent site_events
  *  - GET /api/sites/:key/stream — Server-Sent Events live feed
  *  - Public beacon: POST /api/collect/:siteKey (defined in server.js,
- *    keyed by per-site collect_key) feeds site_events -> realtime/SSE.
+ *    keyed by per-site collect_key) feeds site_events -> SSE stream.
+ *
+ * Visits reads (2026-11-10 fix): stats / realtime / breakdown are read
+ * from the house tracker (muse4.pythonanywhere.com) via lib/tracker —
+ * the tracker is the source of record the dashboard always claimed
+ * ("live from tracker"). The old reads summed site_daily_metrics /
+ * site_events, which nothing populates for house sites, so every tenant
+ * saw zeros. Tracker failure -> 502 tracker_unavailable, never zeros.
  */
 const express = require('express');
 const crypto = require('crypto');
 const { getPlan } = require('../lib/plans');
+const tracker = require('../lib/tracker');
 
 const router = express.Router();
 
@@ -113,51 +120,37 @@ router.post('/', (req, res) => {
   }
 });
 
-// GET /api/sites/:key/stats?days=30
-router.get('/:key/stats', (req, res) => {
+// GET /api/sites/:key/stats?days=30 — read from the house tracker.
+router.get('/:key/stats', async (req, res) => {
   const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
   const site = getSiteOr404(req.tdb, req.params.key, res);
   if (!site) return;
-
-  const rows = req.tdb.siteMetrics(site.id, days);
-  const sum = rows.reduce((a, r) => ({
-    visitors: a.visitors + r.visitors,
-    pageviews: a.pageviews + r.pageviews,
-  }), { visitors: 0, pageviews: 0 });
-
-  // Prior-period comparison: split the window in half.
-  const half = Math.ceil(days / 2);
-  const cur = rows.slice(0, half).reduce((a, r) => a + r.visitors, 0);
-  const prev = rows.slice(half).reduce((a, r) => a + r.visitors, 0);
-  const changePct = prev > 0 ? +(((cur - prev) / prev) * 100).toFixed(1) : null;
-
-  const latest = rows[0] || {};
-  res.json({
-    ok: true,
-    site: site.site_key,
-    days,
-    metrics: {
-      visitors: { value: sum.visitors, change_pct: changePct },
-      views: { value: sum.pageviews, change_pct: null },
-      bounce_rate: { value: latest.bounce_rate ?? null, change_pct: null },
-      avg_duration_s: { value: latest.avg_duration_s ?? null, change_pct: null },
-    },
-    daily: rows,
-  });
+  try {
+    res.json(await tracker.fetchStats(site.site_key, days));
+  } catch (e) {
+    tracker.sendTrackerError(res, e, '[sites/stats]');
+  }
 });
 
-// GET /api/sites/:key/realtime — REAL (Phase 2): derived from site_events.
-router.get('/:key/realtime', (req, res) => {
+// GET /api/sites/:key/realtime — active_now from the house tracker.
+// A site the tracker has never heard of can still be a Manna-beacon
+// site; its actives live in site_events, so fall back to those.
+router.get('/:key/realtime', async (req, res) => {
   const site = getSiteOr404(req.tdb, req.params.key, res);
   if (!site) return;
-  const n = activeNow(req.tenant.id, site.id, 5);
-  res.json({
-    ok: true,
-    site: site.site_key,
-    active_now: n,
-    window_minutes: 5,
-    recent_events: recentEvents(req.tenant.id, site.id, 10),
-  });
+  try {
+    const rt = await tracker.fetchRealtime(site.site_key);
+    const n = rt.unknownSite ? activeNow(req.tenant.id, site.id, 5) : rt.active_now;
+    res.json({
+      ok: true,
+      site: site.site_key,
+      active_now: n,
+      window_minutes: 5,
+      recent_events: recentEvents(req.tenant.id, site.id, 10),
+    });
+  } catch (e) {
+    tracker.sendTrackerError(res, e, '[sites/realtime]');
+  }
 });
 
 // GET /api/sites/:key/stream — Server-Sent Events live feed.
@@ -194,28 +187,17 @@ router.get('/:key/stream', (req, res) => {
   push();
 });
 
-// GET /api/sites/:key/breakdown?days=30 — event counts per event_name.
-router.get('/:key/breakdown', (req, res) => {
+// GET /api/sites/:key/breakdown?days=30 — read from the house tracker,
+// including its real countries / referrers / utm arrays.
+router.get('/:key/breakdown', async (req, res) => {
   const site = getSiteOr404(req.tdb, req.params.key, res);
   if (!site) return;
-  const { db } = require('../db');
   const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
-  const since = new Date(Date.now() - days * 864e5).toISOString();
-  const events = db.prepare(`
-    SELECT event_name AS label, COUNT(*) AS count
-    FROM site_events
-    WHERE tenant_id = ? AND site_id = ? AND occurred_at >= ?
-    GROUP BY event_name ORDER BY count DESC`).all(req.tenant.id, site.id, since);
-  res.json({
-    ok: true,
-    site: site.site_key,
-    events,
-    countries: [],
-    referrers: [],
-    utm_sources: [],
-    utm_campaigns: [],
-    devices: [],
-  });
+  try {
+    res.json(await tracker.fetchBreakdown(site.site_key, days));
+  } catch (e) {
+    tracker.sendTrackerError(res, e, '[sites/breakdown]');
+  }
 });
 
 module.exports = router;

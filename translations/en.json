@@ -705,6 +705,7 @@
  "dash.js.sites.no_one_online": "no one online",
  "dash.js.sites.refresh_note": "last refreshed {time} PT",
  "dash.js.sites.nav_timestamp": "Site data live · {time} PT · auto-refresh 5 min",
+"dash.js.sites.feed_down": "Live feed down — numbers unavailable right now.",
  "dash.js.sites.err_name": "Please enter a project name (at least 2 characters).",
  "dash.js.sites.err_key": "Site key must be lowercase letters, numbers and dashes only.",
  "dash.js.sites.err_add": "Could not add the site. Please try again.",

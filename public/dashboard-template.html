@@ -1196,10 +1196,22 @@ function loadSites(){
     ]).then(function(res){ return {cfg:s, stats:res[0], rt:res[1], bd:res[2]}; });
   });
   Promise.all(promises).then(function(results){
-    var tv=0, tp=0, ta=0, tc=0, tu=0;
+    var tv=0, tp=0, ta=0, tc=0, tu=0, downCount=0;
     var cardsHtml = '';
     results.forEach(function(r){
-      var s = r.cfg, ok = r.stats && r.stats.ok;
+      var s = r.cfg;
+      /* Feed-down honesty (LIVE MEANS LIVE): any of the three reads
+         failing means this site's numbers are unavailable — show the
+         feed-down state, never zeros dressed as data. */
+      var ok = r.stats && r.stats.ok && r.rt && r.rt.ok && r.bd && r.bd.ok;
+      if (!ok) {
+        downCount++;
+        cardsHtml += '<div class="card" style="margin-top:1rem"><div class="card-header"><div>'
+          + '<div class="card-title">'+esc(s.emoji||'\u{1F310}')+' '+esc(s.name)+'</div>'
+          + '<div class="card-sub">' + MannaI18n.t('dash.js.sites.card_sub') + '</div></div></div>'
+          + '<div class="empty">' + MannaI18n.t('dash.js.sites.feed_down') + '</div></div>';
+        return;
+      }
       var st = (r.stats && r.stats.metrics) || {};
       var v = (st.visitors||{}).value||0, vw = (st.views||{}).value||0;
       var active = (r.rt && r.rt.active_now) || 0;
@@ -1232,6 +1244,13 @@ function loadSites(){
     var now = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
     var rn = document.getElementById('refresh-note');
     if (rn) rn.textContent = MannaI18n.t('dash.js.sites.refresh_note', { time: now });
+    /* Every site down: the headline totals must not read as zeros either. */
+    if (results.length && downCount === results.length) {
+      ['c-visitors','c-views','c-active','c-conv','c-utm'].forEach(function(id){
+        var el = document.getElementById(id); if (el) el.textContent = '\u2014';
+      });
+      if (rn) rn.textContent = MannaI18n.t('dash.js.sites.feed_down');
+    }
   });
 }
 
