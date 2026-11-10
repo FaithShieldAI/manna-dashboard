@@ -245,8 +245,12 @@ function parsePrTargetsMarkdown(md) {
       }
       inOwnerRule = false;
       const asTier = tierFromText(text);
+      // A numbered heading is always an entry, never a tier label:
+      // an outlet named e.g. "Frontiers of Faith" contains "tier" as
+      // a substring and a tier keyword, and must still parse (2026-11-10).
+      const isNumberedEntry = /^\d+[.)]\s/.test(text);
       // A heading that reads as a tier label sets context, not a target.
-      if (/(tier|majors|mainstream|niche)/i.test(text) && asTier) {
+      if (!isNumberedEntry && /(tier|majors|mainstream|niche)/i.test(text) && asTier) {
         flush();
         tierContext = asTier;
         shelfContext = null;
