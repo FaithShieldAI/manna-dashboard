@@ -358,6 +358,34 @@ test('seeder: missing file is a quiet no-op with a reason', () => {
   assert.equal(r.reason, 'file_missing');
 });
 
+test('seeder: a numbered heading with "tier" inside its name still parses as an entry', () => {
+  // Regression (2026-11-10): the real file's entry 2543,
+  // "Frontiers of Faith", tripped the tier-label classification
+  // ("Fron**tier**s" matches the tier regex and "of Faith" maps to
+  // the faith_major tier), so its heading was swallowed as a tier
+  // label and the entry was never imported. A numbered heading is
+  // always an entry.
+  const md = `## Tier 1: Faith majors
+
+### 2543. Frontiers of Faith (SiriusXM, The Catholic Channel)
+- **Why it fits:** A weekly show on Catholic missionary territories.
+- **Named contact:** Katie Ruvalcaba, co-host.
+- **Pitch route:** **Contact route unverified.** DO NOT PITCH.
+- **Verified from:** SiriusXM, The Catholic Channel page.
+
+### 2544. Next Outlet
+- Contact: Jane Editor
+- Contact route: https://nextoutlet.example/pitch
+- Verified: yes
+`;
+  const parsed = parsePrTargetsMarkdown(md);
+  const byPub = Object.fromEntries(parsed.map(e => [e.publication, e]));
+  assert.ok(byPub['Frontiers of Faith'], 'the numbered "Frontiers" heading parses as an entry, not a tier label');
+  assert.equal(byPub['Frontiers of Faith'].tier, 'faith_major', 'it keeps the tier context of the section it sits in');
+  assert.equal(byPub['Frontiers of Faith'].status, 'do_not_pitch', 'its own DO NOT PITCH route still parks it');
+  assert.ok(byPub['Next Outlet'], 'the entry after it still parses');
+});
+
 test('import endpoint: seeds the caller tenant from PR_TARGETS_FILE, then no-ops', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-import-'));
   const file = path.join(dir, 'targets.md');
