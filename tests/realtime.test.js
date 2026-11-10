@@ -8,13 +8,27 @@
  */
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const http = require('node:http');
 const { setupTestEnv, startServer, client } = require('./helpers');
 
 setupTestEnv();
 
-let server, base;
-before(async () => { ({ server, base } = await startServer()); });
-after(async () => { server.close(); });
+let server, base, stubTracker;
+before(async () => {
+  // 2026-11-10: /realtime now reads the house tracker first. Point the
+  // app at a stub tracker that answers 400 "unknown site" for every key,
+  // so these tests exercise the Manna-beacon fallback deterministically
+  // instead of depending on the live tracker. ('shop' is a Manna-native
+  // site; the tracker has never heard of it.)
+  stubTracker = http.createServer((req, res) => {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'unknown site' }));
+  });
+  await new Promise(r => stubTracker.listen(0, '127.0.0.1', r));
+  process.env.TRACKER_BASE_URL = `http://127.0.0.1:${stubTracker.address().port}`;
+  ({ server, base } = await startServer());
+});
+after(async () => { server.close(); stubTracker.close(); });
 
 let rtSeq = 0;
 async function setupSite() {
