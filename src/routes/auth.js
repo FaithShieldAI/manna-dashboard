@@ -755,7 +755,7 @@ router.post('/ip-registry-sync/:token', requireMigrationToken, express.json({ li
 // Category/tier/status mapping reuses src/lib/syncD2rm.js, the same
 // mapping the one-shot admin import uses; rows this mirror inserts or
 // refreshes carry source 'd2rm-email-mirror'.
-const { mapCategory, mapTier, mapStatus } = require('../lib/syncD2rm');
+const { mapCategory, mapTier, mapStatus, GOALS } = require('../lib/syncD2rm');
 const CONTACT_SOURCE_CATEGORIES = [
   'influencer', 'podcast', 'pastor', 'org', 'attorney', 'other', 'handles', 'family_office',
 ];
@@ -863,8 +863,12 @@ router.post('/contacts-sync/:token', requireMigrationToken, express.json({ limit
 // goal row in the house tenant before Sustained left the suite on
 // 2026-10-28. The import no longer seeds that goal (see GOALS in
 // src/lib/syncD2rm.js); this endpoint removes the already-planted row.
-// It deletes ONLY goal_key = 'sustained' for the named tenant, nothing
-// else, and is idempotent: a second call reports removed: 0.
+// It deletes ONLY goal_key = 'sustained' for the named tenant, and in
+// the same pass inserts-if-missing the two suite goals the import now
+// seeds ('mannaai', 'two_fishes', definitions taken from GOALS there)
+// so the tenant's grid is complete without an admin sync. Existing
+// rows are never overwritten. Idempotent: a second call reports
+// removed: 0 and added: [].
 router.post('/goals-cleanup/:token', requireMigrationToken, express.json({ limit: '64kb' }), (req, res) => {
   try {
     const body = req.body || {};
@@ -889,7 +893,20 @@ router.post('/goals-cleanup/:token', requireMigrationToken, express.json({ limit
       "DELETE FROM goals WHERE tenant_id = ? AND goal_key = 'sustained'"
     ).run(tenantId);
 
-    res.json({ ok: true, tenant_id: tenantId, removed: Number(info.changes) });
+    const added = [];
+    const findGoal = db.prepare(
+      'SELECT id FROM goals WHERE tenant_id = ? AND goal_key = ?');
+    const insertGoal = db.prepare(`
+      INSERT INTO goals (tenant_id, goal_key, label, current_value, goal_value, unit)
+      VALUES (?, ?, ?, ?, ?, ?)`);
+    for (const g of GOALS) {
+      if (g.goal_key !== 'mannaai' && g.goal_key !== 'two_fishes') continue;
+      if (findGoal.get(tenantId, g.goal_key)) continue;
+      insertGoal.run(tenantId, g.goal_key, g.label, g.current_value, g.goal_value, g.unit);
+      added.push(g.goal_key);
+    }
+
+    res.json({ ok: true, tenant_id: tenantId, removed: Number(info.changes), added });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }
