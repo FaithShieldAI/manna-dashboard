@@ -11,6 +11,9 @@ const router = express.Router();
 router.get('/', (req, res) => {
   const tdb = req.tdb;
   const goals = tdb.goals();
+  // Same read-time override as GET /api/goals: email_collection reports
+  // the tenant's live lead count, never the frozen stored counter.
+  const liveCollected = tdb.leadTotal();
   const snapshots = tdb.emailSnapshots();
   const all = snapshots.find(s => s.window_key === 'all') || {};
   const sites = tdb.listSites();
@@ -28,14 +31,17 @@ router.get('/', (req, res) => {
 
   res.json({
     ok: true,
-    goals: goals.map(g => ({
-      key: g.goal_key,
-      label: g.label,
-      current: g.current_value,
-      goal: g.goal_value,
-      unit: g.unit,
-      pct: g.goal_value > 0 ? +(100 * g.current_value / g.goal_value).toFixed(1) : 0,
-    })),
+    goals: goals.map(g => {
+      const current = g.goal_key === 'email_collection' ? liveCollected : g.current_value;
+      return {
+        key: g.goal_key,
+        label: g.label,
+        current,
+        goal: g.goal_value,
+        unit: g.unit,
+        pct: g.goal_value > 0 ? +(100 * current / g.goal_value).toFixed(1) : 0,
+      };
+    }),
     email: {
       sent: all.sent || 0,
       opens: all.opens || 0,
@@ -46,7 +52,7 @@ router.get('/', (req, res) => {
     },
     roi: roiTotal,
     counts: {
-      collected: tdb.leadTotal(),
+      collected: liveCollected,
       sites: sites.length,
       socialAccounts: social.length,
       ipAssets: ipCount,
