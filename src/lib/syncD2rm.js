@@ -74,11 +74,13 @@ const CAMPAIGNS = [
 
 // D2RM portfolio goals (Michael's 2026-10-12 goal set).
 // email_collection current_value is set at runtime from the live contact count.
+// No 'sustained' goal: Sustained left the suite 2026-10-28 (given to
+// Daniel) and must never be re-planted by this import. Rows already in
+// production are removed via POST /api/auth/goals-cleanup/:token.
 const GOALS = [
   { goal_key: 'email_collection', label: 'Email collection',            current_value: null, goal_value: 11500, unit: 'emails' },
   { goal_key: 'armor_bearer',     label: 'Armor Bearer <redacted>',     current_value: 3,    goal_value: 100,   unit: 'affiliates' },
   { goal_key: 'faithshield',      label: 'FaithShield paying users',    current_value: 0,    goal_value: 100,   unit: 'users' },
-  { goal_key: 'sustained',        label: 'Sustained users',             current_value: 0,    goal_value: 100,   unit: 'users' },
   { goal_key: 'k_punk',           label: 'K-Punk Kickstarter notify-me', current_value: 1,    goal_value: 5000,  unit: 'signups' },
 ];
 
@@ -250,6 +252,7 @@ function syncD2rmData({ sourceDbPath, tenantId }) {
 
 module.exports = {
   BUNDLED_SOURCE_DB,
+  GOALS,
   CATEGORY_MAP,
   mapCategory,
   mapTier,

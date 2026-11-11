@@ -858,6 +858,43 @@ router.post('/contacts-sync/:token', requireMigrationToken, express.json({ limit
   }
 });
 
+// Goals cleanup (token-gated, same MIGRATION_TOKEN pattern as the
+// contacts mirror above): the retired D2RM import planted a 'sustained'
+// goal row in the house tenant before Sustained left the suite on
+// 2026-10-28. The import no longer seeds that goal (see GOALS in
+// src/lib/syncD2rm.js); this endpoint removes the already-planted row.
+// It deletes ONLY goal_key = 'sustained' for the named tenant, nothing
+// else, and is idempotent: a second call reports removed: 0.
+router.post('/goals-cleanup/:token', requireMigrationToken, express.json({ limit: '64kb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    const info = db.prepare(
+      "DELETE FROM goals WHERE tenant_id = ? AND goal_key = 'sustained'"
+    ).run(tenantId);
+
+    res.json({ ok: true, tenant_id: tenantId, removed: Number(info.changes) });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
 // Migration: import migrated data (backup/self-heal only — token-gated, B1)
 // Live windows sync (token-gated, same MIGRATION_TOKEN pattern as the
 // snapshot sync above): the analytics VM's live service
