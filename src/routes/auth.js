@@ -659,6 +659,90 @@ router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json(
   }
 });
 
+// IP registry sync (token-gated, same MIGRATION_TOKEN pattern as the
+// snapshot sync above): the house IP registry file
+// (files/ip-registry/registry.json, the same source the private
+// dashboard reads) is mirrored into the tenant's ip_assets so Manna's
+// IP Registry tab shows the real registry instead of an empty table.
+// Replace-all per sync: the file stays the single source of truth and
+// Manna holds its copy. Validation mirrors the IP registry route's
+// type/status vocabularies and the ip_assets column checks.
+const IP_ASSET_TYPES = ['copyright', 'trademark', 'patent', 'trade_secret', 'domain', 'other'];
+const IP_ASSET_STATUSES = ['idea', 'created-unregistered', 'filed-pending', 'registered', 'licensed'];
+
+function _cleanIpAsset(a, i) {
+  const bad = (field) => {
+    const err = new Error(`invalid_asset:${i}.${field}`);
+    err.status = 400;
+    throw err;
+  };
+  if (!a || typeof a !== 'object' || Array.isArray(a)) bad('asset');
+  const title = typeof a.title === 'string' ? a.title.trim() : '';
+  if (!title || title.length > 300) bad('title');
+  let description = null;
+  if (a.description !== undefined && a.description !== null) {
+    if (typeof a.description !== 'string' || a.description.length > 4000) bad('description');
+    description = a.description;
+  }
+  if (!IP_ASSET_TYPES.includes(a.asset_type)) bad('asset_type');
+  if (!IP_ASSET_STATUSES.includes(a.status)) bad('status');
+  let contentHash = null;
+  if (a.content_hash !== undefined && a.content_hash !== null) {
+    if (typeof a.content_hash !== 'string' || !/^[0-9a-f]{64}$/.test(a.content_hash)) bad('content_hash');
+    contentHash = a.content_hash;
+  }
+  let createdAt = null;
+  if (a.created_at !== undefined && a.created_at !== null) {
+    if (typeof a.created_at !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(a.created_at)) bad('created_at');
+    createdAt = a.created_at.slice(0, 10);
+  }
+  return { title, description, assetType: a.asset_type, status: a.status, contentHash, createdAt };
+}
+
+router.post('/ip-registry-sync/:token', requireMigrationToken, express.json({ limit: '1mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    if (!Array.isArray(body.assets) || body.assets.length === 0 || body.assets.length > 500) {
+      return res.status(400).json({ ok: false, error: 'assets_required' });
+    }
+    const cleaned = body.assets.map((a, i) => _cleanIpAsset(a, i));
+
+    const insert = db.prepare(`
+      INSERT INTO ip_assets (tenant_id, title, description, asset_type, status, content_hash, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ','now')))`);
+    transaction(() => {
+      db.prepare('DELETE FROM ip_assets WHERE tenant_id = ?').run(tenantId);
+      for (const a of cleaned) {
+        insert.run(tenantId, a.title, a.description, a.assetType, a.status, a.contentHash, a.createdAt);
+      }
+    });
+
+    const rows = db.prepare(
+      'SELECT id, title, description, asset_type, status, content_hash, created_at FROM ip_assets WHERE tenant_id = ? ORDER BY created_at DESC'
+    ).all(tenantId);
+    res.json({ ok: true, tenant_id: tenantId, count: rows.length, assets: rows });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
 // Migration: import migrated data (backup/self-heal only — token-gated, B1)
 // Live windows sync (token-gated, same MIGRATION_TOKEN pattern as the
 // snapshot sync above): the analytics VM's live service
