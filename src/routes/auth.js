@@ -1353,4 +1353,104 @@ router.post('/migration-cleanup/:token', requireMigrationToken, express.json(), 
   }
 });
 
+// ---------------------------------------------------------------------------
+// HeyGen voice door + server config read (token-gated, same MIGRATION_TOKEN
+// pattern as the sync endpoints above). Added 2026-11-11: the HeyGen API
+// key lives ONLY in this server's env (Michael's rule), which made every
+// voice job depend on a human sign-in to Render or HeyGen. These doors let
+// the house tooling run narration from outside with the migration token
+// while the key never leaves the server. The config read reports SPARK raw
+// env next to the effective values and key set/length only, never a value.
+// ---------------------------------------------------------------------------
+const config = require('../config');
+const HEYGEN_TTS_VOICE_DEFAULT = '0eed7849898e4362885098f714784920'; // "Michael Faber" clone
+
+async function heygenDoorFetch(pathname, { method = 'GET', body } = {}) {
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 180000);
+  try {
+    const res = await fetch(`${String(config.heygenApiBase).replace(/\/+$/, '')}${pathname}`, {
+      method,
+      signal: ctl.signal,
+      headers: {
+        'X-Api-Key': config.heygenApiKey,
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch { /* provider returned non-JSON */ }
+    return { status: res.status, json };
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+router.get('/heygen-balance/:token', requireMigrationToken, async (req, res) => {
+  if (!config.heygenConfigured) {
+    return res.status(503).json({ ok: false, error: 'heygen_not_configured' });
+  }
+  try {
+    const r = await heygenDoorFetch('/v3/users/me');
+    if (r.status < 200 || r.status >= 300) {
+      return res.status(502).json({ ok: false, error: 'heygen_provider_error', provider_status: r.status });
+    }
+    return res.json({ ok: true, provider: r.json });
+  } catch (e) {
+    return res.status(502).json({ ok: false, error: e.name === 'AbortError' ? 'heygen_timeout' : 'heygen_network_error' });
+  }
+});
+
+router.post('/heygen-tts/:token', requireMigrationToken, express.json({ limit: '64kb' }), async (req, res) => {
+  if (!config.heygenConfigured) {
+    return res.status(503).json({ ok: false, error: 'heygen_not_configured' });
+  }
+  const body = req.body || {};
+  const text = typeof body.text === 'string' ? body.text : '';
+  if (!text || text.length > 5000) {
+    return res.status(400).json({ ok: false, error: 'text_required' });
+  }
+  const voiceId = typeof body.voice_id === 'string' && body.voice_id ? body.voice_id : HEYGEN_TTS_VOICE_DEFAULT;
+  const model = typeof body.model === 'string' && body.model ? body.model : 'heygen-voice-1';
+  try {
+    const r = await heygenDoorFetch('/v3/models/audio/tts', {
+      method: 'POST',
+      body: { model, voice_id: voiceId, text },
+    });
+    if (r.status < 200 || r.status >= 300) {
+      return res.status(502).json({
+        ok: false, error: 'heygen_provider_error', provider_status: r.status,
+        provider: r.json || undefined,
+      });
+    }
+    const p = r.json || {};
+    const audioUrl = p.audio_url || (p.data && p.data.audio_url) || p.url || null;
+    const duration = p.duration ?? (p.data && p.data.duration) ?? null;
+    return res.json({ ok: true, audio_url: audioUrl, duration, provider: p });
+  } catch (e) {
+    return res.status(502).json({ ok: false, error: e.name === 'AbortError' ? 'heygen_timeout' : 'heygen_network_error' });
+  }
+});
+
+router.get('/server-config/:token', requireMigrationToken, (req, res) => {
+  const sparkKey = process.env.SPARK_API_KEY || '';
+  res.json({
+    ok: true,
+    spark: {
+      base_url_env: process.env.SPARK_BASE_URL || null,
+      model_env: process.env.SPARK_MODEL || null,
+      timeout_ms_env: process.env.SPARK_TIMEOUT_MS || null,
+      api_key_set: Boolean(sparkKey),
+      api_key_length: sparkKey.length,
+      effective_base_url: config.sparkBaseUrl,
+      effective_model: config.sparkModel,
+    },
+    heygen: {
+      api_key_set: Boolean(config.heygenApiKey),
+      api_base: config.heygenApiBase,
+    },
+  });
+});
+
 module.exports = router;
