@@ -46,6 +46,7 @@ router.get('/', (req, res) => {
     },
     roi: roiTotal,
     counts: {
+      collected: tdb.leadTotal(),
       sites: sites.length,
       socialAccounts: social.length,
       ipAssets: ipCount,

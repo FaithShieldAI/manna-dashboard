@@ -35,3 +35,17 @@
     });
   });
 })();
+
+/* Show/hide password eye (external file: CSP blocks inline scripts). */
+(function () {
+  var toggle = document.getElementById('toggle-password');
+  var pwField = document.getElementById('password');
+  if (toggle && pwField) {
+    toggle.addEventListener('click', function () {
+      var show = pwField.type === 'password';
+      pwField.type = show ? 'text' : 'password';
+      toggle.textContent = show ? '🙈' : '👁';
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  }
+})();

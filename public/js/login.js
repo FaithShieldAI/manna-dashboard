@@ -22,3 +22,19 @@
     });
   });
 })();
+
+/* Show/hide password eye. Lives here, not inline in login.html: the
+   Content-Security-Policy (script-src 'self') blocks inline scripts,
+   which is why the original in-page toggle never ran. */
+(function () {
+  var toggle = document.getElementById('toggle-password');
+  var pwField = document.getElementById('password');
+  if (toggle && pwField) {
+    toggle.addEventListener('click', function () {
+      var show = pwField.type === 'password';
+      pwField.type = show ? 'text' : 'password';
+      toggle.textContent = show ? '🙈' : '👁';
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  }
+})();

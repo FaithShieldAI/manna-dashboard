@@ -287,6 +287,13 @@ function forTenant(tenantId) {
       });
       return funnelId;
     },
+    // -- total leads collected -------------------------------------------
+    // Headline "collected" number for the Overview collected-vs-sent pair:
+    // every lead in the tenant's book, all categories, all statuses.
+    leadTotal() {
+      const row = db.prepare('SELECT COUNT(*) AS n FROM influencers WHERE tenant_id = ?').get(t);
+      return row ? row.n : 0;
+    },
     // -- lead pipelines (derived funnels) --------------------------------
     // Lead categories ARE pipelines: a lead's status is its stage
     // (unvetted -> vetted -> contacted -> active; 'rejected' is an exit,
