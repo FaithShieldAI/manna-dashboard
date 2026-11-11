@@ -81,6 +81,8 @@ const GOALS = [
   { goal_key: 'email_collection', label: 'Email collection',            current_value: null, goal_value: 11500, unit: 'emails' },
   { goal_key: 'armor_bearer',     label: 'Armor Bearer <redacted>',     current_value: 3,    goal_value: 100,   unit: 'affiliates' },
   { goal_key: 'faithshield',      label: 'FaithShield paying users',    current_value: 0,    goal_value: 100,   unit: 'users' },
+  { goal_key: 'mannaai',          label: 'MannaAi users',               current_value: 0,    goal_value: 100,   unit: 'users' },
+  { goal_key: 'two_fishes',       label: 'Two Fishes households',       current_value: 0,    goal_value: 100,   unit: 'households' },
   { goal_key: 'k_punk',           label: 'K-Punk Kickstarter notify-me', current_value: 1,    goal_value: 5000,  unit: 'signups' },
 ];
 

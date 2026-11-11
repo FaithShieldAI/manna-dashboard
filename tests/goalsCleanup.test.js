@@ -11,7 +11,10 @@
  *    the stored row is never rewritten on read.
  * 3. POST /api/auth/goals-cleanup/:token (MIGRATION_TOKEN-gated, same
  *    pattern as contacts-sync) deletes ONLY the named tenant's
- *    goal_key = 'sustained' row and is idempotent.
+ *    goal_key = 'sustained' row, and in the same pass inserts-if-missing
+ *    the 'mannaai' and 'two_fishes' suite goals for that tenant
+ *    (existing rows untouched). Idempotent: a second call reports
+ *    removed: 0 and added: [].
  */
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -63,8 +66,18 @@ test('syncD2rm GOALS no longer contains sustained, and a sync plants no sustaine
   const { GOALS, syncD2rmData } = require('../src/lib/syncD2rm');
   assert.deepEqual(
     GOALS.map((g) => g.goal_key).sort(),
-    ['armor_bearer', 'email_collection', 'faithshield', 'k_punk'],
+    ['armor_bearer', 'email_collection', 'faithshield', 'k_punk', 'mannaai', 'two_fishes'],
   );
+  // The two new suite goals carry the exact definitions Michael set.
+  const byKey = Object.fromEntries(GOALS.map((g) => [g.goal_key, g]));
+  assert.deepEqual(byKey.mannaai, {
+    goal_key: 'mannaai', label: 'MannaAi users',
+    current_value: 0, goal_value: 100, unit: 'users',
+  });
+  assert.deepEqual(byKey.two_fishes, {
+    goal_key: 'two_fishes', label: 'Two Fishes households',
+    current_value: 0, goal_value: 100, unit: 'households',
+  });
 
   const { tenantId } = await register('sync@goals.example', 'Sync Goals Co');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2rm-goals-source-'));
@@ -81,7 +94,7 @@ test('syncD2rm GOALS no longer contains sustained, and a sync plants no sustaine
 
   const keys = db.prepare('SELECT goal_key FROM goals WHERE tenant_id = ? ORDER BY goal_key')
     .all(tenantId).map((r) => r.goal_key);
-  assert.deepEqual(keys, ['armor_bearer', 'email_collection', 'faithshield', 'k_punk']);
+  assert.deepEqual(keys, ['armor_bearer', 'email_collection', 'faithshield', 'k_punk', 'mannaai', 'two_fishes']);
 });
 
 test('GET /api/goals overrides email_collection with the live lead count, read-time only', async () => {
@@ -138,7 +151,7 @@ test('goals-cleanup validates the tenant', async () => {
   assert.equal(unknown.json.error, 'tenant_not_found');
 });
 
-test('goals-cleanup removes only the target tenant sustained row, and is idempotent', async () => {
+test('goals-cleanup removes only the target tenant sustained row, adds the new suite goals, and is idempotent', async () => {
   const tok = process.env.MIGRATION_TOKEN;
   const a = await register('a@cleanup.example', 'Cleanup A Co');
   const b = await register('b@cleanup.example', 'Cleanup B Co');
@@ -153,19 +166,51 @@ test('goals-cleanup removes only the target tenant sustained row, and is idempot
   assert.equal(r.json.ok, true);
   assert.equal(r.json.tenant_id, a.tenantId);
   assert.equal(r.json.removed, 1);
+  assert.deepEqual(r.json.added, ['mannaai', 'two_fishes']);
 
-  // Tenant A: sustained gone, every other goal intact.
+  // Tenant A: sustained gone, prior goals intact, both new goals planted
+  // with Michael's definitions.
   const aKeys = db.prepare('SELECT goal_key FROM goals WHERE tenant_id = ? ORDER BY goal_key')
     .all(a.tenantId).map((x) => x.goal_key);
-  assert.deepEqual(aKeys, ['email_collection', 'faithshield']);
+  assert.deepEqual(aKeys, ['email_collection', 'faithshield', 'mannaai', 'two_fishes']);
+  const manna = db.prepare(
+    "SELECT label, current_value, goal_value, unit FROM goals WHERE tenant_id = ? AND goal_key = 'mannaai'"
+  ).get(a.tenantId);
+  assert.deepEqual({ ...manna }, {
+    label: 'MannaAi users', current_value: 0, goal_value: 100, unit: 'users',
+  });
+  const fishes = db.prepare(
+    "SELECT label, current_value, goal_value, unit FROM goals WHERE tenant_id = ? AND goal_key = 'two_fishes'"
+  ).get(a.tenantId);
+  assert.deepEqual({ ...fishes }, {
+    label: 'Two Fishes households', current_value: 0, goal_value: 100, unit: 'households',
+  });
 
-  // Tenant B: untouched, sustained row still present.
+  // Tenant B: untouched — sustained row still present, no goals added.
   const bKeys = db.prepare('SELECT goal_key FROM goals WHERE tenant_id = ? ORDER BY goal_key')
     .all(b.tenantId).map((x) => x.goal_key);
   assert.deepEqual(bKeys, ['email_collection', 'faithshield', 'sustained']);
 
-  // Second run: nothing left to remove.
+  // Second run: nothing removed, nothing added.
   const r2 = await client(base).post(`/api/auth/goals-cleanup/${tok}`, { tenant_id: a.tenantId });
   assert.equal(r2.status, 200);
   assert.equal(r2.json.removed, 0);
+  assert.deepEqual(r2.json.added, []);
+});
+
+test('goals-cleanup leaves an existing new-suite goal untouched', async () => {
+  const tok = process.env.MIGRATION_TOKEN;
+  const c = await register('c@cleanup.example', 'Cleanup C Co');
+  // mannaai already exists with real progress; two_fishes is missing.
+  insertGoal(c.tenantId, 'mannaai', 'MannaAi users', 7, 100, 'users');
+
+  const r = await client(base).post(`/api/auth/goals-cleanup/${tok}`, { tenant_id: c.tenantId });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.removed, 0); // no sustained row in this tenant
+  assert.deepEqual(r.json.added, ['two_fishes']);
+
+  const manna = db.prepare(
+    "SELECT current_value FROM goals WHERE tenant_id = ? AND goal_key = 'mannaai'"
+  ).get(c.tenantId);
+  assert.equal(manna.current_value, 7); // progress preserved, not reset
 });
