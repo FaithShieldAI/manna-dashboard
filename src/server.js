@@ -51,6 +51,9 @@ app.use((req, res, next) => {
   // every publish came back 413 payload_too_large).
   if (req.path.startsWith('/api/auth/dashboard-payload-sync/')) return next();
   if (req.path.startsWith('/api/auth/lead-collect-sync/')) return next();
+  // The contacts mirror posts batches of up to 1000 contacts (its route
+  // mounts its own 5mb parser, token-gated like the other sync routes).
+  if (req.path.startsWith('/api/auth/contacts-sync/')) return next();
   return jsonBody(req, res, next);
 });
 // Influencer auto-provision webhook (Armor Bearer -> Manna). Mounted before

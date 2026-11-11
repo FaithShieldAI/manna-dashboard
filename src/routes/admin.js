@@ -3,7 +3,9 @@
  * Admin endpoints.
  *
  *   POST /api/admin/sync-d2rm — one-shot import of the real D2RM dataset
- *   (contacts, campaigns, snapshots, goals) into the caller's tenant.
+ *   (contacts, campaigns, goals) into the caller's tenant. Email
+ *   snapshots are not part of the import: the live mail-truth chain
+ *   owns them (see src/lib/syncD2rm.js).
  *
  * SECURITY — HARD ALLOWLIST:
  *   Only michael@faithshield.ai and leon@faithshield.ai may call this.
@@ -11,7 +13,7 @@
  *   NEVER be synced into another user's (e.g. Ken's) tenant.
  *
  *   The sync itself is tenant-scoped (writes only to req.tenant.id) and
- *   idempotent (upserts by email / name / window_key / goal_key).
+ *   idempotent (upserts by email / name / goal_key).
  *
  *   This router is mounted under the /api router in server.js, which
  *   already applies requireAuth (session cookie), csrfCheck
@@ -49,7 +51,6 @@ router.post('/sync-d2rm', (req, res) => {
       synced: {
         contacts: synced.contacts,
         campaigns: synced.campaigns,
-        snapshots: synced.snapshots,
         goalsUpserted: synced.goalsUpserted,
         liveContactCount: synced.liveContactCount,
         influencersBefore: synced.influencersBefore,

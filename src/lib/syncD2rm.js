@@ -11,11 +11,17 @@
  * Mapping:
  *   D2RM contacts  -> Manna influencers  (tenant-scoped, upsert by email)
  *   D2RM sends     -> Manna email_campaigns (grouped, upsert by name)
- *   D2RM analytics -> Manna email_snapshots (4 windows, upsert)
  *   D2RM goals     -> Manna goals (upsert by goal_key)
  *
+ * Email snapshots are NOT synced here. They are owned by the live
+ * mail-truth chain, which posts fresh combined windows to
+ * POST /api/auth/email-snapshots-sync every cycle. An earlier version
+ * of this module upserted a hard-coded 2026-10-14 capture into every
+ * window, overwriting the live numbers each time the admin sync ran;
+ * that write was retired 2026-11-10 and must not come back.
+ *
  * Idempotent: safe to run multiple times. Uses natural keys per tenant
- * (email / name / window_key / goal_key) for upserts. Never touches
+ * (email / name / goal_key) for upserts. Never touches
  * other tenants' rows.
  *
  * SECURITY: the caller is responsible for authorization. The HTTP endpoint
@@ -54,18 +60,6 @@ function mapStatus(notes) {
   // New/untouched contacts default to 'unvetted'.
   return /^vetted/i.test(notes || '') ? 'vetted' : 'unvetted';
 }
-
-// ---------------------------------------------------------------------------
-// Real D2RM analytics (captured 2026-10-14 from D2RM dashboard + providers).
-// These are Michael's REAL numbers, not demo data.
-// ---------------------------------------------------------------------------
-const SNAPSHOTS = [
-  // window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang
-  ['24h', 1042, 223, 19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-  ['7d',  1042, 223, 19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-  ['30d', 1042, 223, 19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-  ['all', 1042, 223, 19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-];
 
 // Real campaigns from the Oct 2026 outreach (email-database.db sends table).
 // Opens/clicks are provider-aggregate figures from the analytics refresh.
@@ -176,26 +170,6 @@ function syncCampaigns(db, tenantId) {
 }
 
 // ---------------------------------------------------------------------------
-// Sync: snapshots
-// ---------------------------------------------------------------------------
-function syncSnapshots(db, tenantId) {
-  const upsert = db.prepare(`
-    INSERT INTO email_snapshots
-      (tenant_id, window_key, sent, opens, clicks, unsubs, bounces, replies, warm_total, warm_by_lang_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-    ON CONFLICT (tenant_id, window_key) DO UPDATE SET
-      sent = excluded.sent, opens = excluded.opens, clicks = excluded.clicks,
-      unsubs = excluded.unsubs, bounces = excluded.bounces, replies = excluded.replies,
-      warm_total = excluded.warm_total, warm_by_lang_json = excluded.warm_by_lang_json,
-      captured_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-  `);
-  for (const [key, sent, opens, clicks, unsubs, bounces, warm, langs] of SNAPSHOTS) {
-    upsert.run(tenantId, key, sent, opens, clicks, unsubs, bounces, warm, JSON.stringify(langs));
-  }
-  return { upserted: SNAPSHOTS.length };
-}
-
-// ---------------------------------------------------------------------------
 // Sync: goals (email_collection current_value = live contact count)
 // ---------------------------------------------------------------------------
 function syncGoals(db, sourceDb, tenantId) {
@@ -257,7 +231,6 @@ function syncD2rmData({ sourceDbPath, tenantId }) {
     const before = db.prepare('SELECT COUNT(*) AS n FROM influencers WHERE tenant_id = ?').get(tenantId).n;
     const contacts = syncContacts(db, sourceDb, tenantId);
     const campaigns = syncCampaigns(db, tenantId);
-    const snapshots = syncSnapshots(db, tenantId);
     const goals = syncGoals(db, sourceDb, tenantId);
     const after = db.prepare('SELECT COUNT(*) AS n FROM influencers WHERE tenant_id = ?').get(tenantId).n;
     return {
@@ -267,7 +240,6 @@ function syncD2rmData({ sourceDbPath, tenantId }) {
       influencersAfter: after,
       contacts,
       campaigns,
-      snapshots,
       goalsUpserted: goals.upserted,
       liveContactCount: goals.contactCount,
     };
@@ -279,6 +251,9 @@ function syncD2rmData({ sourceDbPath, tenantId }) {
 module.exports = {
   BUNDLED_SOURCE_DB,
   CATEGORY_MAP,
+  mapCategory,
+  mapTier,
+  mapStatus,
   syncD2rmData,
   resolveTenantForEmail,
 };

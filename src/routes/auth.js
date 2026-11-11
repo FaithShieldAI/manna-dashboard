@@ -743,6 +743,121 @@ router.post('/ip-registry-sync/:token', requireMigrationToken, express.json({ li
   }
 });
 
+// Contacts mirror sync (token-gated, same MIGRATION_TOKEN pattern as the
+// IP registry sync above): the collectors' email database
+// (hidden_files/email-database.db) stays the single source of truth for
+// the house contact list; the chain mirrors it into the D2RM tenant's
+// influencers table so Manna's collected counts and lead pipelines show
+// the real list instead of only the rows typed into Manna by hand.
+// Unlike the IP registry's replace-all, this mirror UPSERTS by
+// (tenant_id, LOWER(email)) and never deletes: rows the mirror does not
+// know about (hand-curated rows, family-office seeds) stay untouched.
+// Category/tier/status mapping reuses src/lib/syncD2rm.js, the same
+// mapping the one-shot admin import uses; rows this mirror inserts or
+// refreshes carry source 'd2rm-email-mirror'.
+const { mapCategory, mapTier, mapStatus } = require('../lib/syncD2rm');
+const CONTACT_SOURCE_CATEGORIES = [
+  'influencer', 'podcast', 'pastor', 'org', 'attorney', 'other', 'handles', 'family_office',
+];
+const CONTACTS_MIRROR_SOURCE = 'd2rm-email-mirror';
+
+function _cleanContact(c, i) {
+  const bad = (field) => {
+    const err = new Error(`invalid_contact:${i}.${field}`);
+    err.status = 400;
+    throw err;
+  };
+  if (!c || typeof c !== 'object' || Array.isArray(c)) bad('contact');
+  if (typeof c.email !== 'string' || !c.email.includes('@') || c.email.length > 320) bad('email');
+  if (!CONTACT_SOURCE_CATEGORIES.includes(c.category)) bad('category');
+  const optStr = (v, field, max) => {
+    if (v === undefined || v === null) return null;
+    if (typeof v !== 'string' || v.length > max) bad(field);
+    return v;
+  };
+  return {
+    email: c.email.trim(),
+    name: optStr(c.name, 'name', 500),
+    category: c.category,
+    subcategory: optStr(c.subcategory, 'subcategory', 200),
+    notes: optStr(c.notes, 'notes', 8000),
+    sourceFile: optStr(c.source_file, 'source_file', 500),
+  };
+}
+
+router.post('/contacts-sync/:token', requireMigrationToken, express.json({ limit: '5mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    if (!Array.isArray(body.contacts) || body.contacts.length === 0 || body.contacts.length > 1000) {
+      return res.status(400).json({ ok: false, error: 'contacts_required' });
+    }
+    const cleaned = body.contacts.map((c, i) => _cleanContact(c, i));
+
+    const findByEmail = db.prepare(
+      'SELECT id FROM influencers WHERE tenant_id = ? AND LOWER(email) = LOWER(?)');
+    const insertStmt = db.prepare(`
+      INSERT INTO influencers
+        (tenant_id, handle, platform, email, tier, category, status, notes, source)
+      VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)`);
+    const updateStmt = db.prepare(`
+      UPDATE influencers SET
+        handle = ?, tier = ?, category = ?, status = ?, notes = ?, source = ?
+      WHERE id = ? AND tenant_id = ?`);
+
+    let inserted = 0, updated = 0;
+    transaction(() => {
+      for (const c of cleaned) {
+        const category = c.category === 'family_office'
+          ? 'family_office'
+          : mapCategory(c.category);
+        const tier = mapTier(c.subcategory);
+        const status = mapStatus(c.notes);
+        const handle = (c.name && c.name.trim())
+          ? c.name.trim().slice(0, 200)
+          : c.email.split('@')[0];
+        const existing = findByEmail.get(tenantId, c.email);
+        if (existing) {
+          updateStmt.run(handle, tier, category, status, c.notes,
+            CONTACTS_MIRROR_SOURCE, existing.id, tenantId);
+          updated++;
+        } else {
+          insertStmt.run(tenantId, handle, c.email, tier, category, status,
+            c.notes, CONTACTS_MIRROR_SOURCE);
+          inserted++;
+        }
+      }
+    });
+
+    res.json({
+      ok: true,
+      tenant_id: tenantId,
+      received: cleaned.length,
+      inserted,
+      updated,
+      total_in_tenant: forTenant(tenantId).leadTotal(),
+    });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
 // Migration: import migrated data (backup/self-heal only — token-gated, B1)
 // Live windows sync (token-gated, same MIGRATION_TOKEN pattern as the
 // snapshot sync above): the analytics VM's live service
