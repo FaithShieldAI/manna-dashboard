@@ -1,11 +1,27 @@
 'use strict';
 /**
- * Populate a tenant's Manna staging account with Michael's demo data.
+ * Populate a tenant's Manna account with starter data.
  *
- * Populates (idempotently — safe to re-run):
- *   1. email_snapshots  — 24h / 7d / 30d / all-time windows mirroring D2RM numbers
+ * FIRST-RUN ONLY: every write below is insert-if-missing, so this script
+ * is safe to run at every server boot and at signup (src/server.js boot
+ * loop, src/routes/auth.js) — it fills gaps for new tenants and NEVER
+ * overwrites a row that already exists. An earlier version upserted on
+ * every run, which re-planted retired goals, reset live counters
+ * (including the Stripe-fed FaithShield goal) and re-froze the email
+ * snapshots on every restart; that behavior was retired 2026-11-10.
+ *
+ * Populates:
+ *   1. goals            — the D2RM portfolio goal set, imported from
+ *                         src/lib/syncD2rm.js (GOALS there is the single
+ *                         source of truth — no 'sustained': Sustained
+ *                         left the suite 2026-10-28)
  *   2. email_campaigns  — real campaigns from the Oct 2026 outreach
- *   3. goals            — the five D2RM portfolio goals with current progress
+ *   3. email_snapshots  — zeroed starter rows for the four windows.
+ *                         Real email windows are owned by the live
+ *                         mail-truth chain (email-snapshots-sync); the
+ *                         frozen 2026-10-14 capture (1042/223/19 in
+ *                         every window) that used to be upserted here
+ *                         was retired 2026-11-10 and must not come back.
  *
  * NOTE: influencer contacts (9,295 rows) are auto-seeded on server startup
  * from data/seed/influencers.csv for every tenant that has none — this script
@@ -19,19 +35,15 @@
  * Exit codes: 0 = ok, 1 = tenant not found, 2 = usage/other error.
  */
 const { db, migrate, unscoped } = require('../src/db');
+// Single source of truth for the goal set (see header). Importing is
+// side-effect-free: syncD2rm only touches a DB when a sync is invoked.
+const { GOALS } = require('../src/lib/syncD2rm');
 
 const TENANT_SLUG = (process.argv[2] || 'd2rm-media').toLowerCase();
 
-// ---------------------------------------------------------------------------
-// Source numbers (captured 2026-10-14 from D2RM dashboard + email database).
-// ---------------------------------------------------------------------------
-const SNAPSHOTS = [
-  // window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang
-  ['24h',  1042, 223,  19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-  ['7d',   1042, 223,  19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-  ['30d',  1042, 223,  19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-  ['all',  1042, 223,  19, 3, 11, 19, { english: 17, french: 1, german: 1 }],
-];
+// Email snapshot windows. Starter rows are zeroed; the mail-truth chain
+// posts the real combined windows over them.
+const SNAPSHOT_WINDOWS = ['24h', '7d', '30d', 'all'];
 
 // Real campaigns from the Oct 2026 outreach (email-database.db sends table).
 // Opens/clicks are provider-aggregate figures from the analytics refresh.
@@ -42,15 +54,6 @@ const CAMPAIGNS = [
   { name: 'Pastor Trial Invite — Tagalog',                            provider: 'mailerlite', sent: 108, opens: 41,  clicks: 4, unsubs: 1, bounces: 4, sent_at: '2026-10-07' },
   { name: 'send-batch-2-seniors.csv',                                 provider: 'brevo',      sent: 300, opens: 0,   clicks: 0, unsubs: 0, bounces: 0, sent_at: '2026-10-07' },
   { name: 'send-batch-1-seniors.csv',                                 provider: 'brevo',      sent: 279, opens: 0,   clicks: 0, unsubs: 0, bounces: 0, sent_at: '2026-10-06' },
-];
-
-// D2RM portfolio goals (Michael's 2026-10-12 goal set).
-const GOALS = [
-  { goal_key: 'email_collection', label: 'Email collection',            current_value: 1578, goal_value: 11500, unit: 'emails' },
-  { goal_key: 'armor_bearer',     label: 'Armor Bearer affiliates',     current_value: 3,    goal_value: 100,   unit: 'affiliates' },
-  { goal_key: 'faithshield',      label: 'FaithShield paying users',    current_value: 0,    goal_value: 100,   unit: 'users' },
-  { goal_key: 'sustained',        label: 'Sustained users',             current_value: 0,    goal_value: 100,   unit: 'users' },
-  { goal_key: 'k_punk',           label: 'K-Punk Kickstarter notify-me', current_value: 1,    goal_value: 5000,  unit: 'signups' },
 ];
 
 function main(tenantSlug) {
@@ -66,23 +69,21 @@ function main(tenantSlug) {
   const tenantId = Number(tenant.id);
   console.log(`[seed-demo] tenant: ${tenant.name} (id=${tenantId}, slug=${tenant.slug})`);
 
-  // --- email_snapshots (upsert per window) ---
-  const upsertSnap = db.prepare(`
-    INSERT INTO email_snapshots
-      (tenant_id, window_key, sent, opens, clicks, unsubs, bounces, warm_total, warm_by_lang_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (tenant_id, window_key) DO UPDATE SET
-      sent = excluded.sent, opens = excluded.opens, clicks = excluded.clicks,
-      unsubs = excluded.unsubs, bounces = excluded.bounces,
-      warm_total = excluded.warm_total, warm_by_lang_json = excluded.warm_by_lang_json,
-      captured_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  // --- goals (insert-only: never overwrite an existing goal's progress) ---
+  const insGoal = db.prepare(`
+    INSERT INTO goals (tenant_id, goal_key, label, current_value, goal_value, unit)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (tenant_id, goal_key) DO NOTHING
   `);
-  let snapCount = 0;
-  for (const [key, sent, opens, clicks, unsubs, bounces, warm, langs] of SNAPSHOTS) {
-    upsertSnap.run(tenantId, key, sent, opens, clicks, unsubs, bounces, warm, JSON.stringify(langs));
-    snapCount++;
+  let goalNew = 0;
+  for (const g of GOALS) {
+    // GOALS in syncD2rm leaves email_collection's current_value null (the
+    // sync fills it from the live contact count; GET /api/goals overrides
+    // it at read time). The column is NOT NULL, so a starter row stores 0.
+    const current = g.current_value == null ? 0 : g.current_value;
+    goalNew += insGoal.run(tenantId, g.goal_key, g.label, current, g.goal_value, g.unit).changes;
   }
-  console.log(`[seed-demo] email_snapshots: ${snapCount} windows upserted`);
+  console.log(`[seed-demo] goals: ${goalNew} inserted, ${GOALS.length - goalNew} already present`);
 
   // --- email_campaigns (insert-if-missing by name) ---
   const findCampaign = db.prepare(
@@ -102,20 +103,17 @@ function main(tenantSlug) {
   }
   console.log(`[seed-demo] email_campaigns: ${campNew} inserted, ${campSkip} already present`);
 
-  // --- goals (upsert per goal_key) ---
-  const upsertGoal = db.prepare(`
-    INSERT INTO goals (tenant_id, goal_key, label, current_value, goal_value, unit)
-    VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT (tenant_id, goal_key) DO UPDATE SET
-      label = excluded.label, current_value = excluded.current_value,
-      goal_value = excluded.goal_value, unit = excluded.unit
+  // --- email_snapshots (zeroed starter rows, insert-only) ---
+  const insSnap = db.prepare(`
+    INSERT INTO email_snapshots (tenant_id, window_key)
+    VALUES (?, ?)
+    ON CONFLICT (tenant_id, window_key) DO NOTHING
   `);
-  let goalCount = 0;
-  for (const g of GOALS) {
-    upsertGoal.run(tenantId, g.goal_key, g.label, g.current_value, g.goal_value, g.unit);
-    goalCount++;
+  let snapNew = 0;
+  for (const key of SNAPSHOT_WINDOWS) {
+    snapNew += insSnap.run(tenantId, key).changes;
   }
-  console.log(`[seed-demo] goals: ${goalCount} upserted`);
+  console.log(`[seed-demo] email_snapshots: ${snapNew} zeroed starter rows inserted, ${SNAPSHOT_WINDOWS.length - snapNew} already present`);
 
   // --- summary: influencer contact count (seeded automatically on boot) ---
   const infCount = db.prepare(
@@ -135,4 +133,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { seedDemoData: main };
+module.exports = { seedDemoData: main, GOALS, SNAPSHOT_WINDOWS };

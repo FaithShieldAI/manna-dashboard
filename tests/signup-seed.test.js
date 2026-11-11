@@ -62,7 +62,7 @@ async function waitSeeded(tid, timeoutMs = 180000) {
     if (count('influencers', tid) === 9284
       && count('email_snapshots', tid) === 4
       && count('email_campaigns', tid) === 6
-      && count('goals', tid) === 5) return true;
+      && count('goals', tid) === 6) return true;
     await new Promise(r => setTimeout(r, 500));
   }
   return false;
@@ -73,7 +73,8 @@ test('signup seeds demo data immediately, no restart', async () => {
   assert.equal(await waitSeeded(tenant.id), true);
   assert.equal(count('email_snapshots', tenant.id), 4);
   assert.equal(count('email_campaigns', tenant.id), 6);
-  assert.equal(count('goals', tenant.id), 5);
+  // Goal set is 6 since 2026-11-10: sustained out, mannaai + two_fishes in.
+  assert.equal(count('goals', tenant.id), 6);
   assert.equal(count('influencers', tenant.id), 9284);
 });
 
@@ -89,7 +90,7 @@ test('seeding is idempotent (re-run causes no duplicates)', async () => {
   assert.equal(r.skipped, true);
   assert.equal(count('email_snapshots', tenant.id), 4);
   assert.equal(count('email_campaigns', tenant.id), 6);
-  assert.equal(count('goals', tenant.id), 5);
+  assert.equal(count('goals', tenant.id), 6);
   assert.equal(count('influencers', tenant.id), 9284);
 });
 
