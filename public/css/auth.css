@@ -347,3 +347,8 @@ code.k {
 .legal-footer{margin-top:22px;text-align:center;font-size:13px;color:var(--text3)}
 .legal-footer a{color:var(--text3);text-decoration:none;margin:0 8px}
 .legal-footer a:hover{color:var(--gold-bright);text-decoration:underline}
+
+/* ---------- password show/hide eye (external styles: CSP blocks inline) ---------- */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 48px; }
+.pw-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 20px; padding: 6px; color: #a8a29e; line-height: 1; }
