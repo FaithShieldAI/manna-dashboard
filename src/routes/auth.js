@@ -1271,7 +1271,17 @@ router.post('/migration-import/:token', requireMigrationToken, express.json({ li
           for (const col of actualCols) {
             if (col === 'tenant_id') {
               insertCols.push(col);
-              values.push(newTenantId);
+              // FIX 2026-11-12: for social_accounts ONLY, an explicit
+              // tenant_id on the payload row is honored (verified against
+              // the tenants table) so house channels can be registered
+              // under the correct tenant; every other table keeps the
+              // legacy force-map to the first tenant, unchanged.
+              let targetTenantId = newTenantId;
+              if (table === 'social_accounts' && Number.isInteger(row.tenant_id) && row.tenant_id > 0) {
+                const t = db.prepare('SELECT id FROM tenants WHERE id = ?').get(row.tenant_id);
+                if (t) targetTenantId = t.id;
+              }
+              values.push(targetTenantId);
             } else if (row[col] !== undefined) {
               insertCols.push(col);
               values.push(row[col]);
@@ -1348,6 +1358,35 @@ router.post('/migration-cleanup/:token', requireMigrationToken, express.json(), 
     }
     
     res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// FIX 2026-11-12: standalone, narrowly scoped delete for social_accounts
+// rows by explicit id list. Exists to undo the two YouTube rows that landed
+// under the wrong tenant before migration-import learned to honor an
+// explicit social_accounts tenant_id. Deliberately NOT folded into
+// migration-cleanup: that endpoint also dedupes email_campaigns, and this
+// door must never touch any other table. Token-gated like the other
+// migration doors; no id list in the body, no deletion; the rows removed
+// are reported back in the response for an audit trail.
+router.post('/social-accounts-delete/:token', requireMigrationToken, express.json(), (req, res) => {
+  try {
+    const ids = req.body && Array.isArray(req.body.ids)
+      ? req.body.ids.filter(n => Number.isInteger(n) && n > 0)
+      : [];
+    if (ids.length === 0) {
+      return res.json({ ok: true, skipped: 'no ids', deleted: 0 });
+    }
+    const marks = ids.map(() => '?').join(',');
+    const found = db.prepare(
+      `SELECT id, tenant_id, platform, handle FROM social_accounts WHERE id IN (${marks})`
+    ).all(...ids);
+    const del = db.prepare(
+      `DELETE FROM social_accounts WHERE id IN (${marks})`
+    ).run(...ids);
+    res.json({ ok: true, requested: ids, found, deleted: del.changes });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
