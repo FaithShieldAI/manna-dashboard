@@ -9,6 +9,7 @@ const WHITELIST = new Set([
   '1faithshieldai@gmail.com',  // Michael
   'sid.allen@yahoo.com',  // Sid Allen
   'basedinfaith@mail.com',  // Sid Allen (added 2026-10-31, Michael's order)
+  'support@faithshield.ai',  // Hunter Raines (added 2026-11-14, Michael's order)
 ]);
 
 function isWhitelisted(email) {
