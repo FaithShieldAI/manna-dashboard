@@ -668,8 +668,37 @@ router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json(
 // mannaforinfluencers.com traffic. This read-only door lets the dashboard
 // chain fetch the log's aggregates and recent rows at build time. It
 // returns counts, paths and referrers only: no IPs (stored hashed, never
-// returned), no user agents, no session ids.
+// returned), no raw user agents, no session ids.
+//
+// Extended 2026-11-14 (Michael: the dashboard must show the TRUE picture):
+// the raw log is mostly our own machinery (the keep-warm cron pings /login
+// with curl every ~10 minutes, and PR-tracker /t/ pings pass through this
+// domain), so the door now classifies every row and returns the split:
+//   machine_curl  - curl user agents (keep-warm / probe pings)
+//   machine_bot   - bot / preview-fetcher user agents
+//   pr_tracker    - /t/ paths (PR mailing open/click pings)
+//   human         - everything else (browser page views)
+// Only the class leaves the server, never the raw user agent. The door
+// also returns the signup record (tenants, their users, signup_events)
+// with names, dates and trial status, so the dashboard can show who
+// actually signed up. Same no-IP / no-session rule applies there.
 // ---------------------------------------------------------------------------
+const VISIT_CLASS_SQL = `
+  CASE
+    WHEN LOWER(COALESCE(user_agent, '')) LIKE 'curl%' THEN 'machine_curl'
+    WHEN LOWER(COALESCE(user_agent, '')) LIKE '%facebookexternalhit%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE '%bot%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE '%crawl%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE '%spider%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE '%headless%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE 'wget%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE 'python-requests%'
+      OR LOWER(COALESCE(user_agent, '')) LIKE 'go-http-client%'
+    THEN 'machine_bot'
+    WHEN path LIKE '/t/%' OR path = '/t' THEN 'pr_tracker'
+    ELSE 'human'
+  END`;
+
 router.get('/site-visits-read/:token', requireMigrationToken, (req, res) => {
   try {
     const agg = (where) => db.prepare(`
@@ -686,21 +715,83 @@ router.get('/site-visits-read/:token', requireMigrationToken, (req, res) => {
       GROUP BY path ORDER BY views DESC LIMIT 10`).all();
     const daily = db.prepare(`
       SELECT date(created_at) AS day, COUNT(*) AS pageviews,
-             COUNT(DISTINCT ip_hash) AS visitors, COUNT(DISTINCT session_id) AS sessions
+             COUNT(DISTINCT ip_hash) AS visitors, COUNT(DISTINCT session_id) AS sessions,
+             SUM(CASE WHEN (${VISIT_CLASS_SQL}) = 'human' THEN 1 ELSE 0 END) AS human_pageviews,
+             SUM(CASE WHEN (${VISIT_CLASS_SQL}) = 'human' THEN 0 ELSE 1 END) AS other_pageviews
       FROM site_visits
       WHERE date(created_at) >= date('now', '-30 days')
       GROUP BY day ORDER BY day DESC`).all();
     const recent = db.prepare(`
       SELECT created_at, path, referrer
       FROM site_visits ORDER BY id DESC LIMIT 50`).all();
+
+    // Human / machine split per window.
+    const emptyClass = () => ({ pageviews: 0, visitors: 0, sessions: 0 });
+    const classAgg = (where) => {
+      const out = { human: emptyClass(), machine_curl: emptyClass(),
+                    machine_bot: emptyClass(), pr_tracker: emptyClass() };
+      const rows = db.prepare(`
+        SELECT (${VISIT_CLASS_SQL}) AS cls, COUNT(*) AS pageviews,
+               COUNT(DISTINCT ip_hash) AS visitors,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM site_visits ${where} GROUP BY cls`).all();
+      for (const r of rows) {
+        if (out[r.cls]) out[r.cls] = { pageviews: r.pageviews, visitors: r.visitors, sessions: r.sessions };
+      }
+      return out;
+    };
+    const classes30 = classAgg("WHERE date(created_at) >= date('now', '-30 days')");
+    const classesAll = classAgg('');
+    const topPagesHuman = db.prepare(`
+      SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip_hash) AS visitors
+      FROM site_visits
+      WHERE date(created_at) >= date('now', '-30 days')
+        AND (${VISIT_CLASS_SQL}) = 'human'
+      GROUP BY path ORDER BY views DESC LIMIT 10`).all();
+    const recentHuman = db.prepare(`
+      SELECT created_at, path, referrer
+      FROM site_visits
+      WHERE (${VISIT_CLASS_SQL}) = 'human'
+      ORDER BY id DESC LIMIT 50`).all();
+
+    // Signup record: tenants with their users, plus the signup_events log.
+    const signupCounts = {
+      tenants: db.prepare('SELECT COUNT(*) AS n FROM tenants').get().n,
+      users: db.prepare('SELECT COUNT(*) AS n FROM users').get().n,
+      signup_events: db.prepare('SELECT COUNT(*) AS n FROM signup_events').get().n,
+    };
+    const tenantRows = db.prepare(`
+      SELECT id, name, plan, subscription_status, trial_ends_at, created_at
+      FROM tenants ORDER BY id`).all();
+    const userRows = db.prepare(`
+      SELECT tenant_id, display_name, email, role, email_verified_at, created_at
+      FROM users ORDER BY id`).all();
+    const tenants = tenantRows.map((t) => ({
+      ...t,
+      users: userRows.filter((u) => u.tenant_id === t.id)
+        .map(({ tenant_id, ...u }) => u),
+    }));
+    const signupEvents = db.prepare(`
+      SELECT s.created_at, t.name AS tenant_name, u.display_name, u.email,
+             s.landing_path
+      FROM signup_events s
+      JOIN tenants t ON t.id = s.tenant_id
+      JOIN users u ON u.id = s.user_id
+      ORDER BY s.id`).all();
+
     return res.json({
       ok: true,
       source: 'manna_site_visits',
       generated_at: new Date().toISOString(),
       windows: { last_30d: last30, all_time: allTime },
+      classes: { last_30d: classes30, all_time: classesAll },
+      windows_human: { last_30d: classes30.human, all_time: classesAll.human },
       top_pages_30d: topPages,
+      top_pages_30d_human: topPagesHuman,
       daily_30d: daily,
       recent,
+      recent_human: recentHuman,
+      signups: { counts: signupCounts, tenants, events: signupEvents },
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message });
