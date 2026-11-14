@@ -209,6 +209,7 @@
     <p data-i18n="dash.header.title" style="font-size:13px;color:var(--text2);margin:4px 0 0;letter-spacing:.12em;text-transform:uppercase">Marketing Command Center</p>
     <p data-i18n="dash.header.tagline" style="margin:6px 0 0">Big agency data, little guy money.</p>
     <p style="margin:6px 0 0"><span data-i18n="dash.header.account_age">&#9201;&#65039; Account age:</span> <strong id="elapsed-clock">&hellip;</strong></p>
+    <p id="last-signin-line" style="margin:6px 0 0;display:none">Last signed in: <strong id="last-signin-value"></strong><span id="last-signin-stay"></span></p>
   </div>
 
   <!-- ============ AI INSTRUCTOR (your guide — top of dashboard) ============ -->
@@ -2015,9 +2016,33 @@ try {
       DASH_START = new Date(j.user.created_at);
       updateElapsedClock();
     }
+    /* Sign-in record: the server only sends last_login_at on the two
+       keyed accounts' own payloads (Michael's order, 2026-11-14), so
+       this line simply never appears for anyone else. */
+    if (j && j.user && j.user.last_login_at) {
+      var lsLine = document.getElementById('last-signin-line');
+      var lsVal = document.getElementById('last-signin-value');
+      if (lsLine && lsVal) {
+        lsVal.textContent = new Date(j.user.last_login_at).toLocaleString();
+        var lsStay = document.getElementById('last-signin-stay');
+        var secs = j.user.last_session_seconds;
+        if (lsStay && typeof secs === 'number' && secs >= 0) {
+          lsStay.textContent = ', ' + stayedWords(secs);
+        }
+        lsLine.style.display = '';
+      }
+    }
   }).catch(function() {});
 } catch (e) {}
 function _plural(n, w){ return MannaI18n.t(n===1 ? 'dash.js.clock.'+w+'_one' : 'dash.js.clock.'+w+'_many', { n: n }); }
+/* Plain-words visit length for the sign-in record line. */
+function stayedWords(secs){
+  if (secs < 60) return 'stayed less than a minute';
+  var m = Math.floor(secs / 60);
+  if (m < 60) return 'stayed ' + m + (m === 1 ? ' minute' : ' minutes');
+  var h = Math.floor(m / 60), rm = m % 60;
+  return 'stayed ' + h + (h === 1 ? ' hour' : ' hours') + (rm ? ' ' + rm + (rm === 1 ? ' minute' : ' minutes') : '');
+}
 function updateElapsedClock(){
   var el = document.getElementById('elapsed-clock');
   if (!el) return;

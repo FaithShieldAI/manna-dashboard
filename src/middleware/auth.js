@@ -41,6 +41,9 @@ function requireAuth(req, res, next) {
   req.tenant = tenant;
   // Lazy-require to avoid circular import (db.js doesn't import middleware).
   req.tdb = require('../db').forTenant(tenant.id);
+  // Sign-in record activity stamp (Michael's order, 2026-11-14): writes
+  // ONLY for the two keyed accounts; a no-op for everyone else.
+  try { require('../lib/signinRecord').stampActivity(req.user); } catch (e) { /* additive only */ }
   next();
 }
 
@@ -75,6 +78,9 @@ function requireAuthPage(req, res, next) {
   req.tenant = tenant;
   // Lazy-require to avoid circular import (db.js doesn't import middleware).
   req.tdb = require('../db').forTenant(tenant.id);
+  // Sign-in record activity stamp (Michael's order, 2026-11-14): writes
+  // ONLY for the two keyed accounts; a no-op for everyone else.
+  try { require('../lib/signinRecord').stampActivity(req.user); } catch (e) { /* additive only */ }
   next();
 }
 

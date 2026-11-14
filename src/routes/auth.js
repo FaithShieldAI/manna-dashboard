@@ -12,6 +12,7 @@ const { unscoped, db, transaction, forTenant } = require('../db');
 const password = require('../lib/password');
 const sessions = require('../lib/sessions');
 const { referralLinkFor } = require('../lib/referral');
+const signinRecord = require('../lib/signinRecord');
 const { authLimiter, loginLimiter } = require('../middleware/rateLimit');
 const { requireAuth } = require('../middleware/auth');
 
@@ -223,6 +224,11 @@ router.post('/login', authLimiter, loginLimiter, async (req, res) => {
     sessions.revokeSession(req.cookies && req.cookies[sessions.COOKIE_NAME]);
     const sess = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('User-Agent') });
     res.cookie(sessions.COOKIE_NAME, sess.token, sessions.cookieOptions());
+    // Sign-in record (Michael's order, 2026-11-14): stamps ONLY the two
+    // keyed accounts (his and Hunter's); a no-op for everyone else.
+    // This is also the stamp for the post-reset flow: reset-password
+    // creates no session, so a reset is always followed by this sign-in.
+    signinRecord.stampSignIn(user);
     const tenant = unscoped.getTenantById(user.tenant_id);
     res.json({
       ok: true,
@@ -239,6 +245,12 @@ router.post('/login', authLimiter, loginLimiter, async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post('/logout', (req, res) => {
   const token = req.cookies && req.cookies[sessions.COOKIE_NAME];
+  // Finalize the sign-in record's visit duration before the session
+  // goes away (keyed accounts only; no-op for everyone else).
+  try {
+    const v = sessions.verifySession(token);
+    if (v && v.user) signinRecord.stampActivity(v.user);
+  } catch (e) { /* record is additive; never break logout */ }
   sessions.revokeSession(token);
   res.clearCookie(sessions.COOKIE_NAME, { path: '/' });
   res.json({ ok: true });
@@ -265,7 +277,16 @@ router.get('/me', requireAuth, (req, res) => {
     const link = referralLinkFor(row && row.armor_bearer_id);
     if (link) tenant.referral_link = link;
   } catch (e) { /* unmigrated DB: no link field, card empty state stands */ }
-  res.json({ ok: true, user: publicUser(req.user), tenant });
+  const meUser = publicUser(req.user);
+  // Sign-in record (Michael's order, 2026-11-14): the two keyed users
+  // see their own record on their own payload; the fields are absent
+  // entirely for every other user.
+  const rec = signinRecord.signinRecordFor(req.user);
+  if (rec) {
+    meUser.last_login_at = rec.last_login_at;
+    meUser.last_session_seconds = rec.last_session_seconds;
+  }
+  res.json({ ok: true, user: meUser, tenant });
 });
 
 // ---------------------------------------------------------------------------
