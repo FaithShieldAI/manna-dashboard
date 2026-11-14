@@ -659,6 +659,54 @@ router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json(
   }
 });
 
+// ---------------------------------------------------------------------------
+// Site visits read (token-gated, same MIGRATION_TOKEN pattern as the sync
+// endpoints above). Added 2026-11-14 on Michael's word ("both"): the
+// private D2RM dashboard's Sites and Visits tabs carry a MannaAi card, and
+// Manna's own first-party page-view log (site_visits, written server-side
+// by src/middleware/visitTracking.js) is the source of record for
+// mannaforinfluencers.com traffic. This read-only door lets the dashboard
+// chain fetch the log's aggregates and recent rows at build time. It
+// returns counts, paths and referrers only: no IPs (stored hashed, never
+// returned), no user agents, no session ids.
+// ---------------------------------------------------------------------------
+router.get('/site-visits-read/:token', requireMigrationToken, (req, res) => {
+  try {
+    const agg = (where) => db.prepare(`
+      SELECT COUNT(*) AS pageviews,
+             COUNT(DISTINCT ip_hash) AS visitors,
+             COUNT(DISTINCT session_id) AS sessions
+      FROM site_visits ${where}`).get();
+    const last30 = agg("WHERE date(created_at) >= date('now', '-30 days')");
+    const allTime = agg('');
+    const topPages = db.prepare(`
+      SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip_hash) AS visitors
+      FROM site_visits
+      WHERE date(created_at) >= date('now', '-30 days')
+      GROUP BY path ORDER BY views DESC LIMIT 10`).all();
+    const daily = db.prepare(`
+      SELECT date(created_at) AS day, COUNT(*) AS pageviews,
+             COUNT(DISTINCT ip_hash) AS visitors, COUNT(DISTINCT session_id) AS sessions
+      FROM site_visits
+      WHERE date(created_at) >= date('now', '-30 days')
+      GROUP BY day ORDER BY day DESC`).all();
+    const recent = db.prepare(`
+      SELECT created_at, path, referrer
+      FROM site_visits ORDER BY id DESC LIMIT 50`).all();
+    return res.json({
+      ok: true,
+      source: 'manna_site_visits',
+      generated_at: new Date().toISOString(),
+      windows: { last_30d: last30, all_time: allTime },
+      top_pages_30d: topPages,
+      daily_30d: daily,
+      recent,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // IP registry sync (token-gated, same MIGRATION_TOKEN pattern as the
 // snapshot sync above): the house IP registry file
 // (files/ip-registry/registry.json, the same source the private
