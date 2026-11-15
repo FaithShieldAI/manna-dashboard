@@ -59,6 +59,16 @@ const CURATED = {
   'armorbearer/en/armor-bearer-twin-final-2026-10-30.mp4': { category: 'influencer', title: 'Armor Bearer Twin Video (Final)' },
   'faithshield/en/faithshield-pastors-final-2026-10-31.mp4': { category: 'promo', title: 'FaithShield for Pastors (Final)' },
   'faithshield/en/faithshield-parents-final-2026-10-31.mp4': { category: 'promo', title: 'FaithShield for Parents (Final)' },
+  // The nine posted November slide videos (2026-11-15 load)
+  'armorbearer/en/armor-bearer-slide-2026-11-11.mp4': { category: 'promo', title: 'Armor Bearer Slide Video, November 11' },
+  'faithshield/en/faithshield-slide-2026-11-11.mp4': { category: 'promo', title: 'FaithShield AI Slide Video, November 11' },
+  'manna/en/manna-slide-2026-11-11.mp4': { category: 'promo', title: 'MannaAi Slide Video, November 11' },
+  'armorbearer/en/armor-bearer-slide-join-2026-11-12.mp4': { category: 'promo', title: 'Armor Bearer Slide Video, Posted November 12' },
+  'faithshield/en/faithshield-slide-join-2026-11-12.mp4': { category: 'promo', title: 'FaithShield AI Slide Video, Posted November 12' },
+  'manna/en/manna-slide-join-2026-11-12.mp4': { category: 'promo', title: 'MannaAi Slide Video, Posted November 12' },
+  'faithshield/en/faithshield-slide-2026-11-15-v3.mp4': { category: 'promo', title: 'FaithShield AI Slide Video, Posted November 15' },
+  'armorbearer/en/armor-bearer-slide-2026-11-15.mp4': { category: 'promo', title: 'Armor Bearer Slide Video, Posted November 15' },
+  'manna/en/manna-automation-slide-2026-11-15-v3.mp4': { category: 'promo', title: 'MannaAi Automation Slide Video, Posted November 15' },
 };
 
 // [product, category, language, title, file_path] — kept for callers/tests
