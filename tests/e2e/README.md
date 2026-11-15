@@ -66,8 +66,8 @@ nothing leaks between tests. The Chromium layer uses a fresh page per test.
 
 ## Pre-deploy gate
 
-Per Michael's standard — **"100% is 100%"** — run before every
-staging/production deploy:
+Run before every staging/production deploy; the full suite must
+pass 100%, no exceptions:
 
 ```bash
 npm test && npm run test:e2e

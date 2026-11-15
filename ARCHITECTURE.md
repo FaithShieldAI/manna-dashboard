@@ -186,7 +186,7 @@ Phase 2 (2026-10-12) — full suite run TWICE, green both times:
 5. **ROI tracking**: `cost_cents`/`revenue_cents` on campaigns + funnels
    (migration 002); `roi_pct`/`profit_cents` on campaign, funnel, and
    overview-rollup responses (`src/lib/roi.js`).
-6. **Plan enforcement** (`src/lib/plans.js`, Stripe STUBBED per Michael):
+6. **Plan enforcement** (`src/lib/plans.js`, Stripe stubbed):
    project caps enforced on `POST /api/sites` (starter: 2, pro: 10 → 403
    `project_limit_reached`); monthly email quota enforced on
    `POST /api/email/log-send` (starter: 5k, pro: 20k → 403
@@ -240,10 +240,10 @@ Phase 2 (2026-10-12) — full suite run TWICE, green both times:
 
 ## 9. Decisions log (Phase 2 additions)
 
-- 2026-10-12: Pricing corrected to Michael's decision: $50 (2 projects/5k
+- 2026-10-12: Pricing set at $50 (2 projects/5k
   emails) / $100 (10 projects/20k emails); no public enterprise tier.
   Earlier $79/$199/$499 figures were superseded.
-- 2026-10-12: Stripe DEFERRAL — per Michael, wire payments later once
+- 2026-10-12: Stripe DEFERRAL — wire payments later once
   everything works. Limits enforced in code now; checkout stubbed.
 - 2026-10-12: Serve-time HTML injection for /app instead of rewriting the
   949-line dashboard — the file stays the generator's artifact; the SaaS
@@ -260,7 +260,7 @@ Phase 2 (2026-10-12) — full suite run TWICE, green both times:
 - 2026-10-12: Amazon SES integrated for transactional email
   (`@aws-sdk/client-ses`). SES when AWS keys + SES_FROM_EMAIL are set,
   stub fallback otherwise; production fail-fast without SES. SES pricing:
-  $0.10/1k emails (Michael's resale plan: $0.20/1k). NOTE: new SES
+  $0.10/1k emails (resale pricing: $0.20/1k). NOTE: new SES
   accounts start in the SANDBOX (verified identities only) — request
   production access and verify SES_FROM_EMAIL before launch.
 - 2026-10-12: CSRF header required on auth mutations too (uniform posture;
