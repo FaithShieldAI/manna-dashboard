@@ -503,10 +503,9 @@
       <div data-i18n="dash.warm.title" class="card-title">&#128293; Warm Clickers</div>
       <div data-i18n="dash.warm.sub" class="card-sub" id="w-warm-sub">Subscribers who actually clicked a link &mdash; your hottest retargeting leads</div>
     </div></div>
-    <div class="table-wrap"><table>
-      <tr><th data-i18n="dash.warm.col_segment">Segment</th><th data-i18n="dash.warm.col_clickers" class="n">Clickers</th><th data-i18n="dash.warm.col_share" class="n">Share</th></tr>
-      <tbody id="w-warm-rows"><tr><td data-i18n="dash.warm.empty" colspan="3" class="empty">No warm clickers yet &mdash; they appear once subscribers start clicking your links.</td></tr></tbody>
-    </table></div>
+    <div id="w-warm-body">
+      <div data-i18n="dash.warm.empty" class="empty">No warm clickers yet &mdash; they appear once subscribers start clicking your links.</div>
+    </div>
   </div>
 
   </div><!-- /panel-warm -->
@@ -1259,22 +1258,54 @@ function loadSites(){
 
 /* ---------- email windows ---------- */
 function wFmtInt(v){ return (v===null||v===undefined) ? '\u2014' : Number(v).toLocaleString('en-US'); }
-function wWarmRowsHtml(warm){
-  warm = warm || {};
-  var total = warm.total || 0, byLang = warm.by_lang || {};
-  if (!total) return '<tr><td colspan="3" class="empty">' + MannaI18n.t('dash.js.warm.empty') + '</td></tr>';
-  var langs = Object.keys(byLang).sort(function(a,b){ return byLang[b]-byLang[a]; });
-  var rows = '';
-  langs.forEach(function(lang){
-    var c = byLang[lang];
-    rows += '<tr><td class="subj">'+esc(lang)+'</td>'
-      + '<td class="n" style="color:var(--gold);font-weight:700">'+wFmtInt(c)+'</td>'
-      + '<td class="n">'+(c/total*100).toFixed(1)+'%</td></tr>';
-  });
-  rows += '<tr style="border-top:2px solid var(--border)"><td class="subj"><strong>' + MannaI18n.t('dash.js.warm.total') + '</strong></td>'
-    + '<td class="n"><strong>'+wFmtInt(total)+'</strong></td><td class="n"><strong>100%</strong></td></tr>';
-  return rows;
+/* ---------- warm leads (per-recipient, by line) ---------- */
+/* The Warm Leads tab renders GET /api/email/warm-leads: the same
+   per-recipient list the private dashboard shows, mirrored from the
+   mail-truth chain (migration 039). It no longer reads the email
+   windows' by-language warm fields, which froze at zero in Oct 2026. */
+function wWarmLast(iso){
+  if (!iso) return '\u2014';
+  var d = new Date(iso);
+  if (isNaN(d)) return esc(iso);
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 }
+function loadWarmLeads(){
+  var body = document.getElementById('w-warm-body');
+  if (!body) return;
+  fetch('/api/email/warm-leads', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
+    if (!j || !j.ok || !j.segments || !j.segments.length) {
+      body.innerHTML = '<div class="empty">' + MannaI18n.t('dash.js.warm.empty') + '</div>';
+      return;
+    }
+    var t = j.totals || {};
+    var sub = document.getElementById('w-warm-sub');
+    if (sub) sub.textContent = MannaI18n.t('dash.js.warm.totals', { warm: wFmtInt(t.warm), clickers: wFmtInt(t.clickers), tracked: wFmtInt(t.tracked) });
+    var html = '';
+    j.segments.forEach(function(s){
+      html += '<div class="card-header" style="margin-top:16px"><div>'
+        + '<div class="card-title" style="font-size:15px">' + esc(s.label) + '</div>'
+        + '<div class="card-sub">' + MannaI18n.t('dash.js.warm.segment_summary', { warm: wFmtInt(s.warm), tracked: wFmtInt(s.tracked) }) + (s.note ? ' \u00b7 ' + esc(s.note) : '') + '</div>'
+        + '</div></div>';
+      html += '<div class="table-wrap"><table><tr>'
+        + '<th>' + MannaI18n.t('dash.warm.col_name') + '</th>'
+        + '<th>' + MannaI18n.t('dash.warm.col_email') + '</th>'
+        + '<th class="n">' + MannaI18n.t('dash.email.col_opens') + '</th>'
+        + '<th class="n">' + MannaI18n.t('dash.email.col_clicks') + '</th>'
+        + '<th>' + MannaI18n.t('dash.warm.col_last') + '</th></tr>';
+      s.leads.forEach(function(l){
+        html += '<tr><td class="subj">' + esc(l.name || '') + '</td>'
+          + '<td>' + esc(l.email) + '</td>'
+          + '<td class="n">' + (l.opens == null ? '\u2014' : wFmtInt(l.opens)) + '</td>'
+          + '<td class="n" style="color:var(--gold);font-weight:700">' + (l.clicks == null ? '\u2014' : wFmtInt(l.clicks)) + '</td>'
+          + '<td>' + wWarmLast(l.last_activity) + '</td></tr>';
+      });
+      html += '</table></div>';
+    });
+    if (j.unwired_note) html += '<div class="card-sub" style="margin-top:12px">' + esc(j.unwired_note) + '</div>';
+    body.innerHTML = html;
+  }).catch(function(){ /* fetch failed: leave the empty state, never invent numbers */ });
+}
+loadWarmLeads();
 function setRange(r){
   var w = EMAIL_WINDOWS[r];
   if (!w) return;
@@ -1290,9 +1321,6 @@ function setRange(r){
   set('w-range-sub', MannaI18n.t('dash.js.email.window_sub', { label: (w.label || r) }));
   var empty = document.getElementById('w-empty');
   if (empty) empty.style.display = (!w.sent) ? '' : 'none';
-  var wr = document.getElementById('w-warm-rows');
-  if (wr) wr.innerHTML = wWarmRowsHtml(w.warm || {});
-  set('w-warm-sub', MannaI18n.t('dash.js.email.warm_sub', { label: (w.label||r) }));
 }
 document.querySelectorAll('.range-tab').forEach(function(b){
   b.addEventListener('click', function(){ setRange(b.getAttribute('data-range')); });

@@ -503,7 +503,8 @@ router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
       'funnels', 'funnel_stages', 'influencers', 'ip_assets', 'social_accounts',
       'goals', 'tenant_usage', 'collection_jobs', 'tenant_onboarding',
       'connected_socials', 'email_templates', 'social_templates',
-      'content_items', 'content_postings', 'pr_events'];
+      'content_items', 'content_postings', 'pr_events',
+      'warm_lead_segments', 'warm_leads', 'warm_lead_sync_state'];
     
     const result = {};
     for (const t of tables) {
@@ -898,6 +899,168 @@ router.post('/ip-registry-sync/:token', requireMigrationToken, express.json({ li
       'SELECT id, title, description, asset_type, status, content_hash, created_at FROM ip_assets WHERE tenant_id = ? ORDER BY created_at DESC'
     ).all(tenantId);
     res.json({ ok: true, tenant_id: tenantId, count: rows.length, assets: rows });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+// Warm leads sync (token-gated, same MIGRATION_TOKEN pattern as the IP
+// registry sync above): the mail-truth chain computes the per-recipient
+// warm list (warm = opened or clicked) from the sources that actually
+// hold per-person engagement — the PR tracking export and the
+// preserved Kit per-subscriber records — segmented by line, and posts
+// it here. Replace-all per sync: the chain stays the single source of
+// truth and this app holds its copy (migration 039 tables), so the
+// Warm Leads tab and the Overview warm count show the same people and
+// counts as the private dashboard instead of the email windows'
+// retired by-language warm fields.
+function _cleanWarmLead(l, i, j) {
+  const bad = (field) => {
+    const err = new Error(`invalid_segment:${i}.lead:${j}.${field}`);
+    err.status = 400;
+    throw err;
+  };
+  if (!l || typeof l !== 'object' || Array.isArray(l)) bad('lead');
+  const email = typeof l.email === 'string' ? l.email.trim().toLowerCase() : '';
+  if (!email || email.length > 254 || !email.includes('@') || /\s/.test(email)) bad('email');
+  let name = null;
+  if (l.name !== undefined && l.name !== null) {
+    if (typeof l.name !== 'string' || l.name.length > 200) bad('name');
+    name = l.name.trim() || null;
+  }
+  const count = (v, field) => {
+    if (v === undefined || v === null) return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0 || n > 100000000) bad(field);
+    return n;
+  };
+  const opens = count(l.opens, 'opens');
+  const clicks = count(l.clicks, 'clicks');
+  if (!((opens || 0) > 0 || (clicks || 0) > 0)) bad('not_warm');
+  let lastActivity = null;
+  if (l.last_activity !== undefined && l.last_activity !== null) {
+    if (typeof l.last_activity !== 'string' || l.last_activity.length > 40) bad('last_activity');
+    lastActivity = l.last_activity || null;
+  }
+  return { email, name, opens, clicks, lastActivity };
+}
+
+function _cleanWarmSegment(s, i) {
+  const bad = (field) => {
+    const err = new Error(`invalid_segment:${i}.${field}`);
+    err.status = 400;
+    throw err;
+  };
+  if (!s || typeof s !== 'object' || Array.isArray(s)) bad('segment');
+  if (typeof s.key !== 'string' || !/^[a-z0-9_]{1,40}$/.test(s.key)) bad('key');
+  const label = typeof s.label === 'string' ? s.label.trim() : '';
+  if (!label || label.length > 80) bad('label');
+  let note = null;
+  if (s.note !== undefined && s.note !== null) {
+    if (typeof s.note !== 'string' || s.note.length > 500) bad('note');
+    note = s.note;
+  }
+  const tracked = _snapshotCount(s.tracked);
+  if (tracked === null) bad('tracked');
+  if (!Array.isArray(s.leads) || s.leads.length > 5000) bad('leads');
+  const leads = s.leads.map((l, j) => _cleanWarmLead(l, i, j));
+  return { key: s.key, label, note, tracked, leads };
+}
+
+function _warmTotalsForTenant(tenantId) {
+  const seg = db.prepare(
+    'SELECT COUNT(*) AS n, COALESCE(SUM(tracked), 0) AS tracked FROM warm_lead_segments WHERE tenant_id = ?'
+  ).get(tenantId);
+  const warm = db.prepare(
+    'SELECT COUNT(DISTINCT email) AS n FROM warm_leads WHERE tenant_id = ?'
+  ).get(tenantId);
+  const clickers = db.prepare(
+    'SELECT COUNT(DISTINCT email) AS n FROM warm_leads WHERE tenant_id = ? AND clicks > 0'
+  ).get(tenantId);
+  const per = {};
+  for (const r of db.prepare(
+    'SELECT segment_key, COUNT(*) AS n FROM warm_leads WHERE tenant_id = ? GROUP BY segment_key'
+  ).all(tenantId)) {
+    per[r.segment_key] = r.n;
+  }
+  return {
+    totals: { warm: warm.n, clickers: clickers.n, tracked: seg.tracked },
+    segments: per,
+  };
+}
+
+router.post('/warm-leads-sync/:token', requireMigrationToken, express.json({ limit: '5mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenantId = null;
+    if (body.tenant_email) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(String(body.tenant_email));
+      if (!user) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+      tenantId = Number(user.tenant_id);
+    } else if (body.tenant_id !== undefined) {
+      tenantId = Number(body.tenant_id);
+      if (!Number.isInteger(tenantId) || tenantId <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    const tenant = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId);
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    if (!Array.isArray(body.segments) || body.segments.length === 0 || body.segments.length > 20) {
+      return res.status(400).json({ ok: false, error: 'segments_required' });
+    }
+    const segments = body.segments.map((s, i) => _cleanWarmSegment(s, i));
+    const seenKeys = new Set();
+    for (const s of segments) {
+      if (seenKeys.has(s.key)) {
+        return res.status(400).json({ ok: false, error: `duplicate_segment:${s.key}` });
+      }
+      seenKeys.add(s.key);
+    }
+    let computedAt = null;
+    if (body.computed_at !== undefined && body.computed_at !== null) {
+      if (typeof body.computed_at !== 'string' || body.computed_at.length > 40) {
+        return res.status(400).json({ ok: false, error: 'invalid_computed_at' });
+      }
+      computedAt = body.computed_at;
+    }
+    let unwiredNote = null;
+    if (body.unwired_note !== undefined && body.unwired_note !== null) {
+      if (typeof body.unwired_note !== 'string' || body.unwired_note.length > 1000) {
+        return res.status(400).json({ ok: false, error: 'invalid_unwired_note' });
+      }
+      unwiredNote = body.unwired_note;
+    }
+
+    const insSeg = db.prepare(`
+      INSERT INTO warm_lead_segments (tenant_id, segment_key, label, note, tracked)
+      VALUES (?, ?, ?, ?, ?)`);
+    const insLead = db.prepare(`
+      INSERT INTO warm_leads (tenant_id, segment_key, email, name, opens, clicks, last_activity)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    transaction(() => {
+      db.prepare('DELETE FROM warm_leads WHERE tenant_id = ?').run(tenantId);
+      db.prepare('DELETE FROM warm_lead_segments WHERE tenant_id = ?').run(tenantId);
+      for (const s of segments) {
+        insSeg.run(tenantId, s.key, s.label, s.note, s.tracked);
+        for (const l of s.leads) {
+          insLead.run(tenantId, s.key, l.email, l.name, l.opens, l.clicks, l.lastActivity);
+        }
+      }
+      db.prepare(`
+        INSERT INTO warm_lead_sync_state (tenant_id, computed_at, unwired_note)
+        VALUES (?, ?, ?)
+        ON CONFLICT (tenant_id) DO UPDATE SET
+          computed_at = excluded.computed_at,
+          unwired_note = excluded.unwired_note`
+      ).run(tenantId, computedAt, unwiredNote);
+    });
+
+    const stored = _warmTotalsForTenant(tenantId);
+    res.json({ ok: true, tenant_id: tenantId, totals: stored.totals, segments: stored.segments });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }

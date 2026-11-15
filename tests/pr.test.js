@@ -59,9 +59,18 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office, 038 adds user sign-in record', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office, 038 adds user sign-in record, 039 adds warm leads', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 38);
+  assert.equal(v, 39);
+  const warmSegCols = db.prepare('PRAGMA table_info(warm_lead_segments)').all().map(r => r.name);
+  assert.deepEqual(warmSegCols, ['tenant_id', 'segment_key', 'label', 'note', 'tracked'],
+    'warm_lead_segments carries one row per line');
+  const warmLeadCols = db.prepare('PRAGMA table_info(warm_leads)').all().map(r => r.name);
+  assert.deepEqual(warmLeadCols, ['tenant_id', 'segment_key', 'email', 'name', 'opens', 'clicks', 'last_activity'],
+    'warm_leads carries one row per warm person per segment');
+  const warmStateCols = db.prepare('PRAGMA table_info(warm_lead_sync_state)').all().map(r => r.name);
+  assert.deepEqual(warmStateCols, ['tenant_id', 'computed_at', 'unwired_note'],
+    'warm_lead_sync_state carries the last sync stamp per tenant');
   const userCols = db.prepare('PRAGMA table_info(users)').all().map(r => r.name);
   assert.ok(userCols.includes('last_login_at'), 'users carries the sign-in record login stamp');
   assert.ok(userCols.includes('last_activity_at'), 'users carries the sign-in record activity stamp');

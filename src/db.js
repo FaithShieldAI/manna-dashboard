@@ -247,6 +247,52 @@ function forTenant(tenantId) {
         'SELECT window_key, sent, opens, clicks, unsubs, bounces, replies, warm_total, warm_by_lang_json, captured_at FROM email_snapshots WHERE tenant_id = ?'
       ).all(t);
     },
+    // -- warm leads (migration 039) --------------------------------------
+    // Per-recipient warm list mirrored from the mail-truth chain by the
+    // token-gated warm-leads-sync (replace-all per sync). Warm = opened
+    // or clicked. Returns [] until the first sync lands; callers must
+    // treat "no segments" as "not synced yet", never as a real zero.
+    warmLeadSegments() {
+      try {
+        const segs = db.prepare(
+          'SELECT segment_key, label, note, tracked FROM warm_lead_segments WHERE tenant_id = ? ORDER BY segment_key'
+        ).all(t);
+        const leadStmt = db.prepare(`
+          SELECT name, email, opens, clicks, last_activity FROM warm_leads
+          WHERE tenant_id = ? AND segment_key = ?
+          ORDER BY (clicks IS NULL), clicks DESC, (opens IS NULL), opens DESC,
+                   (last_activity IS NULL OR last_activity = ''), last_activity DESC`);
+        return segs.map(s => ({ ...s, leads: leadStmt.all(t, s.segment_key) }));
+      } catch (e) {
+        return []; // pre-migration-039 DB: no warm data, not an error
+      }
+    },
+    warmLeadTotals() {
+      try {
+        const seg = db.prepare(
+          'SELECT COUNT(*) AS n, COALESCE(SUM(tracked), 0) AS tracked FROM warm_lead_segments WHERE tenant_id = ?'
+        ).get(t);
+        if (!seg || !seg.n) return null;
+        const warm = db.prepare(
+          'SELECT COUNT(DISTINCT email) AS n FROM warm_leads WHERE tenant_id = ?'
+        ).get(t);
+        const clickers = db.prepare(
+          'SELECT COUNT(DISTINCT email) AS n FROM warm_leads WHERE tenant_id = ? AND clicks > 0'
+        ).get(t);
+        return { warm: warm.n, clickers: clickers.n, tracked: seg.tracked };
+      } catch (e) {
+        return null; // pre-migration-039 DB
+      }
+    },
+    warmLeadSyncState() {
+      try {
+        return db.prepare(
+          'SELECT computed_at, unwired_note FROM warm_lead_sync_state WHERE tenant_id = ?'
+        ).get(t) || null;
+      } catch (e) {
+        return null;
+      }
+    },
     emailCampaigns(limit = 50, { product, language, audience } = {}) {
       let sql = 'SELECT id, name, provider, product, language, audience, sent, opens, clicks, unsubs, bounces, sent_at, cost_cents, revenue_cents FROM email_campaigns WHERE tenant_id = ?';
       const params = [t];

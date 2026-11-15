@@ -56,6 +56,37 @@ router.get('/windows', (req, res) => {
   res.json({ ok: true, source: 'snapshot', windows });
 });
 
+// GET /api/email/warm-leads — the per-recipient warm list (migration
+// 039), mirrored from the mail-truth chain by the token-gated
+// warm-leads-sync: people who opened or clicked, segmented by line,
+// ranked clicks, then opens, then most recent activity. Same people
+// and counts as the private dashboard's Warm Leads panel. A tenant
+// with no sync yet gets empty segments and null totals, never a
+// fabricated zero presented as data.
+router.get('/warm-leads', (req, res) => {
+  const segments = req.tdb.warmLeadSegments();
+  const totals = req.tdb.warmLeadTotals();
+  const state = req.tdb.warmLeadSyncState();
+  res.json({
+    ok: true,
+    computed_at: state ? state.computed_at : null,
+    unwired_note: state ? state.unwired_note : null,
+    totals,
+    segments: segments.map(s => ({
+      key: s.segment_key,
+      label: s.label,
+      note: s.note,
+      tracked: s.tracked,
+      warm: s.leads.length,
+      clickers: s.leads.filter(l => (l.clicks || 0) > 0).length,
+      leads: s.leads.map(l => ({
+        name: l.name, email: l.email, opens: l.opens,
+        clicks: l.clicks, last_activity: l.last_activity,
+      })),
+    })),
+  });
+});
+
 router.get('/campaigns', (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
   const { product, language, audience } = req.query;

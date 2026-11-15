@@ -16,6 +16,12 @@ router.get('/', (req, res) => {
   const liveCollected = tdb.leadTotal();
   const snapshots = tdb.emailSnapshots();
   const all = snapshots.find(s => s.window_key === 'all') || {};
+  // Warm count (2026-11-15): the per-recipient warm list (migration
+  // 039, mirrored from the mail-truth chain) is the real count when a
+  // sync has landed for this tenant. The snapshots' warm_total is the
+  // retired by-language field (frozen at 0 since Oct 2026) and is only
+  // a fallback for tenants the chain has never synced.
+  const warmTotals = tdb.warmLeadTotals();
   const sites = tdb.listSites();
   const social = tdb.socialAccounts();
   const influencerCounts = tdb.influencerCategoryCounts();
@@ -48,7 +54,7 @@ router.get('/', (req, res) => {
       clicks: all.clicks || 0,
       openRate: all.sent ? +((100 * all.opens / all.sent).toFixed(1)) : 0,
       clickRate: all.sent ? +((100 * all.clicks / all.sent).toFixed(1)) : 0,
-      warmTotal: all.warm_total || 0,
+      warmTotal: warmTotals ? warmTotals.warm : (all.warm_total || 0),
     },
     roi: roiTotal,
     counts: {
