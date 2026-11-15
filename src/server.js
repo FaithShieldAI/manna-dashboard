@@ -339,7 +339,7 @@ try {
   throw e;
 }
 
-// Seed Michael's real contacts on startup (if not already present)
+// Seed the house contacts on startup (if not already present)
 try {
   const { seedInfluencers } = require('../scripts/seed-contacts');
   Promise.resolve(seedInfluencers()).catch(e => {
@@ -350,7 +350,7 @@ try {
 }
 
 // Register shipped media-library films into content_items on startup
-// (Michael, 2026-10-31: the final films live in Manna's Content Library)
+// (2026-10-31: the final films live in Manna's Content Library)
 if (process.env.MANNA_SKIP_MEDIA_SEED !== '1') {
   try {
     const { seedMediaLibrary } = require('./lib/mediaLibrarySeed');
@@ -363,7 +363,7 @@ if (process.env.MANNA_SKIP_MEDIA_SEED !== '1') {
 }
 
 // Import the press connections list into the house tenant's PR tab
-// (Michael, 2026-11-01: "The list of connections goes there"). The
+// (2026-11-01: the connections list belongs in the PR tab). The
 // seeder is a no-op until ~/workspace/press/targets-2026-11-01.md
 // exists, and idempotent once it does.
 if (process.env.MANNA_SKIP_PR_SEED !== '1') {

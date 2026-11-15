@@ -8,7 +8,7 @@
 -- 2. Add 'failed' to drip_enrollments.status so the drip worker can mark
 --    enrollments that exhausted retries without silently dropping them.
 -- 3. provisioning_log: audit trail for influencer auto-provisioning events
---    (Michael: log the provisioning event).
+--    (log the provisioning event).
 
 PRAGMA foreign_keys = OFF;
 

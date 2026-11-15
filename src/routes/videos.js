@@ -17,7 +17,7 @@
  *           mirrors google_not_configured in socialConnect)
  *        -> 403 purchase-prompt contract at the cap / without the feature
  *
- * Entitlement (server-side, at job creation — Michael, 2026-10-25):
+ * Entitlement (server-side, at job creation — 2026-10-25):
  *   trial tenants (subscription_status !== 'active', ANY plan):
  *     5 videos TOTAL across the trial, standard engine only.
  *   paid heavy10 / heavy30: 10 / 30 videos per calendar month
@@ -46,7 +46,7 @@ const videogen = require('../lib/videogen');
 
 const router = express.Router();
 
-const TRIAL_VIDEO_LIMIT = 5; // Michael, 2026-10-25: 5 across the whole trial
+const TRIAL_VIDEO_LIMIT = 5; // 2026-10-25: 5 across the whole trial
 const MAX_SCRIPT_CHARS = 1000;
 
 // Generation costs real money per call; bound request rate per tenant
@@ -209,7 +209,7 @@ router.post('/jobs', createLimiter, async (req, res) => {
 
   // Entitlement + caps, enforced BEFORE any provider call or job row
   // consumes allowance. Rejections carry the purchase-prompt contract
-  // (Michael, 2026-10-25): upgrade_required + limit_name 'videos' and
+  // (2026-10-25): upgrade_required + limit_name 'videos' and
   // the numbers the prompt renders — enforcement itself is unchanged.
   const ent = videoEntitlement(req);
   if (!ent.feature) {

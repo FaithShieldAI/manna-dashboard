@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Family office leads (Michael, 2026-11-08): investor lead collection
+ * Family office leads (2026-11-08): investor lead collection
  * runs through MannaAi — the token-gated operator sync
  * (POST /api/auth/lead-collect-sync/:token) runs Manna's own web-list
  * collector on the server and files the leads under the new
@@ -165,7 +165,7 @@ test('lead-collect-sync reject pulls a lead at the vetting stage; job inboxes ne
   // The fixture page also publishes jobs@ and careers@ addresses;
   // the collect test above filed exactly one lead (hello@), so the
   // job-inbox filter held. Here: reject flow for a row like the
-  // HR inbox Michael ordered out (2026-11-08).
+  // HR inbox excluded by rule (2026-11-08).
   const c = await register('fo-reject@example.org');
   const me = await c.get('/api/auth/me');
   const { forTenant } = require('../src/db');

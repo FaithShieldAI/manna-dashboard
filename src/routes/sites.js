@@ -67,7 +67,7 @@ router.post('/', (req, res) => {
   const plan = getPlan(req.tenant.plan) || getPlan('starter');
   const used = req.tdb.countSites();
   if (plan.projects != null && used >= plan.projects) {
-    // Limit prompt contract (Michael, 2026-10-25): clients key on
+    // Limit prompt contract (2026-10-25): clients key on
     // `upgrade_required` and render the purchase prompt (headline + limit
     // detail + Purchase button -> plans) instead of a dead-end error.
     // Enforcement is unchanged — the extra project is still refused.

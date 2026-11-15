@@ -1,8 +1,8 @@
 -- D2RM Dashboard SaaS — Migration 031: PR (press connections, releases, pitches)
 --
--- Michael (2026-11-01): "This will require a PR tab in D2RM dashboard,
--- not for Manna yet, although it may migrate." And: "The list of
--- connections goes there."
+-- Scope (2026-11-01): the PR tab lives in the D2RM dashboard, not
+-- in Manna yet, although it may migrate. The list of connections
+-- goes in the PR tab.
 --
 -- The PR section lives in the private D2RM dashboard view only. Every
 -- API route under /api/pr is gated to admin/whitelisted users (see

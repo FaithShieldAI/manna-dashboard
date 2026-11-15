@@ -1,7 +1,7 @@
 'use strict';
 /**
- * Affiliate arsenal preload — "they join Armor Bearer and they get
- * their guns already loaded" (Michael, 2026-10-25).
+ * Affiliate arsenal preload — a new affiliate tenant arrives fully
+ * loaded (rule set 2026-10-25).
  *
  * When an influencer tenant (plan='influencer', provisioned by the
  * Armor Bearer webhook) exists, it must arrive PRELOADED with the full

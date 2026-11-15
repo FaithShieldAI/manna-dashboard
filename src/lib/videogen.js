@@ -17,8 +17,8 @@
  * on the standard engine ONLY. PREMIUM SLOT: paid tiers may later get
  * the Avatar IV/V-class engine — that is a second engine constant plus
  * a per-plan pick at create time in the route, and provider payload
- * differences belong in heygenProvider below. Not built now (Michael,
- * 2026-10-25: standard for trials; premium is a later paid-tier step).
+ * differences belong in heygenProvider below. Not built now
+ * (2026-10-25: standard engine for trials; premium is a later paid-tier step).
  *
  * Provider interface (also what tests inject via _setProviderForTests):
  *   createVideo({ script, avatarKey, voiceKey })

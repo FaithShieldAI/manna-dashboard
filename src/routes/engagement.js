@@ -8,8 +8,8 @@
  *                                       user to edit)
  * POST /api/engagement/ab              {name, variant_a_template,
  *                                       variant_b_template, split_pct}
- *                                       A/B tests do BOTH kinds (Michael,
- *                                       2026-10-31): kind 'email' (default,
+ *                                       A/B tests do BOTH kinds
+ *                                       (2026-10-31): kind 'email' (default,
  *                                       template variants, as above) or
  *                                       kind 'video' {name, kind: 'video',
  *                                       variant_a_post_id,
@@ -40,7 +40,7 @@ const express = require('express');
 const { db } = require('../db');
 const { fireFollowup } = require('../lib/scribeFollowup');
 
-// The loop (Michael, 2026-10-31): every recorded move below fires a
+// The loop (2026-10-31): every recorded move below fires a
 // Scribe follow-up — analysis, dictated next move, prepared drafts,
 // and the operator's ask. Fire-and-forget: it never blocks or breaks
 // the move itself.
@@ -71,7 +71,7 @@ router.get('/star', (req, res) => {
     'SELECT id, date, campaign_id, score, created_at FROM star_of_day WHERE tenant_id = ? AND date = ?'
   ).get(t, date);
   if (!star) {
-    // Score = clicks*3 + opens (Michael's engagement weighting); only
+    // Score = clicks*3 + opens (the house engagement weighting); only
     // campaigns that actually sent anything qualify.
     const best = db.prepare(
       `SELECT ${CAMPAIGN_COLS} FROM email_campaigns
@@ -101,7 +101,7 @@ router.get('/star', (req, res) => {
 
 // POST /star/:id/adapt {name?} — duplicate-and-adapt: copies the star's
 // campaign row as a NEW draft (zeroed counters, no sent_at) so the user
-// edits it before sending. (Michael 2026-10-16: user EDITS before send.)
+// edits it before sending. (2026-10-16: user EDITS before send.)
 router.post('/star/:id/adapt', (req, res) => {
   const t = req.tenant.id;
   const id = parseInt(req.params.id, 10);
@@ -134,7 +134,7 @@ router.post('/star/:id/adapt', (req, res) => {
 });
 
 // --- A/B testing ------------------------------------------------------------
-// Two kinds, one board (Michael, 2026-10-31): 'email' tests compare two
+// Two kinds, one board (2026-10-31): 'email' tests compare two
 // email templates (results entered via /results); 'video' tests compare
 // two logged social posts (scoreboard pulled from the postings via /sync).
 
@@ -142,7 +142,7 @@ function getTest(t, id) {
   return db.prepare('SELECT * FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
 }
 
-// Video score: Michael's engagement weighting (Star of the Day: clicks*3)
+// Video score: the house engagement weighting (Star of the Day: clicks*3)
 // extended with the other public engagement counts.
 function videoScore(test, side) {
   return test['clicks_' + side] * 3 + test['likes_' + side] +

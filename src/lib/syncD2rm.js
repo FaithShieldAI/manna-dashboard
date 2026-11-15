@@ -2,8 +2,8 @@
 /**
  * syncD2rm — importable core of the real-D2RM-data sync.
  *
- * Replaces demo/seed data in a Manna tenant with Michael's actual D2RM
- * numbers so Manna shows his real business, not a demo.
+ * Replaces demo/seed data in a Manna tenant with the actual D2RM
+ * numbers so Manna shows the real business data, not a demo.
  *
  * Source: bundled D2RM email database snapshot
  *   (data/d2rm-source.db, committed with the app; override with D2RM_SOURCE_DB)
@@ -72,7 +72,7 @@ const CAMPAIGNS = [
   { name: 'send-batch-1-seniors.csv',                                 provider: 'brevo',      sent: 279, opens: 0,   clicks: 0, unsubs: 0, bounces: 0, sent_at: '2026-10-06' },
 ];
 
-// D2RM portfolio goals (Michael's 2026-10-12 goal set).
+// D2RM portfolio goals (2026-10-12 goal set).
 // email_collection current_value is set at runtime from the live contact count.
 // No 'sustained' goal: Sustained left the suite 2026-10-28 (given to
 // Daniel) and must never be re-planted by this import. Rows already in

@@ -8,7 +8,7 @@
  * contents, falling back to its baked panels when the fetch fails, so
  * a failed git push can no longer stale the page.
  *
- * Read rule (Michael, 2026-11-05: no surface may present stored data
+ * Read rule (2026-11-05: no surface may present stored data
  * as live): the payload carries its own generated_at (the build's
  * compute time). Read paths serve it with that stamp and the page
  * displays it, so staleness is visible, never hidden. FRESH_MS is set

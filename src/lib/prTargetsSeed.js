@@ -29,12 +29,12 @@
  *      Plain "- Key: value" bullets (Contact, Role, Beat, Tier,
  *      Verified, Source) are understood too.
  *
- * CATEGORIES (Michael, 2026-11-01: "Faith-Based" and "Mainstream"):
+ * CATEGORIES (2026-11-01: "Faith-Based" and "Mainstream"):
  * every entry lands on a shelf derived from its tier: tech ->
  * mainstream; faith_major and the faith-tech niche -> faith_based.
  *
- * OWNER RULE (same date): "The ones that don't publish don't get
- * the story." The file's OWNER RULE section names the excluded
+ * OWNER RULE (same date): non-publishing outlets are excluded.
+ * The file's OWNER RULE section names the excluded
  * outlets (bullets ending in EXCLUDED); an entry whose publication
  * matches one, or whose own text says DO NOT PITCH, imports with
  * status 'do_not_pitch': on the list, parked, never pitchable.
@@ -75,7 +75,7 @@ function tierFromText(s) {
   return null;
 }
 
-/** The shelf a tier sits on (Michael's categories, 2026-11-01). */
+/** The shelf a tier sits on (the PR categories, 2026-11-01). */
 function categoryFromTier(tier) {
   return tier === 'tech' ? 'mainstream' : 'faith_based';
 }

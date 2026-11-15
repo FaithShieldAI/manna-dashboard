@@ -1,15 +1,15 @@
 'use strict';
 /**
  * Billing whitelist — these emails bypass all billing/subscription checks
- * across all products. Michael's rule: they see everything, pay nothing.
+ * across all products. House rule: they see everything, pay nothing.
  */
 const WHITELIST = new Set([
-  'michael@faithshield.ai',  // Michael — sees all tenants
-  'mikemixer2002@gmail.com',  // Michael
-  '1faithshieldai@gmail.com',  // Michael
+  'michael@faithshield.ai',  // house owner — sees all tenants
+  'mikemixer2002@gmail.com',  // house owner
+  '1faithshieldai@gmail.com',  // house owner
   'sid.allen@yahoo.com',  // Sid Allen
-  'basedinfaith@mail.com',  // Sid Allen (added 2026-10-31, Michael's order)
-  'support@faithshield.ai',  // Hunter Raines (added 2026-11-14, Michael's order)
+  'basedinfaith@mail.com',  // Sid Allen (added 2026-10-31)
+  'support@faithshield.ai',  // Hunter Raines (added 2026-11-14)
 ]);
 
 function isWhitelisted(email) {

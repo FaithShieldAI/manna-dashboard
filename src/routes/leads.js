@@ -88,9 +88,9 @@ function publicJob(row) {
 }
 
 // Job-inbox local parts: hiring mailboxes are not investor routes.
-// Michael (2026-11-08, on the first family office run landing Blue
-// Trust's employment@ inbox): "No job emails. Keep those out." The
-// family_office ingest skips these at collection time, the same way
+// Rule (2026-11-08, set after the first family office run landed
+// Blue Trust's employment@ inbox): job-inbox addresses are excluded.
+// The family_office ingest skips these at collection time, the same way
 // the collectors skip junk domains.
 const JOB_INBOX_LOCALPARTS = new Set([
   'employment', 'careers', 'career', 'jobs', 'job', 'hr',
@@ -155,7 +155,7 @@ async function runJob(tdb, job) {
     if (job.source === 'youtube') {
       leads = await youtube.collect({ keywords, maxPerKeyword: 8, maxLeads: maxResults, noDelay: false, knownEmails: known });
     } else if (job.source === 'weblist' || job.source === 'family_office') {
-      // family_office (migration 037): Michael's investor-lead
+      // family_office (migration 037): the house investor-lead
       // collection (2026-11-08) — the web-list collector run under its
       // own job source so the leads land in the family_office category
       // (ingestLeads) instead of the influencer pile.

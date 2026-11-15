@@ -1,7 +1,7 @@
 'use strict';
 /**
- * PR tab (Michael, 2026-11-01): a PR section in the private D2RM
- * dashboard. "The list of connections goes there." Not for Manna yet:
+ * PR tab (2026-11-01): a PR section in the private D2RM
+ * dashboard; the connections list lives there. Not for Manna yet:
  * every /api/pr route is gated to the house (owner allowlist from
  * routes/admin.js, or a verified whitelisted email), and a plain
  * tenant account gets 403 everywhere. The gate must not trust the
@@ -414,9 +414,9 @@ test('import endpoint: seeds the caller tenant from PR_TARGETS_FILE, then no-ops
   }
 });
 
-// --- Categories (Michael, 2026-11-01): "Faith-Based" and "Mainstream" ---
+// --- Categories (2026-11-01): "Faith-Based" and "Mainstream" ---
 // The connections list sits on two shelves; releases sit on the same
-// two shelves because "those releases are different"; a pitch
+// two shelves because the shelves carry different releases; a pitch
 // defaults to a release from its target's own shelf.
 
 test('categories: target validation, tier-derived default, filter', async () => {

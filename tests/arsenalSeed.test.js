@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Affiliate arsenal preload tests ("loaded guns", Michael 2026-10-25).
+ * Affiliate arsenal preload tests (full preload rule, 2026-10-25).
  *
  * Proves, against the REAL seed file (data/seed/arsenal-seed.json,
  * generated from the master email-database.db):

@@ -1,6 +1,6 @@
 'use strict';
 /**
- * A/B does both (Michael, 2026-10-31): the engagement A/B board must run
+ * A/B does both (2026-10-31): the engagement A/B board must run
  * video tests (variants = two social postings, scoreboard synced from the
  * postings) alongside the original email template tests.
  */

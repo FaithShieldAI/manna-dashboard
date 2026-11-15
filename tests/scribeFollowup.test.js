@@ -1,6 +1,6 @@
 'use strict';
 /**
- * The loop (Michael, 2026-10-31): a recorded move fires Scribe
+ * The loop (2026-10-31): a recorded move fires Scribe
  * automatically. The follow-up notice carries what happened, the
  * reaction's direction, Scribe's dictated next move with its drafts
  * already prepared, and Scribe's questions. The operator answers the

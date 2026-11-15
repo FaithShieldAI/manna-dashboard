@@ -24,7 +24,7 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
   req.user = verified.user;
-  // Whitelisted partners (Michael's rule 2026-10-18) get full visibility:
+  // Whitelisted partners (house rule, 2026-10-18) get full visibility:
   // treat as admin so they see all tenants' data, like owners do.
   // FIX 2026-10-29 (audit B6): elevation now ALSO requires the account's
   // email to be verified (email_verified_at set). Previously any session
@@ -41,7 +41,7 @@ function requireAuth(req, res, next) {
   req.tenant = tenant;
   // Lazy-require to avoid circular import (db.js doesn't import middleware).
   req.tdb = require('../db').forTenant(tenant.id);
-  // Sign-in record activity stamp (Michael's order, 2026-11-14): writes
+  // Sign-in record activity stamp (2026-11-14): writes
   // ONLY for the two keyed accounts; a no-op for everyone else.
   try { require('../lib/signinRecord').stampActivity(req.user); } catch (e) { /* additive only */ }
   next();
@@ -78,7 +78,7 @@ function requireAuthPage(req, res, next) {
   req.tenant = tenant;
   // Lazy-require to avoid circular import (db.js doesn't import middleware).
   req.tdb = require('../db').forTenant(tenant.id);
-  // Sign-in record activity stamp (Michael's order, 2026-11-14): writes
+  // Sign-in record activity stamp (2026-11-14): writes
   // ONLY for the two keyed accounts; a no-op for everyone else.
   try { require('../lib/signinRecord').stampActivity(req.user); } catch (e) { /* additive only */ }
   next();

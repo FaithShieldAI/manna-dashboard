@@ -1,8 +1,8 @@
--- Migration 037: family_office leads (Michael, 2026-11-08).
+-- Migration 037: family_office leads (2026-11-08).
 --
--- Michael directed family office investor lead collection to run
--- through MannaAi ("Use MannaAi to do this. Saves me approving cards
--- and gets us using MannaAi"), first pass: faith-based family offices
+-- Family office investor lead collection runs through MannaAi
+-- (keeps approvals in one place and exercises the product), first
+-- pass: faith-based family offices
 -- interested in faith tech. Two schema widenings make that collection
 -- a first-class Manna flow instead of a side import:
 --

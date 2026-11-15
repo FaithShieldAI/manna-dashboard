@@ -101,7 +101,7 @@
   .range-tab:hover { border-color:var(--gold); color:var(--text); }
   .range-tab.active { background:linear-gradient(180deg,#f0c876,#9a7433); border-color:var(--gold); color:#1a1206; font-weight:700; }
 
-  /* Main navigation tabs — wrapping rows so every tab is visible with no sideways scrolling (Michael, 2026-11-10) */
+  /* Main navigation tabs — wrapping rows so every tab is visible with no sideways scrolling (2026-11-10) */
   .main-tabs { display:flex; gap:10px; margin:0 0 1.5rem; flex-wrap:wrap; overflow-x:visible;
     border-bottom:2px solid var(--border); padding-bottom:12px;
     scrollbar-width:thin; scrollbar-color:rgba(217,164,65,.55) transparent; -webkit-overflow-scrolling:touch; }
@@ -361,7 +361,7 @@
   })();
   </script>
 
-  <!-- ============ OVERVIEW: D2RM SYNC (Michael/Leon only) ============ -->
+  <!-- ============ OVERVIEW: D2RM SYNC (house accounts only) ============ -->
   <div class="card" id="d2rm-sync-card" style="border:1px solid rgba(217,164,65,.35)">
     <div class="card-header"><div>
       <div data-i18n="dash.overview.sync_title" class="card-title">&#128260; Sync my D2RM data</div>
@@ -462,7 +462,7 @@
   </div>
 
   <!-- ============ EMAIL: VISUAL SEND LOG ============ -->
-  <!-- Michael 2026-10-18: every ad/email sent gets a visual log entry —
+  <!-- Visual send log (2026-10-18): every ad/email sent gets a visual log entry —
        large readable thumbnail, timestamp, and who was targeted. -->
   <div class="card" id="sendlog-card">
     <div class="card-header"><div>
@@ -1159,7 +1159,7 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
     input.value = '';
     send(t);
   });
-  /* Opening message — Michael's words */
+  /* Opening message — fixed house wording */
   addMsg(MannaI18n.t('dash.js.scribe.greeting'), 'bot');
 })();
 
@@ -1322,7 +1322,7 @@ document.querySelectorAll('.range-tab').forEach(function(b){
   }).catch(function(){});
 })();
 
-/* ---------- visual send log (Michael 2026-10-18) ---------- */
+/* ---------- visual send log (2026-10-18) ---------- */
 (function(){
   fetch('/api/email/campaigns?limit=50', { headers: apiH() }).then(function(r){ return r.json(); }).then(function(j){
     var rows = (j && j.ok && j.campaigns) || [];
@@ -2017,7 +2017,7 @@ try {
       updateElapsedClock();
     }
     /* Sign-in record: the server only sends last_login_at on the two
-       keyed accounts' own payloads (Michael's order, 2026-11-14), so
+       keyed accounts' own payloads (2026-11-14), so
        this line simply never appears for anyone else. */
     if (j && j.user && j.user.last_login_at) {
       var lsLine = document.getElementById('last-signin-line');
@@ -2104,9 +2104,9 @@ function siteModalOk(msg){
   document.getElementById('site-modal-err').style.display = 'none';
 }
 /* ---------- plan-limit purchase prompt ----------
-   Michael's directive (2026-10-25): when a user goes past their allowed
+   Plan-limit rule (2026-10-25): when a user goes past their allowed
    usage, prompt them to purchase — never a dead-end error. The headline
-   is his exact wording (dash.js.limit.headline); the detail line names
+   wording is fixed copy (dash.js.limit.headline); the detail line names
    the limit hit and the plan's allowance; the Purchase button takes
    them to the Billing tab (plans/purchase). */
 function gotoPlans(){

@@ -1,8 +1,8 @@
 'use strict';
 /**
  * Media library seed — the automated registration step for Manna's
- * Content Library (Michael, 2026-10-31: finished films are "part of
- * the automated process", not a hand-run chore).
+ * Content Library (2026-10-31: finished films are part of
+ * the automated process, not a hand-run chore).
  *
  * Manna has no upload endpoint; library films ship inside the repo's
  * media/ tree and are registered in content_items so they appear in
@@ -55,7 +55,7 @@ const CURATED = {
   'armorbearer/en/armor-bearer-influencer-ad-male-vo.mp4': { category: 'influencer', title: 'Stop Renting Your Influence (Male VO)' },
   'armorbearer/en/armor-bearer-influencer-ad-female-vo.mp4': { category: 'influencer', title: 'Stop Renting Your Influence (Female VO)' },
   'manna/en/manna-vs-mailerlite-v5.mp4': { category: 'promo', title: 'Manna vs MailerLite' },
-  // The three finals (Michael, 2026-10-31)
+  // The three finals (2026-10-31)
   'armorbearer/en/armor-bearer-twin-final-2026-10-30.mp4': { category: 'influencer', title: 'Armor Bearer Twin Video (Final)' },
   'faithshield/en/faithshield-pastors-final-2026-10-31.mp4': { category: 'promo', title: 'FaithShield for Pastors (Final)' },
   'faithshield/en/faithshield-parents-final-2026-10-31.mp4': { category: 'promo', title: 'FaithShield for Parents (Final)' },

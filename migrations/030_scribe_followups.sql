@@ -1,6 +1,6 @@
 -- D2RM Dashboard SaaS — Migration 030: Scribe follow-ups (the loop)
 --
--- Michael's doctrine (2026-10-31): every recorded move is followed up
+-- Operating rule (2026-10-31): every recorded move is followed up
 -- automatically — Scribe analyzes, dictates the next move, prepares the
 -- drafts, and the operator is notified with the ask. The operator's
 -- only jobs are answering Scribe's questions and pressing OK.

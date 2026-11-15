@@ -2,7 +2,7 @@
 /**
  * Sync REAL D2RM data into a Manna tenant account (CLI).
  *
- * Replaces demo/seed data with Michael's actual D2RM numbers.
+ * Replaces demo/seed data with the actual D2RM numbers.
  *
  * Usage:
  *   node scripts/sync-d2rm-data.js --email michael@faithshield.ai

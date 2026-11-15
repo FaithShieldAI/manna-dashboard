@@ -6,7 +6,7 @@
  * pushed here every ~60s. The payload is the private dashboard
  * builder's EMAIL_WINDOWS shape plus { as_of, sources }.
  *
- * Read rule (Michael, 2026-11-05: no surface may present stored
+ * Read rule (2026-11-05: no surface may present stored
  * snapshots as live): a payload counts as live only while it is
  * FRESH (received within FRESH_MS). Read paths must label what they
  * served — source 'live' with the payload's as_of, or 'snapshot' for

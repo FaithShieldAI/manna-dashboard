@@ -2,8 +2,8 @@
 /**
  * PR section: shared enums and the admin gate.
  *
- * Michael (2026-11-01): the PR tab lives in the D2RM dashboard only,
- * "not for Manna yet, although it may migrate." So every /api/pr route
+ * Scope (2026-11-01): the PR tab lives in the D2RM dashboard only,
+ * not in Manna yet, although it may migrate. So every /api/pr route
  * is gated to the house, using the two mechanisms this codebase
  * already trusts for admin-only surfaces:
  *
@@ -27,8 +27,7 @@
  */
 const { isWhitelisted } = require('./whitelist');
 
-// HARD-CODED, mirroring routes/admin.js. Do not widen without
-// Michael's approval.
+// HARD-CODED, mirroring routes/admin.js. Do not widen.
 const PR_OWNER_EMAILS = new Set([
   'michael@faithshield.ai',
   'leon@faithshield.ai',
@@ -40,9 +39,9 @@ const PR_TIER_LABELS = {
   tech: 'Tech and mainstream',
   niche: 'Faith-tech niche',
 };
-// Categories (Michael, 2026-11-01): the connections list sits on two
-// shelves, his labels: "Faith-Based" and "Mainstream" ("Regular" was
-// ruled "kinda plain"). Tier is the finer classification underneath.
+// Categories (2026-11-01): the connections list sits on two
+// shelves, labeled "Faith-Based" and "Mainstream". Tier is the
+// finer classification underneath.
 // Releases carry the same category: "Those releases are different" —
 // a Faith-Based release leads with the ministry angle, a Mainstream
 // release leads with the tech/agent story.
@@ -50,15 +49,15 @@ const PR_CATEGORIES = ['faith_based', 'mainstream', 'family_office'];
 const PR_CATEGORY_LABELS = {
   faith_based: 'Faith-Based',
   mainstream: 'Mainstream',
-  // Family office investor connections (Michael, 2026-11-08): the
+  // Family office investor connections (2026-11-08): the
   // press connections list also carries the faith-based family
   // offices, on their own shelf, until the investor list gets a home
   // of its own. Migration 037 widens the pr_targets shelf to say so.
   family_office: 'Family Offices',
 };
-// 'do_not_pitch' is the owner's press rule made a status: "The ones
-// that don't publish don't get the story." A target whose pitch route
-// is not published is parked, visible on the list, never pitchable.
+// 'do_not_pitch' is the house press rule made a status: a target
+// whose pitch route is not published does not get pitched; it
+// is parked, visible on the list, never pitchable.
 const TARGET_STATUSES = ['active', 'archived', 'do_not_pitch'];
 const RELEASE_STATUSES = ['draft', 'approved', 'sent', 'archived'];
 const PITCH_STATUSES = ['drafted', 'approved', 'sent', 'replied', 'covered', 'declined', 'no_response'];

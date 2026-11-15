@@ -3,7 +3,7 @@
  * Seat accounting — the single source of truth for "how many logins may
  * this tenant have, and how many does it have?"
  *
- * Model (Michael, 2026-10-29; see src/lib/plans.js SEAT_PRICING):
+ * Model (2026-10-29; see src/lib/plans.js SEAT_PRICING):
  *   every plan includes ONE seat — the owner's login.
  *   extra seats are $25/seat/mo, sold as a quantity-bearing item on the
  *   tenant's Stripe subscription (price env STRIPE_PRICE_SEAT), and they

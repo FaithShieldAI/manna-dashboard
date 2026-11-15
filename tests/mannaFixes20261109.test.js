@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Manna fixes of 2026-11-09 (Michael's approval, one deploy):
+ * Manna fixes of 2026-11-09 (approved set, one deploy):
  *
  *  1. Scribe error surfacing + call hardening:
  *     - a spark_timeout triggers ONE retry with a trimmed payload

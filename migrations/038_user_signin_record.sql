@@ -1,7 +1,7 @@
--- Migration 038: sign-in record columns on users (Michael's order, 2026-11-14).
+-- Migration 038: sign-in record columns on users (2026-11-14).
 --
--- Michael ordered a sign-in record for exactly TWO accounts, his own
--- and Hunter Raines': "just his and mine", "but only those two."
+-- The sign-in record covers exactly TWO keyed accounts
+-- (michael@faithshield.ai and support@faithshield.ai) and no others.
 -- The keying lives in src/lib/signinRecord.js; these columns exist on
 -- every user row but are only ever WRITTEN for the two keyed accounts
 -- and only ever READ for them (their own profile payload). Every other

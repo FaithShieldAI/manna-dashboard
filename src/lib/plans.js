@@ -2,7 +2,7 @@
 /**
  * Plan definitions + limit enforcement.
  *
- * Pricing (Michael, 2026-10-29 — the current shelf; supersedes the
+ * Pricing (2026-10-29 — the current shelf; supersedes the
  * 2026-10-20 two-tier model below it in git history):
  *   starter    — $29.99/mo SALE ($49.99/mo regular): the emailer/scraper/data
  *                tier. 2 projects, 5,000 emails/mo. No video, no social
@@ -12,8 +12,8 @@
  *                (10 projects, 50,000 emails/mo, video + social).
  *   heavy30    — "Manna Heavy 30": $129.99/mo SALE ($189/mo regular):
  *                30 AI videos/mo, otherwise Pro-level limits.
- *   pro        — RETIRED from public sale (Michael, 2026-10-29: "Eliminate
- *                pro and just make it manna heavy"). The plan KEY, its
+ *   pro        — RETIRED from public sale (2026-10-29: the Pro tier
+ *                was folded into Manna Heavy). The plan KEY, its
  *                limits ($69.99 sale / $99.99 regular) and every internal
  *                reference stay intact — influencer/agency definitions and
  *                the feature matrix are expressed as "Pro-level", and
@@ -29,7 +29,7 @@
  *                plan enum so D2RM can assign it manually for custom deals
  *                (the "takeaway sale": prospects must call and ask).
  *
- * Seats (Michael, 2026-10-29): EVERY plan includes ONE seat — the owner's
+ * Seats (2026-10-29): EVERY plan includes ONE seat — the owner's
  * login. Extra team seats are $25/seat/mo on all plans and SHARE the
  * plan's quotas (emails/videos/projects are one pool per subscription —
  * a seat is an extra team login, never its own quotas or project slot).
@@ -61,7 +61,7 @@ const PLANS = {
     special_offer: true,
     projects: 2,                // max sites/projects (separate from seats)
     emails_per_month: 5000,
-    seats_included: 1,          // the owner's login (Michael, 2026-10-29)
+    seats_included: 1,          // the owner's login
     public: true,               // shown on the signup plan picker
   },
   pro: {
@@ -75,10 +75,10 @@ const PLANS = {
     special_offer: true,
     projects: 10,
     emails_per_month: 50000,
-    seats_included: 1,          // the owner's login (Michael, 2026-10-29)
-    // RETIRED from public sale 2026-10-29 (Michael): Manna Heavy replaced
+    seats_included: 1,          // the owner's login
+    // RETIRED from public sale 2026-10-29: Manna Heavy replaced
     // it on the shelf. Key/limits kept — internal logic and existing
-    // tenants still reference 'pro'. Do NOT re-public without his word.
+    // tenants still reference 'pro'. Do NOT re-public.
     public: false,
   },
   heavy10: {
@@ -93,7 +93,7 @@ const PLANS = {
     projects: 10,               // full-featured: Pro-level limits
     emails_per_month: 50000,    // full-featured: Pro-level limits
     videos_per_month: 10,       // the limit that differentiates Heavy
-    seats_included: 1,          // the owner's login (Michael, 2026-10-29)
+    seats_included: 1,          // the owner's login
     public: true,               // shown on the signup plan picker
   },
   heavy30: {
@@ -108,7 +108,7 @@ const PLANS = {
     projects: 10,               // full-featured: Pro-level limits
     emails_per_month: 50000,    // full-featured: Pro-level limits
     videos_per_month: 30,       // the limit that differentiates Heavy
-    seats_included: 1,          // the owner's login (Michael, 2026-10-29)
+    seats_included: 1,          // the owner's login
     public: true,               // shown on the signup plan picker
   },
   influencer: {
@@ -120,7 +120,7 @@ const PLANS = {
     special_offer: false,
     projects: 10,               // Pro-level limits
     emails_per_month: 50000,    // Pro-level limits
-    seats_included: 1,          // the owner's login (Michael, 2026-10-29)
+    seats_included: 1,          // the owner's login
     public: false,              // NEVER shown on the public plan picker or signup
   },
   agency: {
@@ -137,7 +137,7 @@ const PLANS = {
 };
 
 /**
- * Seat pricing (Michael, 2026-10-29): every plan includes ONE seat — the
+ * Seat pricing (2026-10-29): every plan includes ONE seat — the
  * owner's login. Extra team seats cost extraSeatPriceCents/mo EACH, on
  * every plan, and share the plan's quotas (one pool per subscription).
  * The Stripe price for a seat lives in env STRIPE_PRICE_SEAT

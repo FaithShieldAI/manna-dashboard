@@ -1,6 +1,6 @@
 -- Migration 011: visual send log — track which template was used and who was targeted
--- (Michael 2026-10-18: "all of the ads we send need a visual log in Manna AI,
--- time and date stamped and who we targeted")
+-- Requirement (2026-10-18): every ad sent needs a visual log in Manna AI,
+-- time and date stamped, showing who was targeted.
 
 ALTER TABLE email_campaigns ADD COLUMN template_key TEXT; -- e.g. 'pastor-combo-english'
 ALTER TABLE email_campaigns ADD COLUMN target_description TEXT; -- e.g. '9,173 pastors' or '1,991 influencers'

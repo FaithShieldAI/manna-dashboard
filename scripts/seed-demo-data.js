@@ -29,7 +29,7 @@
  *
  * Usage:
  *   node scripts/seed-demo-data.js [tenant-slug]
- *   node scripts/seed-demo-data.js d2rm-media        # Michael (default)
+ *   node scripts/seed-demo-data.js d2rm-media        # house tenant (default)
  *   node scripts/seed-demo-data.js <leon-tenant-slug> # Leon
  *
  * Exit codes: 0 = ok, 1 = tenant not found, 2 = usage/other error.

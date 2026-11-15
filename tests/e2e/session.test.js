@@ -1,6 +1,6 @@
 'use strict';
 /**
- * E2E SESSION tests — the "ultimate check" for the bug Michael hit on
+ * E2E SESSION tests — the "ultimate check" for the bug hit on
  * 2026-10-14: signed in, refreshed the browser, got
  * {"ok":false,"error":"unauthorized"}.
  *

@@ -202,7 +202,7 @@ function insightReply(message, ctx) {
       ctx.social.slice(0, 5).forEach(s => parts.push(`• ${s.platform}/${s.handle}: ${Number(s.followers).toLocaleString()}`));
     }
   } else if (wants('suggest', 'recommend a start', 'recommend where')) {
-    // "Suggest a start" — Michael's concrete 3-step plan for a new Manna user.
+    // "Suggest a start" — the standard concrete 3-step plan for a new Manna user.
     // Actionable: each step names the exact next click.
     const hasSites = (ctx.sites || []).length > 0;
     parts.push(`\u2728 Here's your starting plan:`);

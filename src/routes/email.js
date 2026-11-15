@@ -96,8 +96,8 @@ router.post('/campaigns', (req, res) => {
 // $29.99/$69.99 tiers' 5k/50k monthly limits (src/lib/plans.js) are enforced in one place.
 router.post('/log-send', (req, res) => {
   // Trial users get 100 free emails (fishhook — enough to test the full
-  // flow). Paid plans get their full quota. (Michael, 2026-10-15)
-  // Whitelisted emails (partners) bypass all limits. (Michael, 2026-10-18)
+  // flow). Paid plans get their full quota. (2026-10-15)
+  // Whitelisted emails (partners) bypass all limits. (2026-10-18)
   const { isWhitelisted } = require('../lib/whitelist');
   const userEmail = req.user && req.user.email;
   if (isWhitelisted(userEmail)) {
@@ -114,7 +114,7 @@ router.post('/log-send', (req, res) => {
   const monthKey = currentMonthKey();
   const used = req.tdb.getUsage(monthKey);
   if (effectiveLimit != null && used + count > effectiveLimit) {
-    // Limit prompt contract (Michael, 2026-10-25): going past the allowed
+    // Limit prompt contract (2026-10-25): going past the allowed
     // usage must prompt the user to purchase, never dead-end. Clients key
     // on `upgrade_required` and render the purchase prompt (headline +
     // limit detail + Purchase button -> plans). Enforcement is unchanged —
@@ -193,7 +193,7 @@ router.get('/templates/:key', (req, res) => {
 });
 
 // GET /api/email/templates/:key/preview — renders the template HTML for the
-// visual send log thumbnail (Michael 2026-10-18).
+// visual send log thumbnail (2026-10-18).
 router.get('/templates/:key/preview', (req, res) => {
   const key = String(req.params.key || '').slice(0, 80);
   if (!/^[a-zA-Z0-9_-]+$/.test(key)) {

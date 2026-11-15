@@ -68,7 +68,7 @@ test('syncD2rm GOALS no longer contains sustained, and a sync plants no sustaine
     GOALS.map((g) => g.goal_key).sort(),
     ['armor_bearer', 'email_collection', 'faithshield', 'k_punk', 'mannaai', 'two_fishes'],
   );
-  // The two new suite goals carry the exact definitions Michael set.
+  // The two new suite goals carry the exact settled definitions.
   const byKey = Object.fromEntries(GOALS.map((g) => [g.goal_key, g]));
   assert.deepEqual(byKey.mannaai, {
     goal_key: 'mannaai', label: 'MannaAi users',
@@ -169,7 +169,7 @@ test('goals-cleanup removes only the target tenant sustained row, adds the new s
   assert.deepEqual(r.json.added, ['mannaai', 'two_fishes']);
 
   // Tenant A: sustained gone, prior goals intact, both new goals planted
-  // with Michael's definitions.
+  // with the settled definitions.
   const aKeys = db.prepare('SELECT goal_key FROM goals WHERE tenant_id = ? ORDER BY goal_key')
     .all(a.tenantId).map((x) => x.goal_key);
   assert.deepEqual(aKeys, ['email_collection', 'faithshield', 'mannaai', 'two_fishes']);

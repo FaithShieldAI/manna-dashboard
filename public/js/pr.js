@@ -5,7 +5,7 @@
    tab button stays hidden unless /api/pr/summary answers OK, and every
    /api/pr route is admin-gated server-side besides. Reuses the
    dashboard-template CSS (.card, .btn, .table-wrap, .empty) with
-   neutral accents. Do not restyle without Michael. */
+   neutral accents. Style is fixed; do not restyle. */
 (function () {
   var API = '/api/pr';
   var TIERS = [
@@ -22,7 +22,7 @@
     draft: 'Draft', active: 'Active', archived: 'Archived', do_not_pitch: 'Do not pitch',
   };
   var RELEASE_STATUSES = ['draft', 'approved', 'sent', 'archived'];
-  /* Michael's two shelves (2026-11-01): Faith-Based and Mainstream.
+  /* The two PR shelves (2026-11-01): Faith-Based and Mainstream.
      Targets and releases both carry one; a pitch defaults to a
      release from its target's shelf. */
   var CATEGORIES = [

@@ -224,8 +224,8 @@ router.post('/login', authLimiter, loginLimiter, async (req, res) => {
     sessions.revokeSession(req.cookies && req.cookies[sessions.COOKIE_NAME]);
     const sess = sessions.createSession(user.id, { ip: req.ip, userAgent: req.get('User-Agent') });
     res.cookie(sessions.COOKIE_NAME, sess.token, sessions.cookieOptions());
-    // Sign-in record (Michael's order, 2026-11-14): stamps ONLY the two
-    // keyed accounts (his and Hunter's); a no-op for everyone else.
+    // Sign-in record (2026-11-14): stamps ONLY the two
+    // keyed accounts; a no-op for everyone else.
     // This is also the stamp for the post-reset flow: reset-password
     // creates no session, so a reset is always followed by this sign-in.
     signinRecord.stampSignIn(user);
@@ -278,7 +278,7 @@ router.get('/me', requireAuth, (req, res) => {
     if (link) tenant.referral_link = link;
   } catch (e) { /* unmigrated DB: no link field, card empty state stands */ }
   const meUser = publicUser(req.user);
-  // Sign-in record (Michael's order, 2026-11-14): the two keyed users
+  // Sign-in record (2026-11-14): the two keyed users
   // see their own record on their own payload; the fields are absent
   // entirely for every other user.
   const rec = signinRecord.signinRecordFor(req.user);
@@ -682,7 +682,7 @@ router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json(
 
 // ---------------------------------------------------------------------------
 // Site visits read (token-gated, same MIGRATION_TOKEN pattern as the sync
-// endpoints above). Added 2026-11-14 on Michael's word ("both"): the
+// endpoints above). Added 2026-11-14 (both surfaces): the
 // private D2RM dashboard's Sites and Visits tabs carry a MannaAi card, and
 // Manna's own first-party page-view log (site_visits, written server-side
 // by src/middleware/visitTracking.js) is the source of record for
@@ -691,7 +691,7 @@ router.post('/email-snapshots-sync/:token', requireMigrationToken, express.json(
 // returns counts, paths and referrers only: no IPs (stored hashed, never
 // returned), no raw user agents, no session ids.
 //
-// Extended 2026-11-14 (Michael: the dashboard must show the TRUE picture):
+// Extended 2026-11-14 (the dashboard must show the TRUE picture):
 // the raw log is mostly our own machinery (the keep-warm cron pings /login
 // with curl every ~10 minutes, and PR-tracker /t/ pings pass through this
 // domain), so the door now classifies every row and returns the split:
@@ -1246,10 +1246,10 @@ router.get('/dashboard-payload', (req, res) => {
 // server for one tenant, so VM-side automation collects exactly the
 // way the in-app Leads page does (same job pipeline: validation, the
 // active-job cap, the collector, deduped ingest, a collection_jobs
-// record the tenant sees on the Leads page). Michael (2026-11-08):
+// record the tenant sees on the Leads page). Scope (2026-11-08):
 // family office investor lead collection runs through MannaAi instead
-// of Muse-side browser work ("Use MannaAi to do this. Saves me
-// approving cards and gets us using MannaAi").
+// of external browser work (keeps approvals in one place and
+// exercises the product).
 //
 // The 'family_office' source (migration 037) runs the web-list
 // collector over published seed URLs and files the leads under the
@@ -1331,8 +1331,8 @@ router.get('/lead-collect-sync/:token/jobs/:id', requireMigrationToken, (req, re
 });
 
 // Reject one collected lead (same token gate): the vetting stage of
-// the family office funnel (Michael, 2026-11-08: "No job emails. Keep
-// those out." — the Blue Trust row the collector found is an HR
+// the family office funnel (2026-11-08: job-inbox addresses are
+// excluded — the Blue Trust row the collector found is an HR
 // inbox, not an investor route). Reversible, same as the in-app
 // Vetted tab's reject: status flips to 'rejected', the row and its
 // provenance stay on record, and the dedupe set keeps the address
@@ -1499,7 +1499,7 @@ router.post('/migration-cleanup/:token', requireMigrationToken, express.json(), 
       results['deduped_campaigns'] = { error: e.message };
     }
     
-    // FIX 2026-10-29 (audit B1): ensure Michael + Leon exist — passwords come
+    // FIX 2026-10-29 (audit B1): ensure the two owner accounts exist — passwords come
     // ONLY from OWNER_SEED_PASSWORD_MICHAEL / OWNER_SEED_PASSWORD_LEON;
     // creation is skipped (with a logged warning) when the variable is
     // unset. The hardcoded password these blocks used is deleted.
@@ -1555,7 +1555,7 @@ router.post('/social-accounts-delete/:token', requireMigrationToken, express.jso
 // ---------------------------------------------------------------------------
 // HeyGen voice door + server config read (token-gated, same MIGRATION_TOKEN
 // pattern as the sync endpoints above). Added 2026-11-11: the HeyGen API
-// key lives ONLY in this server's env (Michael's rule), which made every
+// key lives ONLY in this server's env (house rule), which made every
 // voice job depend on a human sign-in to Render or HeyGen. These doors let
 // the house tooling run narration from outside with the migration token
 // while the key never leaves the server. The config read reports SPARK raw

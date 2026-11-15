@@ -71,8 +71,8 @@ if (config.env === 'production' && config.appBaseUrl && !config.appBaseUrl.start
 
 // Mail boot rule (audit B4, revised 2026-10-29): production requires the
 // SES trio — SES is Manna's ONLY mail provider. An earlier B4 revision also
-// accepted BREVO_API_KEY as an alternative; Michael then decided Brevo is
-// eliminated from Manna entirely (Brevo = D2RM contact storage + appeal
+// accepted BREVO_API_KEY as an alternative; Brevo was then eliminated
+// from Manna entirely (Brevo = D2RM contact storage + appeal
 // only, never a Manna dependency), so the Brevo alternative was removed.
 // Neither SES in production = boot failure; non-production gets a loud
 // stub warning instead.

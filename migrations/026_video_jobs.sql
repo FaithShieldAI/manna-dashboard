@@ -11,7 +11,7 @@
 -- Allowance accounting counts rows whose status is NOT 'failed'
 -- (queued / processing / completed): a provider failure never consumed
 -- a render, so it must never consume the tenant's allowance either.
---   trial tenants : 5 videos TOTAL (Michael, 2026-10-25)
+--   trial tenants : 5 videos TOTAL (rule set 2026-10-25)
 --   heavy10/heavy30: 10 / 30 per calendar month (src/lib/plans.js)
 --
 -- provider_job_id is internal bookkeeping for status polling and is

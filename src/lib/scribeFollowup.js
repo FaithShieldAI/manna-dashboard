@@ -1,9 +1,9 @@
 'use strict';
 /**
- * Scribe follow-up trigger — the automation half of Michael's loop
- * doctrine (2026-10-31): "even the minutest move should be followed up
- * with scribe dictating what the next move is", and "automate all of
- * it except that last button press saying OK".
+ * Scribe follow-up trigger — the automation half of the Scribe loop
+ * doctrine (2026-10-31): every recorded move, however small, is
+ * followed up with Scribe dictating the next move, and everything is
+ * automated except the final OK button press.
  *
  * Called fire-and-forget AFTER a recorded move (a posting logged, its
  * metrics updated, A/B results in, a test synced or decided). It runs

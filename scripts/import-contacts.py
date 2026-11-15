@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import Michael's contact databases into Manna's influencers table.
+Import the house contact databases into Manna's influencers table.
 
 Sources:
 - Pastor emails: ~/workspace/goals/faithshield-and-angel-warriors-marketing-funnels/files/*pastor*.csv

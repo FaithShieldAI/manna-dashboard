@@ -2,7 +2,7 @@
 /**
  * Seed influencer contacts on startup (if not already present).
  * Reads data/seed/influencers.csv and inserts the full dataset for
- * EVERY tenant that has no influencers yet (Michael's, Leon's, ...).
+ * EVERY tenant that has no influencers yet (the house tenants, ...).
  * Idempotent: any tenant that already has influencers is skipped.
  *
  * The CSV is parsed once and shared across tenants; per-tenant inserts

@@ -4,7 +4,7 @@
    container passed to EngagementUI.init(containerId).
    Dark theme + gold UI reuse the dashboard-template CSS variables
    (--gold, --gold-bg, .card, .btn, .btn.gold, .table-wrap, .empty).
-   Built by worker D (2026-10-20) — do not restyle without Michael. */
+   Built 2026-10-20. Style is fixed; do not restyle. */
 (function () {
   var API = '/api/engagement';
   var PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'telegram', 'rumble', 'truthsocial'];

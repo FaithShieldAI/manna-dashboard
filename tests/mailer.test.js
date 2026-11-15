@@ -6,7 +6,7 @@
  *  - Config: sesConfigured flag reflects env; production refuses to boot
  *    without the SES trio configured (fail-fast, so signup email can't
  *    silently die). SES is Manna's ONLY mail provider: Brevo was removed
- *    entirely on 2026-10-29 by Michael's decision (an earlier audit-B4
+ *    entirely on 2026-10-29 (an earlier audit-B4
  *    revision had accepted BREVO_API_KEY as an alternative — that contract
  *    is gone; BREVO_API_KEY alone must NOT boot production).
  *  - SES send failure: sendMail falls to the stub and reports

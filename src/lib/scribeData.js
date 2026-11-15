@@ -93,7 +93,7 @@ function collectSignals(tdb) {
       .slice(0, 5);
   } catch (e) { /* keep empty */ }
 
-  // --- content library: the films themselves (Michael, 2026-10-31) -----
+  // --- content library: the films themselves (2026-10-31) -----
   // Scribe watches the library, not just postings: a film counts before
   // it is ever posted (posts: 0), and once postings link back through
   // social_postings.content_item_id, their numbers roll up to the film,
@@ -116,7 +116,7 @@ function collectSignals(tdb) {
   } catch (e) { /* keep empty */ }
 
   // --- the operator's answers to Scribe's questions --------------------
-  // The loop's other half (Michael, 2026-10-31): Scribe asks what the
+  // The loop's other half (2026-10-31): Scribe asks what the
   // data cannot decide; the operator answers; the answers ride into the
   // next analysis so the dictated move accounts for them.
   try {

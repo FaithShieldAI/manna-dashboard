@@ -15,8 +15,8 @@
  * the stub with stubbed=true clearly reported — a failed send is never
  * silently reported as a real send.
  *
- * NOTE (2026-10-29): Brevo was removed from Manna entirely by Michael's
- * decision — Manna's mail runs on Amazon SES only, the owned pipe. Brevo
+ * NOTE (2026-10-29): Brevo was removed from Manna entirely —
+ * Manna's mail runs on Amazon SES only, the owned pipe. Brevo
  * remains D2RM's contact storage + appeal channel; it is never a Manna
  * dependency.
  *
@@ -52,7 +52,7 @@ function isSesConfigured() {
 
 /**
  * ------------------------------------------------------------------
- * AUTO UTM TAGGING (Michael's rule: auto UTM tags on ALL outbound).
+ * AUTO UTM TAGGING (house rule: auto UTM tags on ALL outbound).
  *
  * Every outbound email HTML passes through tagUtm() before it leaves,
  * regardless of provider (SES, stub). The tagging is purely

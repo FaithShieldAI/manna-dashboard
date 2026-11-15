@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Scribe watches the library (Michael, 2026-10-31): collectSignals must
+ * Scribe watches the library (2026-10-31): collectSignals must
  * include the tenant-visible content library films, with each film's
  * posting performance rolled up from social_postings.content_item_id,
  * including films that have never been posted (posts: 0). The numbers

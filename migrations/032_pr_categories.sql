@@ -1,20 +1,19 @@
 -- D2RM Dashboard SaaS — Migration 032: PR categories + do-not-pitch
 --
--- Michael (2026-11-01), two rulings that arrived while migration 031
+-- Two rules (2026-11-01) that arrived while migration 031
 -- was being built:
 --
--- 1. CATEGORIES. The connections list sits on two shelves, his labels:
---    "Faith-Based" and "Mainstream" (he first said "Regular," then
---    ruled it "kinda plain"). pr_targets gains category
+-- 1. CATEGORIES. The connections list sits on two shelves, labeled
+--    "Faith-Based" and "Mainstream". pr_targets gains category
 --    ('faith_based' | 'mainstream'); the finer tier field stays
---    underneath it. pr_releases gains the same category, because:
---    "Those releases are different" — a Faith-Based release leads
+--    underneath it. pr_releases gains the same category, because
+--    the two shelves carry different releases — a Faith-Based release leads
 --    with the ministry angle, a Mainstream release leads with the
 --    tech/agent story, and a pitch pairs a target with a release
 --    from its own shelf by default.
 --
--- 2. DO NOT PITCH. His press rule: "The ones that don't publish
---    don't get the story." Targets whose pitch route is not published
+-- 2. DO NOT PITCH. Press rule: targets that do not publish a
+--    pitch route do not get pitched. Targets whose pitch route is not published
 --    (Axios, CBN News, Religion Unplugged, Ministry Tech, TIME in the
 --    2026-11-01 list) are parked with status 'do_not_pitch': visible
 --    on the list, never pitchable. The pr_targets status CHECK widens

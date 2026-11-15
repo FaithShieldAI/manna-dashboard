@@ -11,7 +11,7 @@
  * /api/stats | /api/realtime | /api/breakdown and map the responses into
  * the JSON shape Manna's sites endpoints have always returned.
  *
- * Failure contract (Michael's LIVE MEANS LIVE rule, 2026-11-10): a
+ * Failure contract (LIVE MEANS LIVE rule, 2026-11-10): a
  * network error, timeout, 5xx or unparseable body throws TrackerDown and
  * callers turn that into a 502, so the UI renders a plain "feed down"
  * state instead of zeros — a broken feed and a true zero must never look

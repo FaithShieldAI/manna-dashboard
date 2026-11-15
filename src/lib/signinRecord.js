@@ -1,11 +1,11 @@
 'use strict';
 /**
- * Sign-in record — Michael's order, 2026-11-14, narrowed twice in his
- * own words: "just his and mine", "but only those two."
+ * Sign-in record — scope fixed 2026-11-14 and narrowed twice:
+ * exactly two keyed accounts, no others.
  *
  * For exactly TWO accounts, Manna keeps a sign-in record:
- *   - Michael Faber  (michael@faithshield.ai, house tenant 1)
- *   - Hunter Raines  (support@faithshield.ai, tenant 5)
+ *   - michael@faithshield.ai  (house tenant 1)
+ *   - support@faithshield.ai  (tenant 5)
  *
  * What is recorded (users columns, migration 038):
  *   last_login_at        — stamped at a successful password sign-in.
@@ -28,8 +28,8 @@ const { db } = require('../db');
 // THE keyed accounts. This set is the whole scope of the feature:
 // two email addresses, named here and nowhere else.
 const SIGNIN_RECORD_EMAILS = new Set([
-  'michael@faithshield.ai', // Michael Faber
-  'support@faithshield.ai', // Hunter Raines
+  'michael@faithshield.ai', // house tenant 1
+  'support@faithshield.ai', // tenant 5
 ]);
 
 function isSigninRecordUser(email) {

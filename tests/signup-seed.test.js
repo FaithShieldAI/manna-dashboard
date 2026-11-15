@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Signup demo-seeding tests (Michael, 2026-10-14):
+ * Signup demo-seeding tests (2026-10-14):
  * a new signup must land in a POPULATED dashboard — the seeder runs
  * for the new tenant only, with no server restart.
  *

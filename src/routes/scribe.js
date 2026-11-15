@@ -27,7 +27,7 @@
  *           the only legal transitions and both are terminal (F5); the
  *           decision is audited (decided_by / decided_at).
  *
- *   The loop (Michael, 2026-10-31): recorded moves fire Scribe
+ *   The loop (2026-10-31): recorded moves fire Scribe
  *   automatically (src/lib/scribeFollowup.js); each leaves a follow-up
  *   notice here — what happened, the reaction's direction, Scribe's
  *   dictated next move with its drafts already prepared, and any

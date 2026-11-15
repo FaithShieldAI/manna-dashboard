@@ -864,7 +864,7 @@ function forTenant(tenantId) {
     // admin/whitelisted users (src/lib/pr.js); the data stays
     // tenant-scoped like everything else so the section can migrate
     // into Manna per-tenant later with no schema change. Targets and
-    // releases both carry Michael's category ('faith_based' |
+    // releases both carry the PR category ('faith_based' |
     // 'mainstream', migration 032): the shelf a connection sits on,
     // and the shelf a release was written for.
     listPrTargets({ tier, category, status, q, limit = 500 } = {}) {

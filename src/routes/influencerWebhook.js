@@ -73,7 +73,7 @@ function logEvent(eventType, email, tenantId, userId, detail) {
 }
 
 /**
- * "Loaded guns" (Michael, 2026-10-25): an influencer tenant arrives
+ * Full preload (2026-10-25): an influencer tenant arrives
  * PRELOADED with the full D2RM contact arsenal (src/lib/arsenalSeed.js).
  * Runs after provisioning commits, on EVERY outcome — a replay therefore
  * also repairs a tenant whose earlier seed failed. Idempotent: a fully

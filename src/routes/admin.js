@@ -9,7 +9,7 @@
  *
  * SECURITY — HARD ALLOWLIST:
  *   Only michael@faithshield.ai and leon@faithshield.ai may call this.
- *   Any other logged-in user gets 403. Michael's real business data must
+ *   Any other logged-in user gets 403. The house business data must
  *   NEVER be synced into another user's (e.g. Ken's) tenant.
  *
  *   The sync itself is tenant-scoped (writes only to req.tenant.id) and
@@ -25,7 +25,7 @@ const { syncD2rmData, BUNDLED_SOURCE_DB } = require('../lib/syncD2rm');
 
 const router = express.Router();
 
-// HARD-CODED. Do not make this configurable without Michael's approval.
+// HARD-CODED. Do not make this configurable; the allowlist is fixed by design.
 const SYNC_ALLOWLIST = new Set([
   'michael@faithshield.ai',
   'leon@faithshield.ai',

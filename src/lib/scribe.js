@@ -21,7 +21,7 @@
  *
  * The act-layer creates DB rows with status 'draft' ONLY. Nothing in
  * this module sends email, posts to social, or publishes anything; a
- * human approves drafts later, per Michael's standing rule.
+ * human approves drafts later, per the standing approval rule.
  *
  * Provenance + storage (F1): analyze() persists its VALIDATED advice
  * server-side (scribe_analyses) and returns an opaque, tenant-bound,

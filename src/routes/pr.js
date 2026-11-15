@@ -27,13 +27,13 @@
  *                                      notes?, sent_at?, reply_at?}
  *   DELETE /api/pr/pitches/:id
  *
- * CATEGORIES (Michael, 2026-11-01): targets and releases both carry
+ * CATEGORIES (2026-11-01): targets and releases both carry
  * a category, 'faith_based' ("Faith-Based") or 'mainstream'
  * ("Mainstream"). A target created without one takes its shelf from
  * its tier (tech -> mainstream, faith tiers -> faith_based). When a
  * pitch is created WITHOUT a release_id, it defaults to the newest
- * unarchived release on the target's own shelf, because "those
- * releases are different": the Faith-Based cut leads with the
+ * unarchived release on the target's own shelf, because the shelves
+ * carry different releases: the Faith-Based cut leads with the
  * ministry angle, the Mainstream cut with the tech story. Naming a
  * release_id explicitly overrides, cross-shelf included.
  *
@@ -42,8 +42,8 @@
  * outright with 400 target_do_not_pitch.
  *
  * ACCESS: admin/whitelisted only (src/lib/pr.js requirePrAdmin). This
- * is the private D2RM dashboard's PR section (Michael, 2026-11-01:
- * "not for Manna yet"); tenant accounts get 403 on every route. Data
+ * is the private D2RM dashboard's PR section (2026-11-01:
+ * not in Manna yet); tenant accounts get 403 on every route. Data
  * is tenant-scoped via req.tdb like every other route family, so the
  * section can migrate into Manna later by lifting the gate.
  *
@@ -294,7 +294,7 @@ router.post('/pitches', (req, res) => {
     }
   } else {
     // Default pairing: the newest unarchived release on the target's
-    // own shelf. "Those releases are different" (Michael, 2026-11-01).
+    // own shelf; the two shelves carry different releases (2026-11-01).
     const shelf = req.tdb.listPrReleases({ category: target.category })
       .find(r => r.status !== 'archived');
     if (shelf) releaseId = shelf.id;

@@ -1,7 +1,6 @@
 'use strict';
 /**
- * Sign-in record tests (Michael's order, 2026-11-14: "just his and
- * mine", "but only those two").
+ * Sign-in record tests (2026-11-14: exactly two keyed accounts).
  *
  * The record covers exactly two keyed accounts:
  *   michael@faithshield.ai  and  support@faithshield.ai
