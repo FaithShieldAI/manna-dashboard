@@ -1066,6 +1066,47 @@ router.post('/warm-leads-sync/:token', requireMigrationToken, express.json({ lim
   }
 });
 
+// Send mail door (token-gated, same MIGRATION_TOKEN pattern as the sync
+// doors above): house send jobs that run without a live session (scheduled
+// sends) post one email here and Manna sends it through its own SES
+// configuration, so the SES keys never leave this app's environment.
+// Body: { to, subject, text, html?, from?, replyTo?, campaign?,
+// templateKey? }. A stubbed result (SES not configured, or SES refused
+// and the mailer fell back to the stub) is returned as 502 so the caller
+// never mistakes a non-send for a send.
+router.post('/send-mail/:token', requireMigrationToken, express.json({ limit: '1mb' }), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const to = typeof body.to === 'string' ? body.to.trim() : '';
+    const subject = typeof body.subject === 'string' ? body.subject : '';
+    const text = typeof body.text === 'string' ? body.text : '';
+    if (!to || to.length > 254 || !to.includes('@') || /\s/.test(to)) {
+      return res.status(400).json({ ok: false, error: 'invalid_to' });
+    }
+    if (!subject || subject.length > 500) {
+      return res.status(400).json({ ok: false, error: 'invalid_subject' });
+    }
+    if (!text || text.length > 200000) {
+      return res.status(400).json({ ok: false, error: 'invalid_text' });
+    }
+    const opt = (v, max) => (typeof v === 'string' && v.length <= max ? v : undefined);
+    const result = await mailer.sendMail({
+      to, subject, text,
+      html: opt(body.html, 400000),
+      from: opt(body.from, 254),
+      replyTo: opt(body.replyTo, 254),
+      campaign: opt(body.campaign, 120),
+      templateKey: opt(body.templateKey, 120),
+    });
+    if (!result.ok || result.stubbed) {
+      return res.status(502).json({ ok: false, error: 'send_stubbed', id: result.id });
+    }
+    return res.json({ ok: true, stubbed: false, id: result.id });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Contacts mirror sync (token-gated, same MIGRATION_TOKEN pattern as the
 // IP registry sync above): the collectors' email database
 // (hidden_files/email-database.db) stays the single source of truth for

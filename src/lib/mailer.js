@@ -178,14 +178,15 @@ function recordOutbox({ id, to, subject, text, html, stubbed }) {
   return msg;
 }
 
-async function sendViaSes({ to, subject, text, html, campaign, templateKey }) {
+async function sendViaSes({ to, subject, text, html, campaign, templateKey, from, replyTo }) {
   // Auto-UTM: every SES email leaves tagged — purely additive, never breaks
   // existing links. tagUtm() is idempotent, so no double-tagging on retries.
   const taggedHtml = tagUtm(html, campaign, templateKey);
   const { SendEmailCommand } = require('@aws-sdk/client-ses');
   const cmd = new SendEmailCommand({
-    Source: config.sesFromEmail,
+    Source: from || config.sesFromEmail,
     Destination: { ToAddresses: [to] },
+    ...(replyTo ? { ReplyToAddresses: [replyTo] } : {}),
     Message: {
       Subject: { Data: subject, Charset: 'UTF-8' },
       Body: {
@@ -215,7 +216,7 @@ function sendViaStub({ to, subject, text, html, campaign, templateKey }) {
   return { ok: true, stubbed: true, id: msg.id };
 }
 
-async function sendMail({ to, subject, text, html, campaign, templateKey }) {
+async function sendMail({ to, subject, text, html, campaign, templateKey, from, replyTo }) {
   if (!to || !subject) throw new Error('sendMail: to and subject are required');
   // UTM tagging applies to every provider branch below (SES, stub):
   // each branch tags its own HTML copy via tagUtm() before sending, so no
@@ -224,7 +225,7 @@ async function sendMail({ to, subject, text, html, campaign, templateKey }) {
   // 1) SES when configured — SES is Manna's only real mail provider.
   if (isSesConfigured()) {
     try {
-      return await sendViaSes({ to, subject, text, html, campaign, templateKey });
+      return await sendViaSes({ to, subject, text, html, campaign, templateKey, from, replyTo });
     } catch (e) {
       // Loud failure: a failed SES send is never reported as a real send —
       // it falls to the stub below with stubbed=true clearly reported.
