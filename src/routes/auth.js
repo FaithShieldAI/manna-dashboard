@@ -1066,20 +1066,121 @@ router.post('/warm-leads-sync/:token', requireMigrationToken, express.json({ lim
   }
 });
 
+// Send lock proof verification for the send-mail door (2026-11-17).
+// The lock lives in ~/workspace/press/send_lock.py: every house send runs
+// against a locked order record whose recipients list, body words and
+// subject are SHA-256 locked at order time. Until now those checks ran
+// only in the sender script, so a caller that skipped the script skipped
+// the checks (the 2026-11-16 sends went out a day early and tracked under
+// an inherited campaign code that way). The door now verifies a proof on
+// EVERY request, with no flag to turn it off. Hashing matches send_lock.py
+// exactly: SHA-256 hex over the UTF-8 bytes (its sha() over .encode() for
+// subject and body text, over the raw recipients.csv file bytes for the
+// list). The door receives one email at a time, so the caller hashes the
+// exact subject and body strings on the wire for that recipient (in a
+// single-body, single-subject order these are the order record's own
+// hashes; in a per-recipient order they are that recipient's slice of the
+// locked aggregate, which send_lock.py verifies in full before sending).
+// For the list, the proof carries the raw recipients.csv text so the door
+// can recompute recipients_sha256 itself and confirm the recipient in
+// hand is on the locked list.
+function _sha256Hex(str) {
+  return crypto.createHash('sha256').update(str, 'utf8').digest('hex');
+}
+
+// Minimal CSV parser (RFC 4180 style quoting). Returns the lowercased
+// values of the email column, or null when there is no email column.
+function _csvEmails(csvText) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  const s = String(csvText);
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (s[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += ch;
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(field); field = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && s[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      rows.push(row); row = [];
+    } else field += ch;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  const nonEmpty = rows.filter(r => r.some(c => String(c).trim() !== ''));
+  if (!nonEmpty.length) return null;
+  const header = nonEmpty[0].map(h => String(h).trim().toLowerCase());
+  const idx = header.indexOf('email');
+  if (idx === -1) return null;
+  return nonEmpty.slice(1)
+    .map(r => String(r[idx] || '').trim().toLowerCase())
+    .filter(Boolean);
+}
+
+// Returns a lock_proof_* error string, or null when the proof is valid
+// for the mail in hand.
+function _lockProofError(body, to, subject, text) {
+  const proof = body.lockProof;
+  if (!proof || typeof proof !== 'object' || Array.isArray(proof)) {
+    return 'lock_proof_missing';
+  }
+  if (typeof proof.order_id !== 'string' || !proof.order_id.trim()) {
+    return 'lock_proof_missing';
+  }
+  if (typeof proof.version !== 'string' || !proof.version.trim()) {
+    return 'lock_proof_version_empty';
+  }
+  const nb = typeof proof.not_before === 'string'
+    ? Date.parse(proof.not_before) : NaN;
+  if (Number.isNaN(nb)) return 'lock_proof_invalid';
+  if (Date.now() < nb) return 'lock_proof_too_early';
+  const hex = /^[0-9a-f]{64}$/;
+  if (!hex.test(proof.subject_sha256 || '')
+      || _sha256Hex(subject) !== proof.subject_sha256) {
+    return 'lock_proof_subject_mismatch';
+  }
+  if (!hex.test(proof.body_sha256 || '')
+      || _sha256Hex(text) !== proof.body_sha256) {
+    return 'lock_proof_body_mismatch';
+  }
+  if (!hex.test(proof.recipients_sha256 || '')
+      || typeof proof.recipients_csv !== 'string'
+      || _sha256Hex(proof.recipients_csv) !== proof.recipients_sha256) {
+    return 'lock_proof_recipients_mismatch';
+  }
+  const emails = _csvEmails(proof.recipients_csv);
+  if (!emails || !emails.includes(String(to).trim().toLowerCase())) {
+    return 'lock_proof_recipients_mismatch';
+  }
+  return null;
+}
+
 // Send mail door (token-gated, same MIGRATION_TOKEN pattern as the sync
 // doors above): house send jobs that run without a live session (scheduled
 // sends) post one email here and Manna sends it through its own SES
 // configuration, so the SES keys never leave this app's environment.
 // Body: { to, subject, text, html?, from?, replyTo?, campaign?,
-// templateKey? }. A stubbed result (SES not configured, or SES refused
-// and the mailer fell back to the stub) is returned as 502 so the caller
-// never mistakes a non-send for a send.
+// templateKey?, lockProof }. lockProof is REQUIRED (see
+// _lockProofError above): a request without a valid locked-order proof
+// is refused 403 before any field validation or sending. A stubbed
+// result (SES not configured, or SES refused and the mailer fell back
+// to the stub) is returned as 502 so the caller never mistakes a
+// non-send for a send.
 router.post('/send-mail/:token', requireMigrationToken, express.json({ limit: '1mb' }), async (req, res) => {
   try {
     const body = req.body || {};
     const to = typeof body.to === 'string' ? body.to.trim() : '';
     const subject = typeof body.subject === 'string' ? body.subject : '';
     const text = typeof body.text === 'string' ? body.text : '';
+    const lockErr = _lockProofError(body, to, subject, text);
+    if (lockErr) {
+      return res.status(403).json({ ok: false, error: lockErr });
+    }
     if (!to || to.length > 254 || !to.includes('@') || /\s/.test(to)) {
       return res.status(400).json({ ok: false, error: 'invalid_to' });
     }
