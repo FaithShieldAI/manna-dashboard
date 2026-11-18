@@ -498,13 +498,32 @@ async function ensureOwnerFromEnv(email, envVar, tenantId) {
 // Migration: export tenant data (backup/self-heal only — token-gated, B1)
 router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
   try {
+    // COMPLETENESS RULE (2026-11-18): this list must cover EVERY table
+    // the product uses. The 2026-11-18 audit found the export silently
+    // missing 30 tables (ab_tests, social_postings, video_jobs, drip_*,
+    // scribe_*, scheduled_sends, facebook_pages, pr_* and more) — a
+    // restore would have lost exactly the engagement data, and no
+    // snapshot could verify those features' production state.
+    // tests/migrationExport.test.js asserts every live table (except
+    // schema_migrations, which the migration runner rebuilds) is here.
     const tables = ['tenants', 'users', 'sites', 'site_daily_metrics', 'site_events',
       'site_visits', 'signup_events', 'email_snapshots', 'email_campaigns',
       'funnels', 'funnel_stages', 'influencers', 'ip_assets', 'social_accounts',
       'goals', 'tenant_usage', 'collection_jobs', 'tenant_onboarding',
       'connected_socials', 'email_templates', 'social_templates',
       'content_items', 'content_postings', 'pr_events',
-      'warm_lead_segments', 'warm_leads', 'warm_lead_sync_state'];
+      'warm_lead_segments', 'warm_leads', 'warm_lead_sync_state',
+      'ab_tests', 'social_postings', 'star_of_day',
+      'drip_campaigns', 'drip_steps', 'drip_enrollments', 'drip_send_log',
+      'scheduled_sends',
+      'scribe_analyses', 'scribe_drafts', 'scribe_followups',
+      'video_jobs', 'video_postings', 'facebook_pages',
+      'pr_targets', 'pr_releases', 'pr_pitches',
+      'podcast_outreach', 'dm_log', 'revenue_ledger', 'cost_ledger',
+      'intake_daily', 'live_windows', 'dashboard_payloads',
+      'faithshield_subscriptions', 'provisioning_log',
+      'email_verification_tokens', 'password_reset_tokens', 'sessions',
+      'tenant_seed_state'];
     
     const result = {};
     for (const t of tables) {
@@ -1160,17 +1179,60 @@ function _lockProofError(body, to, subject, text) {
   return null;
 }
 
+// Metering for the send-mail door (2026-11-18). Until now the door —
+// the path the house's real sends actually use — performed no quota
+// check and wrote no usage, so tenant_usage stayed empty for every
+// tenant and the advertised monthly email cap never limited a real
+// send. The door now meters exactly like POST /api/email/log-send:
+// the tenant's effective limit (trial = 100 when subscription_status
+// is not 'active', else the plan cap) is checked before sending, and
+// one unit of usage is recorded for every email actually sent.
+// Tenant resolution: explicit tenant_email / tenant_id in the body,
+// else the house tenant (the owner account the admin allowlist and
+// the sync doors key on). If no tenant can be resolved the send still
+// proceeds — the door's callers are locked house jobs — but the miss
+// is logged loudly rather than silently unmetered.
+const DOOR_HOUSE_OWNER_EMAIL = 'michael@faithshield.ai';
+
+function _doorTenant(body) {
+  if (body && typeof body.tenant_email === 'string' && body.tenant_email.trim()) {
+    const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+      .get(body.tenant_email.trim());
+    if (user) return db.prepare('SELECT * FROM tenants WHERE id = ?').get(Number(user.tenant_id)) || null;
+    return null;
+  }
+  if (body && body.tenant_id !== undefined && body.tenant_id !== null) {
+    const id = Number(body.tenant_id);
+    if (Number.isInteger(id) && id > 0) {
+      return db.prepare('SELECT * FROM tenants WHERE id = ?').get(id) || null;
+    }
+    return null;
+  }
+  const owner = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+    .get(DOOR_HOUSE_OWNER_EMAIL);
+  if (owner) return db.prepare('SELECT * FROM tenants WHERE id = ?').get(Number(owner.tenant_id)) || null;
+  return null;
+}
+
+function _effectiveEmailLimit(tenant) {
+  const { getPlan } = require('../lib/plans');
+  if (!tenant) return null;
+  if (tenant.subscription_status !== 'active') return 100; // trial cap, as in log-send
+  const plan = getPlan(tenant.plan) || getPlan('starter');
+  return plan ? plan.emails_per_month : null; // null = unlimited (agency)
+}
+
 // Send mail door (token-gated, same MIGRATION_TOKEN pattern as the sync
 // doors above): house send jobs that run without a live session (scheduled
 // sends) post one email here and Manna sends it through its own SES
 // configuration, so the SES keys never leave this app's environment.
 // Body: { to, subject, text, html?, from?, replyTo?, campaign?,
-// templateKey?, lockProof }. lockProof is REQUIRED (see
-// _lockProofError above): a request without a valid locked-order proof
-// is refused 403 before any field validation or sending. A stubbed
-// result (SES not configured, or SES refused and the mailer fell back
-// to the stub) is returned as 502 so the caller never mistakes a
-// non-send for a send.
+// templateKey?, lockProof, tenant_email?, tenant_id? }. lockProof is
+// REQUIRED (see _lockProofError above): a request without a valid
+// locked-order proof is refused 403 before any field validation or
+// sending. A stubbed result (SES not configured, or SES refused and
+// the mailer fell back to the stub) is returned as 502 so the caller
+// never mistakes a non-send for a send.
 router.post('/send-mail/:token', requireMigrationToken, express.json({ limit: '1mb' }), async (req, res) => {
   try {
     const body = req.body || {};
@@ -1190,6 +1252,28 @@ router.post('/send-mail/:token', requireMigrationToken, express.json({ limit: '1
     if (!text || text.length > 200000) {
       return res.status(400).json({ ok: false, error: 'invalid_text' });
     }
+    // Quota check (2026-11-18): same effective-limit rule as log-send.
+    const { currentMonthKey } = require('../lib/plans');
+    const doorTenant = _doorTenant(body);
+    const monthKey = currentMonthKey();
+    if (doorTenant) {
+      const limit = _effectiveEmailLimit(doorTenant);
+      const used = forTenant(doorTenant.id).getUsage(monthKey);
+      if (limit != null && used + 1 > limit) {
+        return res.status(403).json({
+          ok: false,
+          error: doorTenant.subscription_status !== 'active'
+            ? 'trial_email_limit_reached' : 'email_quota_exceeded',
+          upgrade_required: true,
+          plan: doorTenant.plan,
+          limit, used, requested: 1,
+          remaining: Math.max(0, limit - used),
+        });
+      }
+    } else {
+      // eslint-disable-next-line no-console
+      console.error('[send-mail door] no tenant resolved — send proceeds UNMETERED');
+    }
     const opt = (v, max) => (typeof v === 'string' && v.length <= max ? v : undefined);
     const result = await mailer.sendMail({
       to, subject, text,
@@ -1202,7 +1286,97 @@ router.post('/send-mail/:token', requireMigrationToken, express.json({ limit: '1
     if (!result.ok || result.stubbed) {
       return res.status(502).json({ ok: false, error: 'send_stubbed', id: result.id });
     }
+    // Record the send against the tenant's monthly meter (real sends
+    // only — a stubbed result means zero emails left the building).
+    if (doorTenant) {
+      try {
+        forTenant(doorTenant.id).addUsage(monthKey, 1);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[send-mail door] usage write failed:', e.message);
+      }
+    }
     return res.json({ ok: true, stubbed: false, id: result.id });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Tenant plan door (token-gated, 2026-11-18): the staff activation
+// mechanism. Quota paths key off subscription_status, not just plan —
+// a tenant left 'trialing' is capped at 100 emails and 5 videos no
+// matter what plan it carries (the audit's activation trap). Activating
+// a customer (e.g. the hackathon prize winner) means setting BOTH the
+// plan and subscription_status='active' here, then reading the
+// entitlements back from this response (and from the tenant's own
+// /api/billing/ + /api/videos/catalogue) as proof.
+// Body: { tenant_email | tenant_id, plan?, subscription_status?,
+//         extra_seats? } — at least one field to change is required.
+const TENANT_PLAN_STATUSES = ['trialing', 'active', 'past_due', 'canceled', 'incomplete'];
+router.post('/tenant-plan/:token', requireMigrationToken, express.json({ limit: '64kb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    let tenant = null;
+    if (typeof body.tenant_email === 'string' && body.tenant_email.trim()) {
+      const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+        .get(body.tenant_email.trim());
+      if (user) tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(Number(user.tenant_id));
+    } else if (body.tenant_id !== undefined && body.tenant_id !== null) {
+      const id = Number(body.tenant_id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ ok: false, error: 'invalid_tenant_id' });
+      }
+      tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(id);
+    } else {
+      return res.status(400).json({ ok: false, error: 'tenant_required' });
+    }
+    if (!tenant) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+
+    const { PLANS, getPlan } = require('../lib/plans');
+    const sets = [];
+    const vals = [];
+    if (body.plan !== undefined) {
+      if (typeof body.plan !== 'string' || !PLANS[body.plan]) {
+        return res.status(400).json({ ok: false, error: 'invalid_plan', valid: Object.keys(PLANS) });
+      }
+      sets.push('plan = ?'); vals.push(body.plan);
+    }
+    if (body.subscription_status !== undefined) {
+      if (!TENANT_PLAN_STATUSES.includes(body.subscription_status)) {
+        return res.status(400).json({ ok: false, error: 'invalid_status', valid: TENANT_PLAN_STATUSES });
+      }
+      sets.push('subscription_status = ?'); vals.push(body.subscription_status);
+    }
+    if (body.extra_seats !== undefined) {
+      const n = Number(body.extra_seats);
+      if (!Number.isInteger(n) || n < 0 || n > 100) {
+        return res.status(400).json({ ok: false, error: 'invalid_extra_seats' });
+      }
+      sets.push('extra_seats = ?'); vals.push(n);
+    }
+    if (!sets.length) {
+      return res.status(400).json({ ok: false, error: 'nothing_to_update' });
+    }
+    sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+    db.prepare(`UPDATE tenants SET ${sets.join(', ')} WHERE id = ?`).run(...vals, tenant.id);
+    const updated = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenant.id);
+    const plan = getPlan(updated.plan);
+    return res.json({
+      ok: true,
+      tenant: {
+        id: updated.id, name: updated.name, slug: updated.slug,
+        plan: updated.plan, subscription_status: updated.subscription_status,
+        extra_seats: updated.extra_seats,
+      },
+      entitlements: plan ? {
+        projects: plan.projects,
+        emails_per_month: plan.emails_per_month,
+        videos_per_month: plan.videos_per_month || null,
+        seats_included: plan.seats_included,
+        // What the quota paths will actually enforce for this tenant:
+        effective_emails_per_month: _effectiveEmailLimit(updated),
+      } : null,
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message });
   }

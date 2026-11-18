@@ -86,6 +86,11 @@ router.get('/', (req, res) => {
     limits: {
       projects: plan.projects,            // null = unlimited (custom tier)
       emails_per_month: plan.emails_per_month,
+      // 2026-11-18: the tenant's own video cap belongs next to the
+      // other limits (it previously appeared only in the catalogue
+      // array and the videos endpoint, so the billing tab could not
+      // show a Heavy tenant their 10/30-video cap).
+      videos_per_month: plan.videos_per_month || null,
     },
     usage: {
       projects_used: projectsUsed,

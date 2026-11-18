@@ -312,7 +312,20 @@ router.post('/pages/:pageId/post', async (req, res) => {
     if (link) params.link = link;
     if (image_url) params.url = image_url;
     const data = await metaFetch(`${GRAPH}/${pageId}/feed`, { method: 'POST', params });
-    res.json({ ok: true, post_id: String(data.id || '') });
+    const postId = String(data.id || '');
+    // Feed the tracking board + attribution (2026-11-18), fail-soft:
+    // the post is already published. The canonical post URL is
+    // facebook.com/<post_id> (the id is pageid_postid).
+    if (postId) {
+      require('../lib/postingLog').recordPosting({
+        tenantId: req.tenant.id,
+        platform: 'facebook',
+        postUrl: `https://www.facebook.com/${postId}`,
+        contentItemId: (req.body || {}).content_item_id,
+        notes: `page_id ${pageId}`,
+      });
+    }
+    res.json({ ok: true, post_id: postId });
   } catch (e) {
     metaError(res, e, pageId);
   }
@@ -374,7 +387,20 @@ router.post('/pages/:pageId/instagram', async (req, res) => {
       }
     }
     if (!published) throw lastErr || new MetaError('media_publish_failed', 502);
-    res.json({ ok: true, media_id: String(published.id || '') });
+    const mediaId = String(published.id || '');
+    // Attribution (2026-11-18), fail-soft: the publish API returns no
+    // permalink, so this lands in content_postings with the media id;
+    // the tracking board fills when the URL is logged (or known).
+    if (mediaId) {
+      require('../lib/postingLog').recordPosting({
+        tenantId: req.tenant.id,
+        platform: 'instagram',
+        postUrl: null,
+        contentItemId: (req.body || {}).content_item_id,
+        notes: `media_id ${mediaId}`,
+      });
+    }
+    res.json({ ok: true, media_id: mediaId });
   } catch (e) {
     metaError(res, e, pageId);
   }

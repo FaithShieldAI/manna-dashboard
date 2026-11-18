@@ -288,9 +288,15 @@ router.post('/ab/:id/winner', (req, res) => {
   if (variant !== 'a' && variant !== 'b') {
     return res.status(400).json({ ok: false, error: 'invalid_variant' });
   }
-  const test = db.prepare('SELECT id, name FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
+  const test = db.prepare('SELECT id, name, status FROM ab_tests WHERE tenant_id = ? AND id = ?').get(t, id);
   if (!test) {
     return res.status(404).json({ ok: false, error: 'test_not_found' });
+  }
+  // A decided test is final (2026-11-18): /results and /sync already
+  // refuse with test_already_done; without this check a crowned winner
+  // could be silently overwritten by a second winner call.
+  if (test.status === 'done') {
+    return res.status(400).json({ ok: false, error: 'test_already_done' });
   }
   db.prepare(
     `UPDATE ab_tests SET winner = ?, status = 'done', decided_at = ?
@@ -397,7 +403,9 @@ router.patch('/ab/:id/auto-apply', (req, res) => {
 
 // --- Social posting tracking ------------------------------------------------
 
-const PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'telegram', 'rumble', 'truthsocial'];
+// 'youtube' added 2026-11-18 (migration 040 widened the table CHECK):
+// the house's films are YouTube-first and could not even be logged.
+const PLATFORMS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'telegram', 'rumble', 'truthsocial', 'youtube'];
 
 function toNonNegInt(v, fallback = 0) {
   const n = parseInt(v, 10);
@@ -441,6 +449,20 @@ router.post('/social', (req, res) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(t, p, url, cid, posted,
     toNonNegInt(likes), toNonNegInt(shares), toNonNegInt(comments), toNonNegInt(clicks));
+  // Attribution (migration 008): every logged posting is also traced
+  // into content_postings. Until 2026-11-18 nothing wrote that table.
+  try {
+    require('../lib/postingLog').insertAttribution({
+      tenantId: t, contentId: cid, platform: p, postUrl: url, postedAt: posted,
+      metrics: {
+        likes: toNonNegInt(likes), shares: toNonNegInt(shares),
+        comments: toNonNegInt(comments), clicks: toNonNegInt(clicks),
+      },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[engagement] attribution insert failed:', e.message);
+  }
   followup(req, {
     type: 'posting_logged',
     ref: String(r.lastInsertRowid),

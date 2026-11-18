@@ -59,9 +59,13 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office, 038 adds user sign-in record, 039 adds warm leads', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office, 038 adds user sign-in record, 039 adds warm leads, 040 adds youtube postings', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 39);
+  assert.equal(v, 40);
+  const socialSql = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'social_postings'"
+  ).get().sql;
+  assert.ok(socialSql.includes("'youtube'"), 'social_postings platform CHECK accepts youtube (migration 040)');
   const warmSegCols = db.prepare('PRAGMA table_info(warm_lead_segments)').all().map(r => r.name);
   assert.deepEqual(warmSegCols, ['tenant_id', 'segment_key', 'label', 'note', 'tracked'],
     'warm_lead_segments carries one row per line');

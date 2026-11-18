@@ -660,6 +660,25 @@ router.post('/post', async (req, res) => {
   }
   try {
     const out = platform === 'youtube' ? await postToYouTube(store, body) : await postToTruth(store, body);
+    if (out.status === 200 && out.payload && out.payload.ok) {
+      // Feed the tracking board + attribution (2026-11-18): a post made
+      // through Manna lands in Social Posting Tracking automatically.
+      // Fail-soft by contract — the post is already published.
+      let handle = null;
+      try {
+        const conn = store.getConnectedSocial(platform);
+        if (conn) handle = conn.handle || null;
+      } catch (e) { /* handle is decoration; never block on it */ }
+      require('../lib/postingLog').recordPosting({
+        tenantId: req.tenant.id,
+        platform,
+        postUrl: out.payload.url || null,
+        contentItemId: body.content_item_id,
+        accountHandle: handle,
+        notes: out.payload.video_id ? `video_id ${out.payload.video_id}`
+          : out.payload.post_id ? `post_id ${out.payload.post_id}` : null,
+      });
+    }
     res.status(out.status).json(out.payload);
   } catch (e) {
     providerError(res, e, platform);

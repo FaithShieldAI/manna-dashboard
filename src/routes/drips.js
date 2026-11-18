@@ -147,6 +147,77 @@ router.get('/due', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Scheduled sends. These three routes are defined BEFORE '/:id' so the
+// literal segment 'scheduled' is not swallowed as a campaign id (the
+// 2026-11-18 audit found GET /scheduled unreachable behind GET /:id —
+// it returned 400 invalid_id for every caller).
+// ---------------------------------------------------------------------------
+// POST /api/drips/scheduled — { campaign_id, scheduled_at }
+// ---------------------------------------------------------------------------
+router.post('/scheduled', (req, res) => {
+  const t = req.tdb.tenantId;
+  const { campaign_id, scheduled_at } = req.body || {};
+  const cid = Number(campaign_id);
+  if (!Number.isInteger(cid) || cid <= 0) {
+    return res.status(400).json({ ok: false, error: 'invalid_campaign_id' });
+  }
+  const campaign = db.prepare(
+    'SELECT id FROM email_campaigns WHERE tenant_id = ? AND id = ?'
+  ).get(t, cid);
+  if (!campaign) return res.status(404).json({ ok: false, error: 'campaign_not_found' });
+
+  const at = String(scheduled_at || '').trim();
+  const parsed = new Date(at);
+  if (!at || Number.isNaN(parsed.getTime())) {
+    return res.status(400).json({ ok: false, error: 'invalid_scheduled_at' });
+  }
+  if (parsed.getTime() <= Date.now()) {
+    return res.status(400).json({ ok: false, error: 'scheduled_at_in_past' });
+  }
+  const iso = parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const r = db.prepare(
+    `INSERT INTO scheduled_sends (tenant_id, campaign_id, scheduled_at, status)
+     VALUES (?, ?, ?, 'pending')`
+  ).run(t, cid, iso);
+  res.status(201).json({ ok: true, id: Number(r.lastInsertRowid), scheduled_at: iso });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/drips/scheduled — pending first, then recent history
+// ---------------------------------------------------------------------------
+router.get('/scheduled', (req, res) => {
+  const t = req.tdb.tenantId;
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+  const rows = db.prepare(`
+    SELECT ss.*, ec.name AS campaign_name
+    FROM scheduled_sends ss
+    LEFT JOIN email_campaigns ec ON ec.id = ss.campaign_id AND ec.tenant_id = ss.tenant_id
+    WHERE ss.tenant_id = ?
+    ORDER BY CASE WHEN ss.status = 'pending' THEN 0 ELSE 1 END, ss.scheduled_at DESC
+    LIMIT ?
+  `).all(t, limit);
+  res.json({ ok: true, scheduled: rows });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/drips/scheduled/:id — cancel a pending send
+// ---------------------------------------------------------------------------
+router.delete('/scheduled/:id', (req, res) => {
+  const t = req.tdb.tenantId;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+  const r = db.prepare(
+    "UPDATE scheduled_sends SET status = 'cancelled' WHERE tenant_id = ? AND id = ? AND status = 'pending'"
+  ).run(t, id);
+  if (r.changes === 0) {
+    return res.status(404).json({ ok: false, error: 'scheduled_not_found_or_final' });
+  }
+  res.json({ ok: true, id, status: 'cancelled' });
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/drips/:id — detail: campaign, steps, enrollment counts
 // ---------------------------------------------------------------------------
 router.get('/:id', (req, res) => {
@@ -251,72 +322,6 @@ router.post('/:id/enroll', (req, res) => {
     return count;
   });
   res.json({ ok: true, drip_id: id, enrolled: result });
-});
-
-// ---------------------------------------------------------------------------
-// POST /api/drips/scheduled — { campaign_id, scheduled_at }
-// ---------------------------------------------------------------------------
-router.post('/scheduled', (req, res) => {
-  const t = req.tdb.tenantId;
-  const { campaign_id, scheduled_at } = req.body || {};
-  const cid = Number(campaign_id);
-  if (!Number.isInteger(cid) || cid <= 0) {
-    return res.status(400).json({ ok: false, error: 'invalid_campaign_id' });
-  }
-  const campaign = db.prepare(
-    'SELECT id FROM email_campaigns WHERE tenant_id = ? AND id = ?'
-  ).get(t, cid);
-  if (!campaign) return res.status(404).json({ ok: false, error: 'campaign_not_found' });
-
-  const at = String(scheduled_at || '').trim();
-  const parsed = new Date(at);
-  if (!at || Number.isNaN(parsed.getTime())) {
-    return res.status(400).json({ ok: false, error: 'invalid_scheduled_at' });
-  }
-  if (parsed.getTime() <= Date.now()) {
-    return res.status(400).json({ ok: false, error: 'scheduled_at_in_past' });
-  }
-  const iso = parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
-  const r = db.prepare(
-    `INSERT INTO scheduled_sends (tenant_id, campaign_id, scheduled_at, status)
-     VALUES (?, ?, ?, 'pending')`
-  ).run(t, cid, iso);
-  res.status(201).json({ ok: true, id: Number(r.lastInsertRowid), scheduled_at: iso });
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/drips/scheduled — pending first, then recent history
-// ---------------------------------------------------------------------------
-router.get('/scheduled', (req, res) => {
-  const t = req.tdb.tenantId;
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
-  const rows = db.prepare(`
-    SELECT ss.*, ec.name AS campaign_name
-    FROM scheduled_sends ss
-    LEFT JOIN email_campaigns ec ON ec.id = ss.campaign_id AND ec.tenant_id = ss.tenant_id
-    WHERE ss.tenant_id = ?
-    ORDER BY CASE WHEN ss.status = 'pending' THEN 0 ELSE 1 END, ss.scheduled_at DESC
-    LIMIT ?
-  `).all(t, limit);
-  res.json({ ok: true, scheduled: rows });
-});
-
-// ---------------------------------------------------------------------------
-// DELETE /api/drips/scheduled/:id — cancel a pending send
-// ---------------------------------------------------------------------------
-router.delete('/scheduled/:id', (req, res) => {
-  const t = req.tdb.tenantId;
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ ok: false, error: 'invalid_id' });
-  }
-  const r = db.prepare(
-    "UPDATE scheduled_sends SET status = 'cancelled' WHERE tenant_id = ? AND id = ? AND status = 'pending'"
-  ).run(t, id);
-  if (r.changes === 0) {
-    return res.status(404).json({ ok: false, error: 'scheduled_not_found_or_final' });
-  }
-  res.json({ ok: true, id, status: 'cancelled' });
 });
 
 module.exports = router;
