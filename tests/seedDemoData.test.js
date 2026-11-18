@@ -55,7 +55,7 @@ test('seed GOALS are the syncD2rm GOALS (single source of truth, no sustained)',
   assert.ok(!SEED_GOALS.some((g) => g.goal_key === 'sustained'));
 });
 
-test('fresh tenant gets the full new goal set, zeroed snapshots, campaigns, and no sustained', () => {
+test('fresh tenant gets the full new goal set, zeroed snapshots, NO campaigns, and no sustained', () => {
   const tid = makeTenant('seed-fresh');
   seedDemoData('seed-fresh');
 
@@ -85,7 +85,11 @@ test('fresh tenant gets the full new goal set, zeroed snapshots, campaigns, and 
     );
   }
 
-  assert.equal(count('email_campaigns', tid), 6);
+  // Campaigns are never seeded (2026-11-18 isolation fix): the seed
+  // used to plant the house tenant's six real campaigns into every
+  // tenant. A fresh tenant's campaign list starts empty; its own
+  // sends create its own rows. See tests/tenantIsolation.test.js.
+  assert.equal(count('email_campaigns', tid), 0);
 });
 
 test('boot re-seed of an existing tenant changes no goal progress and no live snapshot', () => {
@@ -121,5 +125,5 @@ test('seeding is idempotent across repeated runs', () => {
   seedDemoData('seed-idem');
   assert.equal(count('goals', tid), 6);
   assert.equal(count('email_snapshots', tid), 4);
-  assert.equal(count('email_campaigns', tid), 6);
+  assert.equal(count('email_campaigns', tid), 0);
 });

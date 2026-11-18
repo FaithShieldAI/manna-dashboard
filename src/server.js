@@ -385,7 +385,9 @@ if (process.env.MANNA_SKIP_PR_SEED !== '1') {
   }
 }
 
-// Seed demo data (email stats, campaigns, goals) for all tenants on startup
+// Seed starter data (goals, zeroed email snapshot rows) for all tenants
+// on startup. Campaigns are NOT seeded (2026-11-18 isolation fix): the
+// seed used to plant the house tenant's real campaigns into every tenant.
 try {
   const { seedDemoData } = require('../scripts/seed-demo-data');
   const { db } = require('./db');

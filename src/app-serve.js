@@ -12,6 +12,9 @@
  *      re-renders it from /api/goals (generic per-tenant cards)
  *   5. Nav gets a tenant chip + links (Leads, Log out)
  *   6. Boot script: goals re-render from /api/goals + logout handler.
+ *   8. var DASH_START -> the signed-in tenant's own created_at, so the
+ *      header account-age clock starts from the tenant's account, not
+ *      the hardcoded house date baked into the template.
  *      (The AI instructor panel lives in the template itself.)
  *
  * Source file: DASHBOARD_HTML_PATH or ~/workspace/your_files/d2rm-live-dashboard.html
@@ -120,6 +123,12 @@ const TRANSFORM_TARGETS = [
     kind: 'string',
     pattern: '<script src="/js/i18n.js"></script>',
     breaks: 'i18n dictionary injection target missing; dashboard stays English-only.',
+  },
+  {
+    name: 'account-start',
+    kind: 'string',
+    pattern: 'var DASH_START = new Date("2026-10-09T12:00:00-07:00");',
+    breaks: 'Header account-age clock would run from the hardcoded house start date (2026-10-09) instead of the signed-in tenant account start.',
   },
 ];
 
@@ -268,6 +277,20 @@ function serveApp(req, res) {
     + '<a href="/leads" style="color:var(--gold);text-decoration:none;font-size:13px">🎯 Leads</a>'
     + '<a href="#" id="d2rm-logout" style="color:var(--text2);text-decoration:none;font-size:13px">Log out</a>';
   html = html.replace('<div class="nav-right">', '<div class="nav-right">' + chip);
+
+  // 8. Account-age clock start: the template hardcodes DASH_START to
+  // the house dashboard's start date (2026-10-09) and only corrects
+  // it if an async /api/auth/me fetch lands, so a fresh tenant's
+  // header alternated between its true age and the house age
+  // (red-team walk, 2026-11-18). Inject the signed-in tenant's own
+  // created_at at serve time so the clock is right on first paint.
+  const startIso = (tenant && tenant.created_at) || (req.user && req.user.created_at) || null;
+  if (startIso) {
+    html = html.replace(
+      'var DASH_START = new Date("2026-10-09T12:00:00-07:00");',
+      'var DASH_START = new Date(' + JSON.stringify(startIso) + ');'
+    );
+  }
 
   // 7. i18n: inject translation dictionary BEFORE the loader script.
   // i18n.js picks up window.__MANNA_I18N__ synchronously — no fetch race.

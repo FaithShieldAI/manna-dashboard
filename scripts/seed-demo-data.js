@@ -15,8 +15,7 @@
  *                         src/lib/syncD2rm.js (GOALS there is the single
  *                         source of truth — no 'sustained': Sustained
  *                         left the suite 2026-10-28)
- *   2. email_campaigns  — real campaigns from the Oct 2026 outreach
- *   3. email_snapshots  — zeroed starter rows for the four windows.
+ *   2. email_snapshots  — zeroed starter rows for the four windows.
  *                         Real email windows are owned by the live
  *                         mail-truth chain (email-snapshots-sync); the
  *                         frozen 2026-10-14 capture (1042/223/19 in
@@ -45,16 +44,19 @@ const TENANT_SLUG = (process.argv[2] || 'd2rm-media').toLowerCase();
 // posts the real combined windows over them.
 const SNAPSHOT_WINDOWS = ['24h', '7d', '30d', 'all'];
 
-// Real campaigns from the Oct 2026 outreach (email-database.db sends table).
-// Opens/clicks are provider-aggregate figures from the analytics refresh.
-const CAMPAIGNS = [
-  { name: 'Pastor Combo — FaithShield + Armor Bearer <redacted> 1', provider: 'brevo',      sent: 100, opens: 21,  clicks: 2, unsubs: 0, bounces: 1, sent_at: '2026-10-12' },
-  { name: 'nano-armor-bearer-oct2026',                                provider: 'kit',        sent: 208, opens: 118, clicks: 9, unsubs: 2, bounces: 3, sent_at: '2026-10-09' },
-  { name: 'Pastor Trial Invite — Portuguese',                        provider: 'mailerlite', sent: 47,  opens: 27,  clicks: 3, unsubs: 0, bounces: 1, sent_at: '2026-10-07' },
-  { name: 'Pastor Trial Invite — Tagalog',                            provider: 'mailerlite', sent: 108, opens: 41,  clicks: 4, unsubs: 1, bounces: 4, sent_at: '2026-10-07' },
-  { name: 'send-batch-2-seniors.csv',                                 provider: 'brevo',      sent: 300, opens: 0,   clicks: 0, unsubs: 0, bounces: 0, sent_at: '2026-10-07' },
-  { name: 'send-batch-1-seniors.csv',                                 provider: 'brevo',      sent: 279, opens: 0,   clicks: 0, unsubs: 0, bounces: 0, sent_at: '2026-10-06' },
-];
+// Email campaigns are NOT seeded here (removed 2026-11-18, tenant
+// isolation fix). This script used to plant the house tenant's six
+// real Oct 2026 campaigns into EVERY tenant it ran for, and it runs
+// for every tenant at every boot and at every signup — so every
+// customer account opened with the house's campaign history in its
+// Email Campaigns list and Send Log, and the Engagement Star of the
+// Day computed off the planted copy (production tenant 7's star was
+// the house campaign at score 145 within a minute of signup). Those
+// campaigns are the house tenant's own history: they live in the
+// house tenant through its own import paths (the syncD2rm admin sync
+// and the mail-truth chain) and must never be copied into another
+// tenant. A new tenant starts with zero campaigns — its own sends
+// create its own rows. Regression: tests/tenantIsolation.test.js.
 
 function main(tenantSlug) {
   migrate();
@@ -85,23 +87,9 @@ function main(tenantSlug) {
   }
   console.log(`[seed-demo] goals: ${goalNew} inserted, ${GOALS.length - goalNew} already present`);
 
-  // --- email_campaigns (insert-if-missing by name) ---
-  const findCampaign = db.prepare(
-    'SELECT id FROM email_campaigns WHERE tenant_id = ? AND name = ?'
-  );
-  const insCampaign = db.prepare(`
-    INSERT INTO email_campaigns
-      (tenant_id, name, provider, sent, opens, clicks, unsubs, bounces, sent_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  let campNew = 0, campSkip = 0;
-  for (const c of CAMPAIGNS) {
-    if (findCampaign.get(tenantId, c.name)) { campSkip++; continue; }
-    insCampaign.run(tenantId, c.name, c.provider, c.sent, c.opens, c.clicks,
-      c.unsubs, c.bounces, c.sent_at);
-    campNew++;
-  }
-  console.log(`[seed-demo] email_campaigns: ${campNew} inserted, ${campSkip} already present`);
+  // --- email_campaigns: deliberately NOT seeded (see the note above
+  // the CAMPAIGNS removal at the top of this file). A tenant's
+  // campaigns are its own sends only.
 
   // --- email_snapshots (zeroed starter rows, insert-only) ---
   const insSnap = db.prepare(`
