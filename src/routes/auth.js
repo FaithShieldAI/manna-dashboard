@@ -2337,4 +2337,279 @@ router.get('/server-config/:token', requireMigrationToken, (req, res) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Shared tenant resolution for the staff data doors below (same shape as
+// the tenant-plan door): tenant_email (via the owner's user row) wins when
+// it is a non-empty string, otherwise tenant_id. Returns { tenant } or
+// { status, error } for the caller to send.
+function _resolveDoorTenant(body) {
+  if (typeof body.tenant_email === 'string' && body.tenant_email.trim()) {
+    const user = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+      .get(body.tenant_email.trim());
+    if (!user) return { status: 404, error: 'tenant_not_found' };
+    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(Number(user.tenant_id));
+    return tenant ? { tenant } : { status: 404, error: 'tenant_not_found' };
+  }
+  if (body.tenant_id !== undefined && body.tenant_id !== null) {
+    const id = Number(body.tenant_id);
+    if (!Number.isInteger(id) || id <= 0) return { status: 400, error: 'invalid_tenant_id' };
+    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(id);
+    return tenant ? { tenant } : { status: 404, error: 'tenant_not_found' };
+  }
+  return { status: 400, error: 'tenant_required' };
+}
+
+function _doorCount(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 100000000 ? n : null;
+}
+
+// Tenant funnels door (token-gated, same MIGRATION_TOKEN pattern as the
+// tenant-plan door): staff-side funnel creation for a tenant, in the
+// pattern of the winner activation (the house tenant's Conversions tab is
+// filled by staff; no owner credentials are available to the operator).
+// Validation and storage mirror POST /api/funnels (src/routes/funnels.js)
+// and the tenant store's createFunnel, with one deliberate difference:
+// insert-if-missing per funnel_key, so re-running a staff load is a no-op
+// instead of a 409. The response carries the tenant's full funnel list in
+// the GET /api/funnels shape as the read-back.
+// Body: { tenant_email | tenant_id,
+//         funnels: [{ funnelKey?, name, emoji?, subtitle?,
+//                     stages: [{ stageKey?, label, goalValue? }] }] }
+const FUNNEL_KEY_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+
+function _cleanFunnelInput(raw) {
+  if (!raw || typeof raw !== 'object') return { error: 'invalid_funnel' };
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  let key = typeof raw.funnelKey === 'string' ? raw.funnelKey.trim().toLowerCase() : '';
+  if (!key) key = slugify(name).slice(0, 40);
+  if (!FUNNEL_KEY_RE.test(key)) return { error: 'invalid_funnel_key' };
+  if (!name || name.length < 2 || name.length > 120) return { error: 'invalid_funnel_name' };
+  if (!Array.isArray(raw.stages) || raw.stages.length < 1 || raw.stages.length > 12) {
+    return { error: 'invalid_stages' };
+  }
+  const stages = [];
+  const seen = new Set();
+  for (const s of raw.stages) {
+    const label = s && typeof s.label === 'string' ? s.label.trim() : '';
+    if (label.length < 1 || label.length > 80) return { error: 'invalid_stage_label' };
+    let sk = s.stageKey && typeof s.stageKey === 'string' ? s.stageKey.trim().toLowerCase() : '';
+    if (!FUNNEL_KEY_RE.test(sk)) {
+      sk = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+      if (!sk) sk = 'stage-' + (stages.length + 1);
+    }
+    if (seen.has(sk)) return { error: 'duplicate_stage_key' };
+    seen.add(sk);
+    let gv = null;
+    if (s.goalValue !== undefined && s.goalValue !== null && s.goalValue !== '') {
+      gv = Number(s.goalValue);
+      if (!Number.isFinite(gv) || gv < 0 || gv > 1e12) return { error: 'invalid_stage_goal' };
+    }
+    stages.push({ stageKey: sk, label, goalValue: gv });
+  }
+  return {
+    funnelKey: key,
+    name,
+    emoji: typeof raw.emoji === 'string' ? raw.emoji.trim().slice(0, 8) : null,
+    subtitle: typeof raw.subtitle === 'string' ? raw.subtitle.trim().slice(0, 200) : null,
+    stages,
+  };
+}
+
+function _funnelReadback(tdb) {
+  const { roi } = require('../lib/roi');
+  return tdb.funnels().map(f => {
+    const stages = f.stages.map(s => ({
+      key: s.stage_key,
+      label: s.label,
+      current: s.current_value,
+      goal: s.goal_value,
+      pct: s.goal_value > 0 ? +(100 * s.current_value / s.goal_value).toFixed(1) : null,
+      conversion_from_prev: null,
+    }));
+    for (let i = 1; i < stages.length; i++) {
+      const prev = stages[i - 1].current;
+      stages[i].conversion_from_prev = prev > 0
+        ? +(100 * stages[i].current / prev).toFixed(1)
+        : null;
+    }
+    return {
+      key: f.funnel_key,
+      name: f.name,
+      emoji: f.emoji,
+      subtitle: f.subtitle,
+      ...roi(f.cost_cents, f.revenue_cents),
+      stages,
+      overall_conversion: stages.length > 1 && stages[0].current > 0
+        ? +(100 * stages[stages.length - 1].current / stages[0].current).toFixed(2)
+        : null,
+    };
+  });
+}
+
+router.post('/tenant-funnels/:token', requireMigrationToken, express.json({ limit: '256kb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    const resolved = _resolveDoorTenant(body);
+    if (!resolved.tenant) return res.status(resolved.status).json({ ok: false, error: resolved.error });
+    const tenant = resolved.tenant;
+    if (!Array.isArray(body.funnels) || body.funnels.length < 1 || body.funnels.length > 50) {
+      return res.status(400).json({ ok: false, error: 'funnels_required' });
+    }
+    const cleaned = [];
+    for (const raw of body.funnels) {
+      const c = _cleanFunnelInput(raw);
+      if (c.error) return res.status(400).json({ ok: false, error: c.error });
+      cleaned.push(c);
+    }
+    const tdb = forTenant(tenant.id);
+    const inserted = [];
+    const skipped = [];
+    transaction(() => {
+      for (const c of cleaned) {
+        if (tdb.getFunnel(c.funnelKey)) { skipped.push(c.funnelKey); continue; }
+        tdb.createFunnel(c);
+        inserted.push(c.funnelKey);
+      }
+    });
+    return res.json({
+      ok: true,
+      tenant_id: tenant.id,
+      inserted,
+      skipped,
+      funnels: _funnelReadback(tdb),
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Social stats sync (token-gated, same MIGRATION_TOKEN pattern): the
+// house's platform reads (the Meta connectors) hold the true follower and
+// post counts for the house accounts, but Manna's own track path can only
+// write counts for OAuth-connected tenants on three platforms, so tenant
+// 1's social_accounts rows stood at their insert-time zeros forever (see
+// the 2026-11-18 social counts report). This door is the sync writer: it
+// updates counts on EXISTING social_accounts rows only (row creation
+// stays with onboarding and manual adds), matched by platform + handle,
+// and returns the tenant's rows as the read-back.
+// Body: { tenant_email | tenant_id,
+//         accounts: [{ platform, handle, followers, posts }] }
+router.post('/social-stats-sync/:token', requireMigrationToken, express.json({ limit: '256kb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    const resolved = _resolveDoorTenant(body);
+    if (!resolved.tenant) return res.status(resolved.status).json({ ok: false, error: resolved.error });
+    const tenant = resolved.tenant;
+    if (!Array.isArray(body.accounts) || body.accounts.length < 1 || body.accounts.length > 100) {
+      return res.status(400).json({ ok: false, error: 'accounts_required' });
+    }
+    const cleaned = [];
+    for (const a of body.accounts) {
+      const platform = a && typeof a.platform === 'string' ? a.platform.trim().toLowerCase() : '';
+      const handle = a && typeof a.handle === 'string' ? a.handle.trim() : '';
+      if (!platform || platform.length > 40 || !handle || handle.length > 120) {
+        return res.status(400).json({ ok: false, error: 'invalid_account' });
+      }
+      const followers = _doorCount(a.followers);
+      const posts = _doorCount(a.posts);
+      if (followers === null || posts === null) {
+        return res.status(400).json({ ok: false, error: `invalid_count:${platform}:${handle}` });
+      }
+      cleaned.push({ platform, handle, followers, posts });
+    }
+    const tdb = forTenant(tenant.id);
+    const existing = new Set(tdb.socialAccounts().map(r => `${r.platform} ${r.handle}`));
+    for (const c of cleaned) {
+      if (!existing.has(`${c.platform} ${c.handle}`)) {
+        return res.status(404).json({ ok: false, error: `social_account_not_found:${c.platform}:${c.handle}` });
+      }
+    }
+    transaction(() => {
+      for (const c of cleaned) tdb.updateSocialStats(c);
+    });
+    return res.json({
+      ok: true,
+      tenant_id: tenant.id,
+      updated: cleaned.length,
+      accounts: tdb.socialAccounts(),
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Campaigns sync (token-gated, same MIGRATION_TOKEN pattern): the
+// mail-truth chain fetches provider campaign stats (fetch_stats.py into
+// email-analytics-data.json), but no step wrote refreshed figures into
+// Manna's email_campaigns rows, so the Campaigns card kept opens from an
+// older import (the two Oct 19, 2026 EmailOctopus campaigns stood at 9
+// and 16 opens against the provider's 15 and 27). This door is that
+// step: upsert by (tenant_id, name), the natural key the syncD2rm admin
+// sync uses, updating the stat columns in place and inserting only a
+// campaign the tenant does not hold yet. The response carries the
+// tenant's rows for the named campaigns as the read-back.
+// Body: { tenant_email | tenant_id,
+//         campaigns: [{ name, provider?, sent, opens, clicks, unsubs,
+//                       bounces, sent_at? }] }
+router.post('/campaigns-sync/:token', requireMigrationToken, express.json({ limit: '256kb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    const resolved = _resolveDoorTenant(body);
+    if (!resolved.tenant) return res.status(resolved.status).json({ ok: false, error: resolved.error });
+    const tenant = resolved.tenant;
+    if (!Array.isArray(body.campaigns) || body.campaigns.length < 1 || body.campaigns.length > 200) {
+      return res.status(400).json({ ok: false, error: 'campaigns_required' });
+    }
+    const cleaned = [];
+    for (const c of body.campaigns) {
+      const name = c && typeof c.name === 'string' ? c.name.trim() : '';
+      if (!name || name.length > 200) {
+        return res.status(400).json({ ok: false, error: 'invalid_campaign_name' });
+      }
+      const stats = {};
+      for (const field of ['sent', 'opens', 'clicks', 'unsubs', 'bounces']) {
+        const v = _doorCount(c[field]);
+        if (v === null) return res.status(400).json({ ok: false, error: `invalid_metric:${name}.${field}` });
+        stats[field] = v;
+      }
+      cleaned.push({
+        name,
+        provider: typeof c.provider === 'string' && c.provider.trim() ? c.provider.trim().slice(0, 40) : null,
+        sent_at: typeof c.sent_at === 'string' && c.sent_at.trim() ? c.sent_at.trim().slice(0, 40) : null,
+        ...stats,
+      });
+    }
+    const find = db.prepare('SELECT id FROM email_campaigns WHERE tenant_id = ? AND name = ?');
+    const insert = db.prepare(`
+      INSERT INTO email_campaigns (tenant_id, name, provider, sent, opens, clicks, unsubs, bounces, sent_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const update = db.prepare(`
+      UPDATE email_campaigns
+      SET sent = ?, opens = ?, clicks = ?, unsubs = ?, bounces = ?,
+          provider = COALESCE(?, provider), sent_at = COALESCE(?, sent_at)
+      WHERE tenant_id = ? AND name = ?`);
+    let inserted = 0;
+    let updated = 0;
+    transaction(() => {
+      for (const c of cleaned) {
+        if (find.get(tenant.id, c.name)) {
+          update.run(c.sent, c.opens, c.clicks, c.unsubs, c.bounces, c.provider, c.sent_at, tenant.id, c.name);
+          updated++;
+        } else {
+          insert.run(tenant.id, c.name, c.provider, c.sent, c.opens, c.clicks, c.unsubs, c.bounces, c.sent_at);
+          inserted++;
+        }
+      }
+    });
+    const rows = db.prepare(
+      'SELECT id, name, provider, sent, opens, clicks, unsubs, bounces, sent_at FROM email_campaigns WHERE tenant_id = ? AND name IN (' +
+      cleaned.map(() => '?').join(',') + ') ORDER BY id'
+    ).all(tenant.id, ...cleaned.map(c => c.name));
+    return res.json({ ok: true, tenant_id: tenant.id, inserted, updated, campaigns: rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 module.exports = router;
