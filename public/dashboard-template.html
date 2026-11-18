@@ -1320,7 +1320,12 @@ function setRange(r){
   set('w-optout-detail', MannaI18n.t('dash.js.email.optout_detail', { unsub: wFmtInt(w.unsub), sent: wFmtInt(w.sent) }));
   set('w-range-sub', MannaI18n.t('dash.js.email.window_sub', { label: (w.label || r) }));
   var empty = document.getElementById('w-empty');
-  if (empty) empty.style.display = (!w.sent) ? '' : 'none';
+  // The empty state means NO email data in the window at all. A window
+  // with opens or clicks but zero counted sends must show its numbers,
+  // never hide them behind "No email data yet" (2026-11-18: the house
+  // tenant's 7-day window read Sent 0 / Opens 16 / Clicks 11 with the
+  // empty state on top of the numbers).
+  if (empty) empty.style.display = (!w.sent && !w.opens && !w.clicks) ? '' : 'none';
 }
 document.querySelectorAll('.range-tab').forEach(function(b){
   b.addEventListener('click', function(){ setRange(b.getAttribute('data-range')); });
