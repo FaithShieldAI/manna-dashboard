@@ -13,6 +13,7 @@ const password = require('../lib/password');
 const sessions = require('../lib/sessions');
 const { referralLinkFor } = require('../lib/referral');
 const signinRecord = require('../lib/signinRecord');
+const postingLog = require('../lib/postingLog');
 const { authLimiter, loginLimiter } = require('../middleware/rateLimit');
 const { requireAuth } = require('../middleware/auth');
 
@@ -1193,6 +1194,89 @@ function _lockProofError(body, to, subject, text) {
 // proceeds — the door's callers are locked house jobs — but the miss
 // is logged loudly rather than silently unmetered.
 const DOOR_HOUSE_OWNER_EMAIL = 'michael@faithshield.ai';
+
+// POST /api/auth/postings-backfill/:token — staff data door (2026-11-18,
+// Heavy 30 fix campaign). Loads VERIFIED historical postings into a
+// tenant's Social Posting Tracking through the single writer
+// (src/lib/postingLog.js recordPosting), so the attribution row is
+// written alongside the tracking row exactly as a live post is. Exists
+// because the house tenant's own history predates the tracking writer,
+// and no session-based path can write another tenant's rows. Callers
+// must only send postings whose URL and figures come from a house
+// record; the door itself enforces shape, tenant existence, and
+// idempotency (a tenant + post_url already tracked is reported
+// 'duplicate' and never double-written). Token-gated like every staff
+// door (requireMigrationToken).
+router.post('/postings-backfill/:token', requireMigrationToken, (req, res) => {
+  const rows = req.body && Array.isArray(req.body.rows) ? req.body.rows : null;
+  if (!rows || rows.length === 0 || rows.length > 100) {
+    return res.status(400).json({ ok: false, error: 'rows_required_1_to_100' });
+  }
+  const cleanMetric = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
+  const results = [];
+  for (const row of rows) {
+    const postUrl = row && typeof row.post_url === 'string' ? row.post_url.trim() : '';
+    const tenantId = Number(row && row.tenant_id);
+    if (!Number.isInteger(tenantId) || tenantId < 1
+        || !db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId)) {
+      results.push({ post_url: postUrl || null, status: 'error', error: 'unknown_tenant' });
+      continue;
+    }
+    if (!/^https?:\/\//i.test(postUrl)) {
+      results.push({ post_url: postUrl || null, status: 'error', error: 'invalid_post_url' });
+      continue;
+    }
+    const dupe = db.prepare(
+      'SELECT id FROM social_postings WHERE tenant_id = ? AND post_url = ?'
+    ).get(tenantId, postUrl);
+    if (dupe) {
+      results.push({ post_url: postUrl, status: 'duplicate', id: dupe.id });
+      continue;
+    }
+    const platformKey = postingLog.normalizePlatform(row.platform);
+    if (!postingLog.TRACKING_PLATFORMS.includes(platformKey)) {
+      results.push({ post_url: postUrl, status: 'error', error: 'invalid_platform' });
+      continue;
+    }
+    const out = postingLog.recordPosting({
+      tenantId,
+      platform: platformKey,
+      postUrl,
+      accountHandle: typeof row.account_handle === 'string' ? row.account_handle : null,
+      metrics: {
+        likes: cleanMetric(row.likes), shares: cleanMetric(row.shares),
+        comments: cleanMetric(row.comments), clicks: cleanMetric(row.clicks),
+      },
+      notes: typeof row.notes === 'string' && row.notes
+        ? row.notes.slice(0, 500)
+        : 'Backfilled 2026-11-18 from verified house records.',
+    });
+    // recordPosting is fail-soft by contract (a logging failure must
+    // never fail a live publish); a backfill has no publish to protect,
+    // so a null tracking id here is a hard per-row failure.
+    if (!out || out.social_posting_id == null) {
+      results.push({ post_url: postUrl, status: 'error', error: 'write_failed' });
+      continue;
+    }
+    // recordPosting stamps rows with the insert time; a backfill row
+    // must carry the verified historical post time instead, applied to
+    // exactly the two rows just written.
+    const postedAt = typeof row.posted_at === 'string' ? row.posted_at.trim() : '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(postedAt) && !Number.isNaN(Date.parse(postedAt))) {
+      db.prepare('UPDATE social_postings SET posted_at = ? WHERE id = ?')
+        .run(postedAt, out.social_posting_id);
+      if (out.content_posting_id != null) {
+        db.prepare('UPDATE content_postings SET posted_at = ? WHERE id = ?')
+          .run(postedAt, out.content_posting_id);
+      }
+    }
+    results.push({
+      post_url: postUrl, status: 'inserted',
+      social_posting_id: out.social_posting_id, attribution_id: out.content_posting_id,
+    });
+  }
+  res.json({ ok: true, results });
+});
 
 function _doorTenant(body) {
   if (body && typeof body.tenant_email === 'string' && body.tenant_email.trim()) {

@@ -218,3 +218,50 @@ test('send-mail door enforces the tenant quota and meters only real sends', asyn
   assert.equal(refused.json.limit, 100);
   assert.equal(refused.json.used, 100);
 });
+
+test('postings-backfill door loads verified rows once, with attribution', async () => {
+  const c = client(base);
+  const reg = await c.post('/api/auth/register', {
+    companyName: 'Backfill QA',
+    email: 'backfill-qa@example.org',
+    password: 'fixes-qa-password-1',
+    plan: 'heavy30',
+  });
+  assert.equal(reg.status, 201, JSON.stringify(reg.json));
+  const tid = reg.json.tenant.id;
+  const token = process.env.MIGRATION_TOKEN;
+  const row = {
+    tenant_id: tid, platform: 'youtube',
+    post_url: 'https://www.youtube.com/shorts/backfillqa1',
+    posted_at: '2026-11-12', likes: 3, shares: 1, comments: 2, clicks: 0,
+    account_handle: 'qa-handle', notes: 'QA backfill row.',
+  };
+
+  const bad = await client(base).post('/api/auth/postings-backfill/wrong-token', { rows: [row] });
+  assert.equal(bad.status, 403, 'wrong token refused');
+
+  const first = await client(base).post(`/api/auth/postings-backfill/${token}`, { rows: [row] });
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  assert.equal(first.json.results[0].status, 'inserted');
+  const tdb = forTenant(tid);
+  assert.equal(tdb.socialPostings().length, 1, 'tracking row written');
+  assert.equal(
+    db.prepare('SELECT COUNT(*) AS n FROM content_postings WHERE tenant_id = ?').get(tid).n,
+    1, 'attribution row written alongside');
+
+  const again = await client(base).post(`/api/auth/postings-backfill/${token}`, { rows: [row] });
+  assert.equal(again.json.results[0].status, 'duplicate', 're-run is idempotent');
+  assert.equal(tdb.socialPostings().length, 1, 'still exactly one row');
+
+  const mixed = await client(base).post(`/api/auth/postings-backfill/${token}`, {
+    rows: [
+      { tenant_id: 999999, platform: 'youtube', post_url: 'https://www.youtube.com/shorts/x1' },
+      { tenant_id: tid, platform: 'myspace', post_url: 'https://example.org/x' },
+      { tenant_id: tid, platform: 'youtube', post_url: 'not-a-url' },
+    ],
+  });
+  assert.deepEqual(mixed.json.results.map(r => r.error),
+    ['unknown_tenant', 'invalid_platform', 'invalid_post_url'],
+    'bad rows are refused per-row with named errors');
+  assert.equal(tdb.socialPostings().length, 1, 'no partial writes from bad rows');
+});
