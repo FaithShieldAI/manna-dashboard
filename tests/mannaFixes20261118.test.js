@@ -265,3 +265,26 @@ test('postings-backfill door loads verified rows once, with attribution', async 
     'bad rows are refused per-row with named errors');
   assert.equal(tdb.socialPostings().length, 1, 'no partial writes from bad rows');
 });
+
+test('seed loader falls back to the shipped arsenal JSON when the CSV is absent', async () => {
+  // Production condition: data/seed/*.csv is gitignored, so the deployed
+  // service has no influencers.csv. Before the fallback, loadSeedRows()
+  // returned null there and a fresh signup got zero contacts (found by
+  // the live Heavy 30 walk, tenant carried demo data but no preload).
+  const fs = require('fs');
+  const origExists = fs.existsSync;
+  fs.existsSync = (p) => (String(p).endsWith('influencers.csv') ? false : origExists(p));
+  try {
+    delete require.cache[require.resolve('../scripts/seed-contacts')];
+    const sc = require('../scripts/seed-contacts');
+    const rows = sc.loadSeedRows();
+    assert.ok(Array.isArray(rows) && rows.length >= 13000,
+      `arsenal fallback returned ${rows && rows.length} rows`);
+    assert.equal(rows[0].source, 'd2rm-arsenal');
+    assert.ok(rows.every(r => 'handle' in r && 'email' in r && 'category' in r && 'status' in r),
+      'fallback rows carry the loader row shape');
+  } finally {
+    fs.existsSync = origExists;
+    delete require.cache[require.resolve('../scripts/seed-contacts')];
+  }
+});

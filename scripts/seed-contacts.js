@@ -70,11 +70,75 @@ function clean(v) {
   return s === '' ? null : s;
 }
 
+const ARSENAL_PATH = path.join(__dirname, '..', 'data', 'seed', 'arsenal-seed.json');
+
+/**
+ * The rows every tenant seed task inserts, from the first source that
+ * has them:
+ *   1. data/seed/influencers.csv — the original signup seed file. It is
+ *      gitignored (data/seed/*.csv), so it exists in a developer tree
+ *      but NEVER in the deployed service.
+ *   2. data/seed/arsenal-seed.json — the canonical shipped seed
+ *      (committed; generated from the master DB by
+ *      scripts/generate-arsenal-seed.js). This is the only source the
+ *      production service has, and until 2026-11-18 the loader never
+ *      looked at it: in production loadSeedRows() returned null and
+ *      the signup/boot contact preload silently seeded nobody (found
+ *      by the Heavy 30 walk: a fresh production signup carried demo
+ *      data but zero contacts). The JSON rows carry the same fields;
+ *      source is stamped 'd2rm-arsenal' because that is the file they
+ *      came from. The arsenal top-up path (src/lib/arsenalSeed.js)
+ *      adopts same-email rows without an external_id, so a tenant
+ *      seeded here and topped up there is never duplicated.
+ */
+function loadSeedRows() {
+  const csv = loadCsvRows();
+  if (csv && csv.length) return csv;
+  return loadArsenalRows();
+}
+
+function loadArsenalRows() {
+  if (!fs.existsSync(ARSENAL_PATH)) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(ARSENAL_PATH, 'utf8'));
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('[seed] arsenal seed unreadable:', e.message);
+    return null;
+  }
+  const raw = Array.isArray(parsed) ? parsed : parsed.rows;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const cleaned = [];
+  for (const r of raw) {
+    const tierRaw = clean(r.tier);
+    const tier = tierRaw && VALID_TIERS.has(tierRaw.toLowerCase())
+      ? tierRaw.toLowerCase() : null;
+    const catRaw = clean(r.category);
+    const category = catRaw && VALID_CATEGORIES.has(catRaw.toLowerCase())
+      ? catRaw.toLowerCase() : 'influencer';
+    const statusRaw = clean(r.status);
+    const status = statusRaw && VALID_STATUSES.has(statusRaw.toLowerCase())
+      ? statusRaw.toLowerCase() : 'unvetted';
+    cleaned.push({
+      handle: clean(r.handle),
+      platform: clean(r.platform),
+      email: clean(r.email),
+      tier,
+      category,
+      status,
+      notes: clean(r.notes),
+      source: 'd2rm-arsenal',
+    });
+  }
+  return cleaned.length ? cleaned : null;
+}
+
 /**
  * Parse + validate the CSV once. Returns an array of cleaned row objects
  * shared by all tenant seed tasks, or null when there is nothing to seed.
  */
-function loadSeedRows() {
+function loadCsvRows() {
   if (!fs.existsSync(CSV_PATH)) {
     // eslint-disable-next-line no-console
     console.log('[seed] no influencers.csv found, skipping');
@@ -256,4 +320,4 @@ function seedTenantInfluencers(tenantId) {
   return seedTenant(Number(tenantId), rows);
 }
 
-module.exports = { seedInfluencers, seedTenantInfluencers };
+module.exports = { seedInfluencers, seedTenantInfluencers, loadSeedRows, loadArsenalRows };
