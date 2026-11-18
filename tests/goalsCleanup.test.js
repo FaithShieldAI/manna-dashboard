@@ -112,7 +112,14 @@ test('GET /api/goals overrides email_collection with the live lead count, read-t
   const byKey = Object.fromEntries(r.json.goals.map((g) => [g.key, g]));
   assert.equal(byKey.email_collection.current, 4); // live count, not 1578
   assert.equal(byKey.email_collection.pct, 40);
-  assert.equal(byKey.armor_bearer.current, 3); // stored value untouched
+  // armor_bearer expectation corrected 2026-11-18 (goal values fix):
+  // affiliates live in the separate Armor Bearer app and Manna holds
+  // no live source for them, so the goal is now served as a labeled
+  // target (current null, live_feed false) instead of the frozen
+  // stored count. The stored row itself still holds 3, proven below;
+  // reads never write goal rows.
+  assert.equal(byKey.armor_bearer.current, null);
+  assert.equal(byKey.armor_bearer.live_feed, false);
 
   // The overview's goals block agrees with its own collected card.
   const ov = await c.get('/api/overview');
@@ -126,6 +133,10 @@ test('GET /api/goals overrides email_collection with the live lead count, read-t
     "SELECT current_value FROM goals WHERE tenant_id = ? AND goal_key = 'email_collection'"
   ).get(tenantId);
   assert.equal(stored.current_value, 1578);
+  const storedAb = db.prepare(
+    "SELECT current_value FROM goals WHERE tenant_id = ? AND goal_key = 'armor_bearer'"
+  ).get(tenantId);
+  assert.equal(storedAb.current_value, 3);
 });
 
 test('goals-cleanup rejects a wrong migration token', async () => {

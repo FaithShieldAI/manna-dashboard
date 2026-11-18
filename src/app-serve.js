@@ -315,6 +315,14 @@ function serveApp(req, res) {
     var goals=j.goals||[];
     if(!goals.length){grid.innerHTML='<div class="stat-card"><div class="stat-label">No goals yet</div><div style="font-size:13px;color:var(--text3)">Set goals to track progress here.</div></div>';return;}
     grid.innerHTML=goals.map(function(g){
+      if(g.live_feed===false){
+        // No live source in the app's data for this goal: show the
+        // target as a target, never the frozen seeded counter as a
+        // measured count (src/lib/goalValues.js).
+        return '<div class="stat-card" style="text-align:left"><div class="stat-label">'+esc(g.label)+'</div>'
+          +'<div class="stat-value" style="font-size:20px">Target: '+Number(g.goal).toLocaleString()+' <span style="font-size:13px;color:var(--text3)">'+(g.unit?esc(g.unit):'')+'</span></div>'
+          +'<div style="font-size:11px;color:var(--text3);margin-top:8px">No live feed for this goal yet</div></div>';
+      }
       var pct=g.goal>0?Math.min(100,(100*g.current/g.goal)):0;
       return '<div class="stat-card" style="text-align:left"><div class="stat-label">'+esc(g.label)+'</div>'
         +'<div class="stat-value">'+Number(g.current).toLocaleString()+' <span style="font-size:13px;color:var(--text3)">/ '+Number(g.goal).toLocaleString()+(g.unit?' '+esc(g.unit):'')+'</span></div>'

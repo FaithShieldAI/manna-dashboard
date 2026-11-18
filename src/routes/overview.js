@@ -10,9 +10,12 @@ const router = express.Router();
 
 router.get('/', (req, res) => {
   const tdb = req.tdb;
-  const goals = tdb.goals();
-  // Same read-time override as GET /api/goals: email_collection reports
-  // the tenant's live lead count, never the frozen stored counter.
+  // Goal values resolved at read time, same as GET /api/goals
+  // (src/lib/goalValues.js): live sources only; goals without one
+  // carry current null and live_feed false instead of the frozen
+  // seeded counter every tenant used to show.
+  const { presentGoals } = require('../lib/goalValues');
+  const goals = presentGoals(tdb);
   const liveCollected = tdb.leadTotal();
   const snapshots = tdb.emailSnapshots();
   const all = snapshots.find(s => s.window_key === 'all') || {};
@@ -37,17 +40,7 @@ router.get('/', (req, res) => {
 
   res.json({
     ok: true,
-    goals: goals.map(g => {
-      const current = g.goal_key === 'email_collection' ? liveCollected : g.current_value;
-      return {
-        key: g.goal_key,
-        label: g.label,
-        current,
-        goal: g.goal_value,
-        unit: g.unit,
-        pct: g.goal_value > 0 ? +(100 * current / g.goal_value).toFixed(1) : 0,
-      };
-    }),
+    goals,
     email: {
       sent: all.sent || 0,
       opens: all.opens || 0,

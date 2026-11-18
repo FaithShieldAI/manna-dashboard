@@ -2461,6 +2461,7 @@ function loadBilling(){
         + '<div class="card-sub">'+MannaI18n.t('dash.js.billing.usage_sub', { month: esc(j.usage && j.usage.month_key ? j.usage.month_key : '') })+'</div></div></div>'
         + billingUsageBar(MannaI18n.t('dash.js.billing.usage_projects'), j.usage.projects_used, j.limits.projects)
         + billingUsageBar(MannaI18n.t('dash.js.billing.usage_emails'), j.usage.emails_sent_this_month, j.limits.emails_per_month)
+        + (j.seats ? billingUsageBar(MannaI18n.t('dash.js.billing.usage_seats'), j.seats.used, j.seats.total) : '')
         + '</div>';
       /* plans — rendered from the server's PUBLIC_PLANS (src/lib/plans.js),
          never hardcoded, so the UI can't drift from real pricing */

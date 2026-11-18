@@ -819,6 +819,7 @@
  "dash.js.billing.usage_sub": "resets monthly · billing period {month}",
  "dash.js.billing.usage_projects": "Projects",
  "dash.js.billing.usage_emails": "Emails sent",
+ "dash.js.billing.usage_seats": "Seats (logins)",
  "dash.js.billing.usage_value": "{used} / {limit}",
  "dash.js.billing.unlimited": "unlimited",
  "dash.js.billing.plans_title": "Plans",
