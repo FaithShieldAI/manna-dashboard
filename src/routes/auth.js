@@ -2038,6 +2038,128 @@ router.post('/migration-import/:token', requireMigrationToken, express.json({ li
   }
 });
 
+// Migration: full wipe-restore (backup/self-heal only, token-gated, B1).
+// Added 2026-11-18 (Heavy 30 audit, Part 8): migration-import above is a
+// staging-to-production MIGRATION door, not a restore door: it accepts
+// only 21 tables, drops row ids, and force-maps every row to the first
+// tenant. A wipe-restore needs the opposite semantics, so it lives here:
+//   - every table the migration-export captures (RESTORE_ORDER, all 57),
+//     restored in foreign-key dependency order. src/db.js runs with
+//     PRAGMA foreign_keys = ON, so the order is load-bearing: parents
+//     are inserted before children, and the clear phase runs in exact
+//     reverse. tests/migrationRestore.test.js re-derives the order from
+//     the live schema and fails if it ever stops being a valid order.
+//     (Enforcement inside the restore transaction is switched off and
+//     the result proven with a final foreign_key_check, so the clear
+//     phase cannot cascade-delete child tables a partial payload does
+//     not name; see the handler.)
+//   - row ids and tenant_id values are preserved exactly, so cross-table
+//     references (funnel_stages.funnel_id, drip_steps.drip_id,
+//     ab_tests.variant_*_post_id, ...) survive the round trip, and all
+//     tenants and users come back as themselves (the old path lost
+//     every tenant but the first and every user but the two owners).
+//   - replace semantics per table named in the payload: the table is
+//     cleared, then the snapshot rows are inserted, all in ONE
+//     transaction, so a failed restore changes nothing. Tables absent
+//     from the payload are left untouched and reported as skipped.
+// The caller must send confirm: 'replace-all': this door overwrites
+// live data by design, and the flag keeps that act explicit rather
+// than something a stray payload can trigger.
+const RESTORE_ORDER = [
+  'tenants', 'users',
+  'sessions', 'email_verification_tokens', 'password_reset_tokens',
+  'provisioning_log', 'signup_events',
+  'sites', 'site_daily_metrics', 'site_events', 'site_visits',
+  'email_campaigns', 'scheduled_sends', 'star_of_day', 'email_snapshots',
+  'funnels', 'funnel_stages',
+  'influencers', 'podcast_outreach',
+  'ip_assets', 'social_accounts', 'connected_socials', 'goals',
+  'tenant_usage', 'collection_jobs', 'tenant_onboarding',
+  'tenant_seed_state', 'email_templates', 'social_templates',
+  'content_items', 'content_postings', 'social_postings', 'ab_tests',
+  'pr_targets', 'pr_releases', 'pr_pitches', 'pr_events',
+  'warm_lead_segments', 'warm_leads', 'warm_lead_sync_state',
+  'drip_campaigns', 'drip_steps', 'drip_enrollments', 'drip_send_log',
+  'scribe_analyses', 'scribe_drafts', 'scribe_followups',
+  'video_jobs', 'video_postings', 'facebook_pages',
+  'dm_log', 'revenue_ledger', 'cost_ledger', 'intake_daily',
+  'live_windows', 'dashboard_payloads', 'faithshield_subscriptions',
+];
+
+router.post('/migration-restore/:token', requireMigrationToken, express.json({ limit: '100mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    const data = body.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return res.status(400).json({ ok: false, error: 'No data' });
+    }
+    if (body.confirm !== 'replace-all') {
+      return res.status(400).json({ ok: false, error: 'confirm_required' });
+    }
+    const known = new Set(RESTORE_ORDER);
+    for (const key of Object.keys(data)) {
+      if (!known.has(key)) {
+        return res.status(400).json({ ok: false, error: `unknown_table:${key}` });
+      }
+      if (!Array.isArray(data[key])) {
+        return res.status(400).json({ ok: false, error: `table_not_array:${key}` });
+      }
+    }
+    const present = RESTORE_ORDER.filter(t => Object.prototype.hasOwnProperty.call(data, t));
+    const results = {};
+    // Enforcement is switched off for the duration of the restore
+    // transaction and the finished state is then proven with
+    // foreign_key_check before commit (the same pattern sqlite's own
+    // dump/restore uses). The dependency order above still does the
+    // structural work; switching enforcement off is what keeps the
+    // CLEAR phase honest: most child tables are ON DELETE CASCADE, so
+    // clearing a parent (tenants above all) with enforcement live
+    // would cascade-delete child rows that a partial payload does not
+    // name and therefore cannot bring back. (PRAGMA defer_foreign_keys
+    // does not defer cascading actions, verified against node:sqlite
+    // 2026-11-18, which is why it is not used here.) A payload whose
+    // final state truly violates a foreign key fails the check and
+    // rolls back whole. The handler is fully synchronous and the app
+    // holds a single database connection, so no other request can
+    // interleave while enforcement is off.
+    db.exec('PRAGMA foreign_keys = OFF;');
+    try {
+      transaction(() => {
+        // Clear phase: children before parents (reverse dependency order).
+        for (const t of [...present].reverse()) {
+          db.prepare(`DELETE FROM ${t}`).run();
+        }
+        // Insert phase: parents before children (RESTORE_ORDER itself).
+        for (const t of present) {
+          const rows = data[t];
+          const cols = db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
+          const placeholders = cols.map(() => '?').join(',');
+          const stmt = db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${placeholders})`);
+          let restored = 0;
+          for (const row of rows) {
+            stmt.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
+            restored++;
+          }
+          results[t] = { restored };
+        }
+        const violations = db.prepare('PRAGMA foreign_key_check').all();
+        if (violations.length > 0) {
+          throw new Error(`foreign_key_check failed: ${violations.length} violation(s), first in ${violations[0].table}`);
+        }
+      });
+    } finally {
+      db.exec('PRAGMA foreign_keys = ON;');
+    }
+    for (const t of RESTORE_ORDER) {
+      if (!results[t]) results[t] = { skipped: 'not_in_payload' };
+    }
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+router.RESTORE_ORDER = RESTORE_ORDER;
+
 // Migration: cleanup duplicates and ensure users (backup/self-heal — B1)
 router.post('/migration-cleanup/:token', requireMigrationToken, express.json(), async (req, res) => {
   try {

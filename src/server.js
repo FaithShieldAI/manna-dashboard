@@ -51,6 +51,14 @@ app.use((req, res, next) => {
   // every publish came back 413 payload_too_large).
   if (req.path.startsWith('/api/auth/dashboard-payload-sync/')) return next();
   if (req.path.startsWith('/api/auth/lead-collect-sync/')) return next();
+  // The migration restore door carries a full backup snapshot (tens of
+  // MB; its route mounts its own 100mb parser, token-gated like the
+  // other doors). migration-import gets the same exemption: its route
+  // mounts a 50mb parser, but until 2026-11-18 this middleware rejected
+  // every import body over 256kb before the route could see it, which
+  // would have failed any real self-heal restore on size alone.
+  if (req.path.startsWith('/api/auth/migration-restore/')) return next();
+  if (req.path.startsWith('/api/auth/migration-import/')) return next();
   // The contacts mirror posts batches of up to 1000 contacts (its route
   // mounts its own 5mb parser, token-gated like the other sync routes).
   if (req.path.startsWith('/api/auth/contacts-sync/')) return next();
