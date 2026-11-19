@@ -194,8 +194,8 @@ test('campaigns-sync door: upserts by name and refreshes stale figures in place'
   assert.equal(wrong.status, 403);
 
   const stale = [
-    { name: 'Armor Bearer <redacted> - 2026-10-19', provider: 'emailoctopus', sent: 50, opens: 16, clicks: 0, unsubs: 1, bounces: 2, sent_at: '2026-10-19' },
-    { name: 'Armor Bearer <redacted> Wave3 - 2026-10-19', provider: 'emailoctopus', sent: 44, opens: 9, clicks: 1, unsubs: 0, bounces: 5, sent_at: '2026-10-19' },
+    { name: 'Armor Bearer Nano50 - 2026-10-19', provider: 'emailoctopus', sent: 50, opens: 16, clicks: 0, unsubs: 1, bounces: 2, sent_at: '2026-10-19' },
+    { name: 'Armor Bearer Nano50 Wave3 - 2026-10-19', provider: 'emailoctopus', sent: 44, opens: 9, clicks: 1, unsubs: 0, bounces: 5, sent_at: '2026-10-19' },
   ];
   const r1 = await c.post(`/api/auth/campaigns-sync/${TOKEN}`, { tenant_id: tenantId, campaigns: stale });
   assert.equal(r1.status, 200, JSON.stringify(r1.json));
@@ -204,8 +204,8 @@ test('campaigns-sync door: upserts by name and refreshes stale figures in place'
 
   // The refresh: same names, provider's fresh opens (27 and 15).
   const fresh = [
-    { name: 'Armor Bearer <redacted> - 2026-10-19', provider: 'emailoctopus', sent: 50, opens: 27, clicks: 0, unsubs: 1, bounces: 2, sent_at: '2026-10-19' },
-    { name: 'Armor Bearer <redacted> Wave3 - 2026-10-19', provider: 'emailoctopus', sent: 44, opens: 15, clicks: 1, unsubs: 0, bounces: 5, sent_at: '2026-10-19' },
+    { name: 'Armor Bearer Nano50 - 2026-10-19', provider: 'emailoctopus', sent: 50, opens: 27, clicks: 0, unsubs: 1, bounces: 2, sent_at: '2026-10-19' },
+    { name: 'Armor Bearer Nano50 Wave3 - 2026-10-19', provider: 'emailoctopus', sent: 44, opens: 15, clicks: 1, unsubs: 0, bounces: 5, sent_at: '2026-10-19' },
   ];
   const r2 = await c.post(`/api/auth/campaigns-sync/${TOKEN}`, { tenant_id: tenantId, campaigns: fresh });
   assert.equal(r2.status, 200);
@@ -215,8 +215,8 @@ test('campaigns-sync door: upserts by name and refreshes stale figures in place'
   const list = await c.get('/api/email/campaigns');
   assert.equal(list.status, 200);
   assert.equal(list.json.campaigns.length, 2);
-  const plain = list.json.campaigns.find(x => x.name === 'Armor Bearer <redacted> - 2026-10-19');
-  const wave3 = list.json.campaigns.find(x => x.name === 'Armor Bearer <redacted> Wave3 - 2026-10-19');
+  const plain = list.json.campaigns.find(x => x.name === 'Armor Bearer Nano50 - 2026-10-19');
+  const wave3 = list.json.campaigns.find(x => x.name === 'Armor Bearer Nano50 Wave3 - 2026-10-19');
   assert.equal(plain.opens, 27);
   assert.equal(wave3.opens, 15);
 
@@ -226,4 +226,41 @@ test('campaigns-sync door: upserts by name and refreshes stale figures in place'
   });
   assert.equal(bad.status, 400);
   assert.equal(bad.json.error, 'invalid_metric:Neg.sent');
+});
+
+test('campaigns-sync door: delete_names removes a row by exact name, tenant-scoped', async () => {
+  const A = await registerOwner('cleanup@doors.example', 'Cleanup Door Co');
+  const B = await registerOwner('cleanup2@doors.example', 'Cleanup Door Two');
+  const seedRow = { name: 'Mangled Name - 2026-10-19', provider: 'emailoctopus', sent: 50, opens: 27, clicks: 0, unsubs: 1, bounces: 2, sent_at: '2026-10-19' };
+  const keepRow = { name: 'Keeper - 2026-10-19', provider: 'emailoctopus', sent: 44, opens: 15, clicks: 1, unsubs: 0, bounces: 5, sent_at: '2026-10-19' };
+  await A.c.post(`/api/auth/campaigns-sync/${TOKEN}`, { tenant_id: A.tenantId, campaigns: [seedRow, keepRow] });
+  await B.c.post(`/api/auth/campaigns-sync/${TOKEN}`, { tenant_id: B.tenantId, campaigns: [seedRow] });
+
+  // Delete-only call: campaigns may be an empty array.
+  const del = await A.c.post(`/api/auth/campaigns-sync/${TOKEN}`, {
+    tenant_id: A.tenantId, campaigns: [], delete_names: ['Mangled Name - 2026-10-19'],
+  });
+  assert.equal(del.status, 200, JSON.stringify(del.json));
+  assert.equal(del.json.deleted, 1);
+
+  const listA = await A.c.get('/api/email/campaigns');
+  assert.deepEqual(listA.json.campaigns.map(x => x.name), ['Keeper - 2026-10-19']);
+
+  // The other tenant's row of the same name is untouched.
+  const listB = await B.c.get('/api/email/campaigns');
+  assert.deepEqual(listB.json.campaigns.map(x => x.name), ['Mangled Name - 2026-10-19']);
+
+  // Deleting a name the tenant does not hold is a no-op, not an error.
+  const noop = await A.c.post(`/api/auth/campaigns-sync/${TOKEN}`, {
+    tenant_id: A.tenantId, campaigns: [], delete_names: ['No Such Campaign'],
+  });
+  assert.equal(noop.status, 200);
+  assert.equal(noop.json.deleted, 0);
+
+  // A call with neither campaigns nor delete_names is still refused.
+  const empty = await A.c.post(`/api/auth/campaigns-sync/${TOKEN}`, {
+    tenant_id: A.tenantId, campaigns: [],
+  });
+  assert.equal(empty.status, 400);
+  assert.equal(empty.json.error, 'campaigns_required');
 });

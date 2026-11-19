@@ -2548,17 +2548,40 @@ router.post('/social-stats-sync/:token', requireMigrationToken, express.json({ l
 // step: upsert by (tenant_id, name), the natural key the syncD2rm admin
 // sync uses, updating the stat columns in place and inserting only a
 // campaign the tenant does not hold yet. The response carries the
-// tenant's rows for the named campaigns as the read-back.
+// tenant's rows for the named campaigns as the read-back. An optional
+// delete_names list removes rows by exact name in the same call (the
+// repair path for a row inserted under a wrong name: the 2026-11-18
+// completion run inserted two EmailOctopus rows under a mangled name
+// instead of refreshing the originals; they were deleted by name and
+// the originals refreshed, all through this door).
 // Body: { tenant_email | tenant_id,
 //         campaigns: [{ name, provider?, sent, opens, clicks, unsubs,
-//                       bounces, sent_at? }] }
+//                       bounces, sent_at? }],
+//         delete_names?: [name, ...] }  (campaigns may be an empty
+//         array when the call is a delete only)
 router.post('/campaigns-sync/:token', requireMigrationToken, express.json({ limit: '256kb' }), (req, res) => {
   try {
     const body = req.body || {};
     const resolved = _resolveDoorTenant(body);
     if (!resolved.tenant) return res.status(resolved.status).json({ ok: false, error: resolved.error });
     const tenant = resolved.tenant;
-    if (!Array.isArray(body.campaigns) || body.campaigns.length < 1 || body.campaigns.length > 200) {
+    if (!Array.isArray(body.campaigns) || body.campaigns.length > 200) {
+      return res.status(400).json({ ok: false, error: 'campaigns_required' });
+    }
+    const deleteNames = [];
+    if (body.delete_names !== undefined) {
+      if (!Array.isArray(body.delete_names) || body.delete_names.length > 200) {
+        return res.status(400).json({ ok: false, error: 'invalid_delete_names' });
+      }
+      for (const n of body.delete_names) {
+        const name = typeof n === 'string' ? n.trim() : '';
+        if (!name || name.length > 200) {
+          return res.status(400).json({ ok: false, error: 'invalid_delete_name' });
+        }
+        deleteNames.push(name);
+      }
+    }
+    if (body.campaigns.length < 1 && deleteNames.length < 1) {
       return res.status(400).json({ ok: false, error: 'campaigns_required' });
     }
     const cleaned = [];
@@ -2591,7 +2614,12 @@ router.post('/campaigns-sync/:token', requireMigrationToken, express.json({ limi
       WHERE tenant_id = ? AND name = ?`);
     let inserted = 0;
     let updated = 0;
+    let deleted = 0;
+    const del = db.prepare('DELETE FROM email_campaigns WHERE tenant_id = ? AND name = ?');
     transaction(() => {
+      for (const name of deleteNames) {
+        deleted += del.run(tenant.id, name).changes;
+      }
       for (const c of cleaned) {
         if (find.get(tenant.id, c.name)) {
           update.run(c.sent, c.opens, c.clicks, c.unsubs, c.bounces, c.provider, c.sent_at, tenant.id, c.name);
@@ -2602,11 +2630,11 @@ router.post('/campaigns-sync/:token', requireMigrationToken, express.json({ limi
         }
       }
     });
-    const rows = db.prepare(
+    const rows = cleaned.length ? db.prepare(
       'SELECT id, name, provider, sent, opens, clicks, unsubs, bounces, sent_at FROM email_campaigns WHERE tenant_id = ? AND name IN (' +
       cleaned.map(() => '?').join(',') + ') ORDER BY id'
-    ).all(tenant.id, ...cleaned.map(c => c.name));
-    return res.json({ ok: true, tenant_id: tenant.id, inserted, updated, campaigns: rows });
+    ).all(tenant.id, ...cleaned.map(c => c.name)) : [];
+    return res.json({ ok: true, tenant_id: tenant.id, inserted, updated, deleted, campaigns: rows });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message });
   }
