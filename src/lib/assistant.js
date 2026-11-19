@@ -171,7 +171,11 @@ function insightReply(message, ctx) {
     if (!ob || !Array.isArray(ob.steps) || !ob.steps.length) return null;
     const asksComplete = /is (my |the )?setup complete|is .* complete\??$|are we (done|set up)|setup done|finished (with )?setup|what comes (next|after)/.test(msg);
     if (ob.is_complete) {
-      if (allStepsDone && asksComplete) {
+      // The final "done" of the walk-through lands here (setup just became
+      // complete): it earns the acknowledgement, not the stats briefing
+      // (live verification walk, 2026-11-19).
+      const saysDone = /\bdone\b/.test(msg) || /^(did it|finished|all set|that'?s it)\b/.test(msg);
+      if (allStepsDone && (asksComplete || saysDone)) {
         return [
           `\u{1F389} You're all set up \u2014 every setup step is done (${ob.steps.length} of ${ob.steps.length}).`,
           'Nothing sends until you send it, but your dashboard is ready and tracking from here. Ask me "what should I do next?" anytime and I\u2019ll work from your real numbers.',

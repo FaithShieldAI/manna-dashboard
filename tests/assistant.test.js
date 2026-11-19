@@ -113,6 +113,14 @@ test('walk-through: completion is acknowledged once every step is done', async (
   assert.equal(r.status, 200);
   assert.match(r.json.reply, /all set up/);
   assert.match(r.json.reply, /every setup step is done/);
+
+  // The walk-through's final "done" (sent right after the last step) gets
+  // the same acknowledgement, not the stats briefing.
+  const d = await c.post('/api/assistant/chat', { message: 'done' });
+  assert.equal(d.status, 200);
+  assert.match(d.json.reply, /all set up/);
+  assert.match(d.json.reply, /every setup step is done/);
+  assert.doesNotMatch(d.json.reply, /Quick briefing/);
 });
 
 test('chat is tenant-isolated', async () => {
