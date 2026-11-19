@@ -1101,7 +1101,13 @@ const unscoped = {
     ).get(id);
   },
   getTenantById(id) {
-    return db.prepare('SELECT id, name, slug, plan, subscription_status FROM tenants WHERE id = ?').get(id);
+    // created_at included (2026-11-19): serveApp injects the tenant's own
+    // created_at as DASH_START, but this SELECT never returned it, so the
+    // serve silently fell back to the USER's created_at. In tests the two
+    // rows are stamped milliseconds apart at signup, so the DASH_START test
+    // passed or failed on whether the clock ticked between the two inserts
+    // (the intermittent full-suite flake). Return the real column.
+    return db.prepare('SELECT id, name, slug, plan, subscription_status, created_at FROM tenants WHERE id = ?').get(id);
   },
   getTenantBySlug(slug) {
     return db.prepare('SELECT id, name, slug, plan FROM tenants WHERE slug = ?').get(slug);
