@@ -36,13 +36,45 @@
   var inputEl = document.getElementById('chat-input');
   var greeted = false;
 
-  function addMsg(text, cls) {
+  /* The conversation survives page navigation within the session: Scribe's
+     own step directions send the user to other pages and back, and losing
+     the thread there strands a newbie (live test, 2026-11-19). The
+     transcript lives in sessionStorage only — gone when the tab closes. */
+  var CHAT_KEY = 'd2rm_ob_chat_v1';
+  var transcript = [];
+  function saveChat() {
+    try { sessionStorage.setItem(CHAT_KEY, JSON.stringify(transcript)); } catch (e) {}
+  }
+  function loadChat() {
+    try {
+      var raw = sessionStorage.getItem(CHAT_KEY);
+      if (raw) transcript = JSON.parse(raw) || [];
+    } catch (e) { transcript = []; }
+  }
+
+  function addMsg(text, cls, skipSave) {
     var d = document.createElement('div');
     d.className = 'd2rm-msg ' + cls;
     d.textContent = text;
     msgsEl.appendChild(d);
     msgsEl.scrollTop = msgsEl.scrollHeight;
+    if (!skipSave && String(cls).indexOf('typing') === -1) {
+      transcript.push({ cls: cls, text: text });
+      saveChat();
+      if (cls === 'user') history.push({ role: 'user', content: text });
+      else if (cls === 'bot') history.push({ role: 'assistant', content: text });
+    }
     return d;
+  }
+
+  loadChat();
+  if (transcript.length) {
+    greeted = true;
+    transcript.forEach(function (m) {
+      addMsg(m.text, m.cls, true);
+      if (m.cls === 'user') history.push({ role: 'user', content: m.text });
+      else if (m.cls === 'bot') history.push({ role: 'assistant', content: m.text });
+    });
   }
 
   fetch('/api/assistant/status', { headers: Hget() })
@@ -69,8 +101,6 @@
         typing.remove();
         if (r.json && r.json.ok) {
           addMsg(r.json.reply, 'bot');
-          history.push({ role: 'user', content: text });
-          history.push({ role: 'assistant', content: r.json.reply });
         } else {
           addMsg(MannaI18n.t('dash.js.common.assistant_error'), 'bot');
         }

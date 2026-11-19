@@ -99,12 +99,22 @@ Rules:
 - Never mention other customers or reveal anything outside the provided data.
 
 ONBOARDING MODE: the CUSTOMER DATA JSON includes an "onboarding" object.
-When onboarding.is_complete is false, your top priority is guiding the
-customer through setup. After answering their question briefly, point them
-to onboarding.next_step by name and tell them exactly what to do
-(onboarding.next_step.guidance). The full step list is in onboarding.steps.
-Be encouraging and concrete — the goal is a fully set-up customer in
-about 10 minutes.`;
+When onboarding.is_complete is false, your one job is walking the customer
+through setup, ONE step at a time — setup is too much for a new customer to
+take in all at once:
+- Always bring them to onboarding.next_step: name the step and tell them
+  exactly what to do, using onboarding.next_step.guidance word for word.
+  Never invent buttons, tours, links, or controls that are not in the
+  guidance, and never send them to a different page than the guidance says.
+- Do not pile on generic marketing actions that jump ahead of the current
+  step. The current step is the whole answer until it is done.
+- If they ask how to do a later step, name that step and its place in the
+  order (the full list is in onboarding.steps), then bring them back to
+  the current step: the steps are done in order so the tracking lines up.
+- If they ask what to do first, the answer is the current step.
+When onboarding.is_complete is true, say plainly that setup is complete
+before offering any next actions. Never describe an account as "live" or
+"collecting" unless the data shows actual sends.`;
 
 // ---------------------------------------------------------------------------
 // Insight engine (no API key): real math over the tenant's data.
@@ -123,6 +133,112 @@ function insightReply(message, ctx) {
     if (!ob || ob.is_complete || !ob.next_step) return null;
     const idx = Math.max(0, ob.steps.findIndex(s => s.id === ob.next_step.id));
     return `\u{1F6E0} Setup: you're on step ${idx + 1} of ${ob.steps.length} \u2014 "${ob.next_step.title}". ${ob.next_step.guidance}`;
+  }
+
+  // --- the walk-through: while setup is incomplete, Scribe LEADS ---------
+  // Michael's rule (2026-11-19, after a live newbie test failed): the system
+  // is too complicated for a newbie to face alone, so setup questions are
+  // answered from the checklist itself, one step at a time, in order —
+  // never with the stats briefing, never with generic actions that jump
+  // ahead of the step the customer is standing on.
+  const ob = ctx.onboarding;
+  const inSetup = !!(ob && !ob.is_complete && ob.next_step && Array.isArray(ob.steps) && ob.steps.length);
+  const allStepsDone = !!(ob && Array.isArray(ob.steps) && ob.steps.length && ob.steps.every(s => s.done));
+
+  function stepLine(step) {
+    const idx = Math.max(0, ob.steps.findIndex(s => s.id === step.id));
+    return `\u{1F6E0} Setup: step ${idx + 1} of ${ob.steps.length} \u2014 "${step.title}". ${step.guidance}`;
+  }
+
+  function stepAnswer(step) {
+    const idx = ob.steps.findIndex(s => s.id === step.id);
+    if (step.done) {
+      const out = [`That one's already done \u2014 step ${idx + 1} of ${ob.steps.length}, "${step.title}".`];
+      if (inSetup) out.push(stepLine(ob.next_step));
+      return out;
+    }
+    if (inSetup && ob.next_step.id !== step.id) {
+      return [
+        `"${step.title}" is step ${idx + 1} of ${ob.steps.length}. We do them in order so your tracking lines up \u2014 it comes after the step you're on now.`,
+        stepLine(ob.next_step),
+        'Finish this one first, then tell me "done" and we move on.',
+      ];
+    }
+    return [stepLine(step), 'Do that one thing, then tell me "done" and I\u2019ll give you the next step.'];
+  }
+
+  function setupReply() {
+    if (!ob || !Array.isArray(ob.steps) || !ob.steps.length) return null;
+    const asksComplete = /is (my |the )?setup complete|is .* complete\??$|are we (done|set up)|setup done|finished (with )?setup|what comes (next|after)/.test(msg);
+    if (ob.is_complete) {
+      if (allStepsDone && asksComplete) {
+        return [
+          `\u{1F389} You're all set up \u2014 every setup step is done (${ob.steps.length} of ${ob.steps.length}).`,
+          'Nothing sends until you send it, but your dashboard is ready and tracking from here. Ask me "what should I do next?" anytime and I\u2019ll work from your real numbers.',
+        ];
+      }
+      if (ob.dismissed && asksComplete) {
+        return ['You skipped the setup checklist, so it counts as closed \u2014 but the steps are still on the Setup page whenever you want them, and the checklist can be restarted from that page too.'];
+      }
+      return null;
+    }
+    if (!inSetup) return null;
+    if (asksComplete) {
+      const idx = Math.max(0, ob.steps.findIndex(s => s.id === ob.next_step.id));
+      return [
+        `Not quite yet \u2014 you're on step ${idx + 1} of ${ob.steps.length}. One step at a time and we'll get there:`,
+        stepLine(ob.next_step),
+      ];
+    }
+    // A named step + a how-to verb: answer THAT step, in sequence.
+    const stepMatchers = [
+      ['first_campaign', /campaign/, /how|set up|setup|create|make|start|add/],
+      ['starter_content', /template/, /how|install|add|set up|setup|use|pick|choose/],
+      ['connect_socials', /social|instagram|tiktok|youtube/, /connect|add|link|hook up|set up|setup/],
+      ['first_lead_job', /lead/, /search|find|collect|how|run|get/],
+      ['welcome', /tour|welcome/, /./],
+    ];
+    for (const [id, topic, verb] of stepMatchers) {
+      if (topic.test(msg) && verb.test(msg)) {
+        const step = ob.steps.find(s => s.id === id);
+        if (step) return stepAnswer(step);
+      }
+    }
+    // Getting started / what do I do first.
+    if (/what (do|should) i do first|just signed up|just joined|where (do|should) i (start|begin)|how do i (start|begin|get started)|first step|do first/.test(msg)) {
+      return [
+        'Start with the step in front of you \u2014 one at a time, in order:',
+        stepLine(ob.next_step),
+        'Do that one thing, then tell me "done" and I\u2019ll give you the next step.',
+      ];
+    }
+    // "Walk me through it" anywhere in the message.
+    if (/walk me through|step by step|guide me|take me through/.test(msg)) {
+      return [
+        'You got it \u2014 I\u2019ll take you through it one step at a time. Here\u2019s the first one:',
+        stepLine(ob.next_step),
+        'Do that, then tell me "done" and I\u2019ll give you the next step.',
+      ];
+    }
+    // Reporting a step done: state has already advanced (completion is
+    // derived from real data), so the nudge IS the next step.
+    if (/\bdone\b/.test(msg) || /^(did it|finished|installed|added|created|connected)\b/.test(msg)) {
+      return [
+        'Got it \u2014 the checklist reads your real data, so that step checks itself off. Here\u2019s the next one:',
+        stepLine(ob.next_step),
+        'Tell me "done" when it\u2019s done.',
+      ];
+    }
+    // "Suggest" during setup means "start the walk-through", not a
+    // different plan that bypasses the checklist.
+    if (wants('suggest', 'recommend a start', 'recommend where')) {
+      return [
+        'Here\u2019s where we start \u2014 step by step:',
+        stepLine(ob.next_step),
+        'Do that one thing, then tell me "done" and I\u2019ll give you the next step.',
+      ];
+    }
+    return null;
   }
 
   // --- funnel drop-off analysis (shared) ---
@@ -167,11 +283,27 @@ function insightReply(message, ctx) {
     return actions.slice(0, n);
   }
 
+  const setupParts = setupReply();
+  if (setupParts) {
+    return setupParts.join('\n');
+  }
+
   if (wants('next', 'should i do', 'priorit', 'focus', 'todo')) {
-    const nudge = onboardingNudge();
-    if (nudge) parts.push(nudge);
-    parts.push('Here are your highest-leverage next actions:');
-    nextActions().forEach((a, i) => parts.push(`${i + 1}. ${a}`));
+    if (inSetup) {
+      // Mid-setup, "what's next" has exactly one answer: the current step.
+      // Generic actions here jumped a newbie ahead of the step they were
+      // standing on (live test, 2026-11-19).
+      parts.push(stepLine(ob.next_step));
+      parts.push('That\u2019s the one thing to do. Tell me "done" when it\u2019s done and I\u2019ll give you the next step.');
+    } else {
+      if (ob && ob.is_complete && allStepsDone) {
+        parts.push(`\u{1F389} You're all set up \u2014 every setup step is done.`);
+      }
+      const nudge = onboardingNudge();
+      if (nudge) parts.push(nudge);
+      parts.push('Here are your highest-leverage next actions:');
+      nextActions().forEach((a, i) => parts.push(`${i + 1}. ${a}`));
+    }
   } else if (wants('open rate', 'email', 'subject')) {
     parts.push(`Email snapshot (all time): ${email.sent.toLocaleString()} sent, ${email.open_rate}% open rate, ${email.click_rate}% click rate.`);
     if (email.sent === 0) {

@@ -221,15 +221,43 @@ test('assistant greeting guides a fresh tenant through setup', async () => {
   assert.match(r.json.reply, /Welcome/);
 });
 
-test('assistant next-actions still work mid-onboarding (regression)', async () => {
+test('assistant walk-through: mid-onboarding, "next" is the current step only', async () => {
+  // Michael's rule (2026-11-19): Scribe takes a newbie through setup one
+  // step at a time. Mid-setup, "what should I do next?" returns the current
+  // step alone — no generic marketing actions jumping ahead of it. The
+  // next-actions answer returns once setup is closed.
   const { c, tenantId } = await register('next-ob@example.org');
   db.prepare(`INSERT INTO email_snapshots (tenant_id, window_key, sent, opens, clicks)
               VALUES (?, 'all', 2000, 300, 20)`).run(tenantId);
   const r = await c.post('/api/assistant/chat', { message: 'what should I do next?' });
   assert.equal(r.status, 200);
-  assert.match(r.json.reply, /next actions/i);
-  assert.match(r.json.reply, /subject/i); // open rate 15% -> subject-line action
-  assert.match(r.json.reply, /Setup:/); // onboarding nudge present
+  assert.match(r.json.reply, /Setup:/);
+  assert.match(r.json.reply, /Welcome & quick tour/);
+  assert.doesNotMatch(r.json.reply, /next actions/i);
+  assert.doesNotMatch(r.json.reply, /Quick briefing/);
+
+  await c.post('/api/onboarding/dismiss', {});
+  const r2 = await c.post('/api/assistant/chat', { message: 'what should I do next?' });
+  assert.equal(r2.status, 200);
+  assert.match(r2.json.reply, /next actions/i);
+  assert.match(r2.json.reply, /subject/i); // open rate 15% -> subject-line action
+});
+
+test('step guidance matches the real Setup page (no invented controls, no false claims)', () => {
+  const { STEPS } = require('../src/lib/onboarding');
+  const byId = {};
+  STEPS.forEach(s => { byId[s.id] = s; });
+  // Step 1's only control is the "Start setup" button — no tour, no Continue.
+  assert.match(byId.welcome.guidance, /Start setup/);
+  assert.doesNotMatch(byId.welcome.guidance, /quick tour below|hit Continue/i);
+  // Step 4 runs in its own box on the Setup page, not on the Leads page.
+  assert.match(byId.first_lead_job.guidance, /Setup page/);
+  assert.doesNotMatch(byId.first_lead_job.guidance, /from the Leads page/);
+  // Step 3 names a concrete first pick and the real button.
+  assert.match(byId.starter_content.guidance, /Install selected/);
+  // Step 5 never claims the account is live.
+  assert.match(byId.first_campaign.guidance, /nothing is sent/i);
+  assert.doesNotMatch(byId.first_campaign.guidance, /and you\u2019re live/);
 });
 
 test('assistant briefing nudges setup when onboarding is incomplete', async () => {

@@ -22,7 +22,7 @@ const STEPS = [
     id: 'welcome',
     title: 'Welcome & quick tour',
     description: 'See what the dashboard does for you and how setup works.',
-    guidance: 'Take the quick tour below, then hit Continue.',
+    guidance: 'Hit "Start setup" on this page to begin. Every step after this one is done right here on the Setup page, one at a time.',
   },
   {
     id: 'connect_socials',
@@ -34,19 +34,19 @@ const STEPS = [
     id: 'starter_content',
     title: 'Install starter templates',
     description: 'Drop in ready-made email and social templates you can customize.',
-    guidance: 'Install a starter email template on the Setup page — you\u2019ll have send-ready copy in one click.',
+    guidance: 'On the Setup page, tick one email template (Welcome Email is a good first one) and hit "Install selected" — you\u2019ll have send-ready copy in one click.',
   },
   {
     id: 'first_lead_job',
     title: 'Run your first lead search',
     description: 'Enter keywords for your niche and let the collector find your next customers.',
-    guidance: 'Run your first lead search from the Leads page — enter 2\u20133 keywords for your niche and let it find your next customers.',
+    guidance: 'Stay on the Setup page for this one: in this step\u2019s box, type 2\u20133 keywords for your niche, separated by commas, and hit "Run lead search". What it finds lands in your Leads list.',
   },
   {
     id: 'first_campaign',
     title: 'Set up your first campaign',
     description: 'Name your first email campaign so you can track it from day one.',
-    guidance: 'Create your first email campaign on the Setup page — give it a name, pick your provider, and you\u2019re live.',
+    guidance: 'On the Setup page, give your campaign a name, pick your provider, and hit "Create campaign". That only sets up tracking: nothing is sent and nothing is live until you send an email yourself.',
   },
 ];
 
