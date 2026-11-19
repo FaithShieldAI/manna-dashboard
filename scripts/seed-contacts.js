@@ -1,8 +1,11 @@
 'use strict';
 /**
  * Seed influencer contacts on startup (if not already present).
- * Reads data/seed/influencers.csv and inserts the full dataset for
- * EVERY tenant that has no influencers yet (the house tenants, ...).
+ * Reads data/seed/influencers.csv (or the arsenal-seed.json fallback in
+ * production) and inserts the full dataset for GRANTED tenants only —
+ * the house tenant (id 1) and tenants with a recorded 'd2rm-arsenal'
+ * grant in tenant_seed_state. A standalone Manna signup starts from
+ * scratch and is never seeded here (2026-11-19 full-package rule).
  * Idempotent: any tenant that already has influencers is skipped.
  *
  * The CSV is parsed once and shared across tenants; per-tenant inserts
@@ -262,7 +265,24 @@ async function seedInfluencers() {
     console.log('[seed] created default tenant 1');
   }
 
-  const tenants = db.prepare('SELECT id FROM tenants ORDER BY id').all();
+  // 2026-11-19 (full-package rule): top up ONLY granted tenants — the
+  // house tenant (id 1) and tenants with a recorded 'd2rm-arsenal' grant
+  // in tenant_seed_state (Armor Bearer affiliates, granted deliberately
+  // by the influencer webhook or the affiliate script). The old query
+  // seeded EVERY empty tenant, copying 13,871 house contacts into each
+  // new signup and growing the migration export until it 502'd.
+  let tenants;
+  try {
+    tenants = db.prepare(`
+      SELECT id FROM tenants WHERE id = 1
+        OR id IN (SELECT tenant_id FROM tenant_seed_state WHERE seed_key = 'd2rm-arsenal')
+      ORDER BY id
+    `).all();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('[seed] tenant_seed_state unavailable, seeding house tenant only');
+    tenants = [{ id: 1 }];
+  }
   if (tenants.length === 0) {
     // eslint-disable-next-line no-console
     console.log('[seed] no tenants found, skipping');

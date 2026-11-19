@@ -1,16 +1,17 @@
 'use strict';
 /**
- * Signup demo-seeding tests (2026-10-14):
- * a new signup must land in a POPULATED dashboard — the seeder runs
- * for the new tenant only, with no server restart.
+ * Signup seeding tests — 2026-11-19 (full-package rule):
+ * a new signup starts FROM SCRATCH. Only Armor Bearer affiliates get
+ * the full package (13,871 house contacts), by deliberate grant
+ * (influencer webhook -> arsenalSeed, or the deliberate affiliate
+ * script). The old signup seeds copied the full house arsenal into
+ * EVERY new tenant, which grew the migration export past 52 MB until
+ * it 502'd and broke the backup and the dashboard sync.
  *
- * FIX 2026-10-29 (audit B2): the seeder no longer runs synchronously
- * inside POST /api/auth/register — it runs in the background right after
- * the 201 response (synchronous seeding made signup take ~60s under
- * concurrency). These tests therefore POLL for the seeded state instead
- * of asserting it in the same tick as the response. The contract under
- * test is unchanged: signup -> populated dashboard, idempotent,
- * tenant-scoped, and a seed failure never breaks registration.
+ * The contract under test: signup -> empty tenant (0 influencers,
+ * 0 goals, 0 campaigns, 0 email snapshots), and nothing arrives
+ * later — no background seeding, no boot re-planting. A deliberate
+ * grant (seedTenantInfluencers) still loads a tenant, idempotently.
  *
  * NOTE: this file deliberately does NOT call setupTestEnv() from helpers.js,
  * because the harness sets MANNA_SKIP_SIGNUP_SEED=1. This file exercises the
@@ -23,9 +24,13 @@ const os = require('os');
 const fs = require('fs');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2rm-test-'));
+// 2026-11-19: clean up the temp DB at exit (see tests/helpers.js).
+process.on('exit', () => {
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* best effort */ }
+});
 process.env.DATABASE_PATH = path.join(dir, 'test.db');
 process.env.NODE_ENV = 'test';
-delete process.env.MANNA_SKIP_SIGNUP_SEED; // exercise the real seeding path
+delete process.env.MANNA_SKIP_SIGNUP_SEED; // exercise the real signup path
 
 let server, base, db;
 before(async () => {
@@ -53,65 +58,51 @@ async function register(email, companyName) {
 const count = (table, tid) =>
   db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE tenant_id = ?`).get(tid).n;
 
-// FIX 2026-10-29 (audit B2): seeding is backgrounded — poll until the
-// tenant reaches the fully seeded state (or the deadline expires and the
-// assertions below fail with the real counts).
-async function waitSeeded(tid, timeoutMs = 180000) {
+// The old tests polled for the seeded state to arrive. The new contract is
+// the opposite: poll to prove NOTHING arrives — no background seed, no boot
+// re-planting — for the whole window.
+async function waitQuiet(tid, timeoutMs = 5000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (count('influencers', tid) === 9284
-      && count('email_snapshots', tid) === 4
-      && count('email_campaigns', tid) === 0
-      && count('goals', tid) === 6) return true;
-    await new Promise(r => setTimeout(r, 500));
+    if (count('influencers', tid) !== 0
+      || count('goals', tid) !== 0
+      || count('email_snapshots', tid) !== 0
+      || count('email_campaigns', tid) !== 0) return false;
+    await new Promise(r => setTimeout(r, 250));
   }
-  return false;
+  return true;
 }
 
-test('signup seeds demo data immediately, no restart', async () => {
-  const tenant = await register('ken-seed@example.com', 'Ken Seed Co');
-  assert.equal(await waitSeeded(tenant.id), true);
-  assert.equal(count('email_snapshots', tenant.id), 4);
-  // Campaigns are never seeded (2026-11-18 isolation fix): the seed
-  // used to plant the house tenant's six real campaigns into every
-  // new signup. A new tenant starts with zero campaigns.
+test('signup starts from scratch: no house contacts, no goals, no campaigns', async () => {
+  const tenant = await register('scratch@example.com', 'Scratch Co');
+  assert.equal(await waitQuiet(tenant.id), true);
+  assert.equal(count('influencers', tenant.id), 0);
+  assert.equal(count('goals', tenant.id), 0);
   assert.equal(count('email_campaigns', tenant.id), 0);
-  // Goal set is 6 since 2026-11-10: sustained out, mannaai + two_fishes in.
-  assert.equal(count('goals', tenant.id), 6);
-  assert.equal(count('influencers', tenant.id), 9284);
+  assert.equal(count('email_snapshots', tenant.id), 0);
 });
 
-test('seeding is idempotent (re-run causes no duplicates)', async () => {
-  const tenant = await register('idem-seed@example.com', 'Idem Co');
-  // Wait for the background signup seed to finish first; only then does a
-  // direct re-run exercise the idempotency guard (not a race).
-  assert.equal(await waitSeeded(tenant.id), true);
-  const { seedDemoData } = require('../scripts/seed-demo-data');
+test('a deliberate grant still loads a tenant, idempotently', async () => {
+  const tenant = await register('grant@example.com', 'Grant Co');
   const { seedTenantInfluencers } = require('../scripts/seed-contacts');
-  seedDemoData(tenant.slug);
-  const r = seedTenantInfluencers(tenant.id);
-  assert.equal(r.skipped, true);
-  assert.equal(count('email_snapshots', tenant.id), 4);
-  assert.equal(count('email_campaigns', tenant.id), 0);
-  assert.equal(count('goals', tenant.id), 6);
-  assert.equal(count('influencers', tenant.id), 9284);
+  const r1 = seedTenantInfluencers(tenant.id);
+  assert.equal(r1.skipped, false);
+  assert.ok(r1.count > 0);
+  const r2 = seedTenantInfluencers(tenant.id);
+  assert.equal(r2.skipped, true);
+  assert.equal(count('influencers', tenant.id), r1.count);
 });
 
-test('seeding is tenant-scoped (second signup does not touch first tenant)', async () => {
+test('a second signup does not touch the first tenant', async () => {
   const t1 = await register('scope1@example.com', 'Scope One');
   const t2 = await register('scope2@example.com', 'Scope Two');
-  assert.equal(await waitSeeded(t1.id), true);
-  assert.equal(await waitSeeded(t2.id), true);
-  assert.equal(count('influencers', t2.id), 9284);
-  assert.equal(count('influencers', t1.id), 9284);
-  assert.equal(count('email_snapshots', t1.id), 4);
+  assert.equal(await waitQuiet(t1.id, 3000), true);
+  assert.equal(await waitQuiet(t2.id, 3000), true);
+  assert.equal(count('influencers', t1.id), 0);
+  assert.equal(count('influencers', t2.id), 0);
 });
 
-test('a seed failure never breaks registration', async () => {
-  // Corrupt the CSV path lookup by pointing at an empty dir via monkey-patch
-  // is overkill; instead verify the route's try/catch by registering with a
-  // company name that slugifies fine — the route must 201 regardless.
-  // (The try/catch is structural; this test locks the 201 contract.)
+test('registration still succeeds (201) with no seeding', async () => {
   const tenant = await register('resilient@example.com', 'Resilient Co');
   assert.ok(tenant.id > 0);
 });

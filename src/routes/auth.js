@@ -108,35 +108,14 @@ router.post('/register', authLimiter, async (req, res) => {
       return { tenantId: Number(t.lastInsertRowid), userId: Number(u.lastInsertRowid) };
     });
 
-    // Seed demo data for the NEW tenant (tenant-scoped: only this tenant is
-    // touched). A new signup must land in a populated dashboard — the
-    // boot-time seeder only covers tenants that exist at server start.
-    // Skipped when MANNA_SKIP_SIGNUP_SEED=1 (test harness sets this; the
-    // dedicated tests/signup-seed.test.js exercises the real path).
-    // A seed failure must never break registration, so errors are logged.
-    //
-    // FIX 2026-10-29 (audit B2): the seeds used to run SYNCHRONOUSLY here,
-    // before the response — seeding ~9.5k contacts per tenant serialized on
-    // the request, so 50 concurrent signups took p50 ~60s each. The seeds
-    // still run in full (the loaded-guns contact preload is unchanged), but
-    // AFTER the 201 response, in the background (see setImmediate below).
-    // Both seeds are idempotent — seedTenantInfluencers skips a tenant that
-    // already has influencers, seedDemoData skips rows already present — so
-    // a retried signup or a race with the boot-time seeder cannot
-    // double-seed. If the process restarts before the background run fires,
-    // the boot-time seeders in src/server.js cover this tenant at next boot.
-    const runSignupSeeds = () => {
-      if (process.env.MANNA_SKIP_SIGNUP_SEED === '1') return;
-      try {
-        const { seedDemoData } = require('../../scripts/seed-demo-data');
-        seedDemoData(slug);
-        const { seedTenantInfluencers } = require('../../scripts/seed-contacts');
-        seedTenantInfluencers(created.tenantId);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('[auth/register] demo seed failed for tenant', slug, ':', e.message);
-      }
-    };
+    // 2026-11-19 (full-package rule): a new signup starts FROM SCRATCH.
+    // No demo seeding runs here anymore. The old signup seeds copied the
+    // full 13,871-contact house arsenal into EVERY new tenant, which grew
+    // the migration export past 52 MB until it 502'd and broke the backup
+    // and the dashboard sync. Only Armor Bearer affiliates get the full
+    // package, by deliberate grant (influencer webhook -> arsenalSeed, or
+    // the deliberate seed_affiliate_arsenal.js run). Existing tenants keep
+    // their copies. Scribe still walks every new user through setup.
 
     // Signup attribution: link the new account back to its visit session so
     // we know which landing page converted. Fire-and-forget, never breaks
@@ -192,10 +171,6 @@ router.post('/register', authLimiter, async (req, res) => {
       // DEV ONLY — never expose in production. Phase 2 sends this by email.
       ...(process.env.NODE_ENV !== 'production' ? { devVerificationToken: rawToken } : {}),
     });
-    // FIX 2026-10-29 (audit B2): fire the (idempotent) tenant seeds in the
-    // background now that the 201 is on the wire — signup answers in
-    // well under a second instead of after ~9.5k seed inserts.
-    setImmediate(runSignupSeeds);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[auth/register]', e);
@@ -526,20 +501,56 @@ router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
       'email_verification_tokens', 'password_reset_tokens', 'sessions',
       'tenant_seed_state'];
     
-    const result = {};
+    // 2026-11-19: STREAM the export, one row at a time. The old code built
+    // the whole 57-table database into one JS object and res.json()'d it,
+    // which held 50+ MB in memory at once; once the auto-seed copies grew
+    // the export past ~52 MB the instance 502'd on every call and the
+    // backup and the dashboard sync both died with it. The response shape
+    // is unchanged ({ ok, exported_at, data: { table: [rows] } }), so the
+    // backup script and the restore door consume it exactly as before.
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.write(JSON.stringify({ ok: true, exported_at: new Date().toISOString() }).slice(0, -1));
+    res.write(',"data":{');
+    let firstTable = true;
     for (const t of tables) {
+      if (!firstTable) res.write(',');
+      firstTable = false;
+      res.write(JSON.stringify(t) + ':');
       try {
         const exists = db.prepare(
           "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
         ).get(t);
-        if (!exists) { result[t] = { skipped: 'no table' }; continue; }
-        const rows = db.prepare(`SELECT * FROM ${t}`).all();
-        result[t] = rows;
+        if (!exists) { res.write(JSON.stringify({ skipped: 'no table' })); continue; }
+        const stmt = db.prepare(`SELECT * FROM ${t}`);
+        res.write('[');
+        let firstRow = true;
+        for (const row of stmt.iterate()) {
+          if (!firstRow) res.write(',');
+          firstRow = false;
+          res.write(JSON.stringify(row));
+        }
+        res.write(']');
       } catch (e) {
-        result[t] = { error: e.message };
+        res.write(JSON.stringify({ error: e.message }));
       }
     }
-    res.json({ ok: true, exported_at: new Date().toISOString(), data: result });
+    res.write('}}');
+    res.end();
+  } catch (e) {
+    if (!res.headersSent) res.status(500).json({ ok: false, error: e.message });
+    else res.end();
+  }
+});
+
+// PR events export (backup/self-heal only — token-gated, same pattern as
+// the migration export above). 2026-11-19: the mail-truth chain's step 2
+// only needs pr_events, but it used to pull the whole 52+ MB database
+// export to get them — so when the full export 502'd, the dashboard sync
+// died with it. This door carries just the pr_events table, a few KB.
+router.get('/pr-events-export/:token', requireMigrationToken, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM pr_events ORDER BY ts ASC').all();
+    res.json({ ok: true, exported_at: new Date().toISOString(), data: { pr_events: rows } });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -1932,7 +1943,7 @@ router.post('/lead-collect-sync/:token/reject', requireMigrationToken, express.j
   }
 });
 
-router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '50mb' }), async (req, res) => {
+router.post('/migration-import/:token', requireMigrationToken, express.json({ limit: '100mb' }), async (req, res) => {
   try {
     const importData = req.body.data;
     if (!importData) return res.status(400).json({ ok: false, error: 'No data' });

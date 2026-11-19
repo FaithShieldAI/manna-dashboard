@@ -54,7 +54,9 @@ app.use((req, res, next) => {
   // The migration restore door carries a full backup snapshot (tens of
   // MB; its route mounts its own 100mb parser, token-gated like the
   // other doors). migration-import gets the same exemption: its route
-  // mounts a 50mb parser, but until 2026-11-18 this middleware rejected
+  // mounts a 100mb parser (raised 2026-11-19: the export had grown past
+  // 50mb, so a real self-heal restore would have failed on size alone),
+  // but until 2026-11-18 this middleware rejected
   // every import body over 256kb before the route could see it, which
   // would have failed any real self-heal restore on size alone.
   if (req.path.startsWith('/api/auth/migration-restore/')) return next();
@@ -385,13 +387,18 @@ if (process.env.MANNA_SKIP_PR_SEED !== '1') {
   }
 }
 
-// Seed starter data (goals, zeroed email snapshot rows) for all tenants
-// on startup. Campaigns are NOT seeded (2026-11-18 isolation fix): the
-// seed used to plant the house tenant's real campaigns into every tenant.
+// Seed starter data (goals, zeroed email snapshot rows) on startup.
+// 2026-11-19 (full-package rule): ONLY the house tenant and Armor Bearer
+// affiliate tenants (plan='influencer') get the starter goals. A
+// standalone Manna signup starts from scratch and is never seeded here.
+// Campaigns are NOT seeded (2026-11-18 isolation fix): the seed used to
+// plant the house tenant's real campaigns into every tenant.
 try {
   const { seedDemoData } = require('../scripts/seed-demo-data');
   const { db } = require('./db');
-  const slugs = db.prepare('SELECT slug FROM tenants').all().map(r => r.slug);
+  const slugs = db.prepare(
+    "SELECT slug FROM tenants WHERE id = 1 OR plan = 'influencer'"
+  ).all().map(r => r.slug);
   for (const slug of slugs) {
     Promise.resolve(seedDemoData(slug)).catch(e => {
       console.error(`[seed] Demo data seed failed for ${slug}:`, e.message);

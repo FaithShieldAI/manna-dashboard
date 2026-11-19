@@ -9,6 +9,13 @@ const fs = require('fs');
 
 function freshDbPath() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2rm-test-'));
+  // 2026-11-19: delete this file's test DB when the process exits. The
+  // suite used to leave every run's database behind in /tmp (a 512MB
+  // tmpfs); two runs' leftovers filled it and wedged the suite on disk
+  // I/O (realtime and sitesTracker sat idle for ~2h on 2026-11-19).
+  process.on('exit', () => {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* best effort */ }
+  });
   return path.join(dir, 'test.db');
 }
 
