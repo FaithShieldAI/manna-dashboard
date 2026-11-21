@@ -28,6 +28,18 @@ const stub = http.createServer((req, res) => {
   if (mode === 'unknown') return send(400, { ok: false, error: 'unknown site' });
   const u = new URL(req.url, 'http://stub');
   if (u.pathname === '/api/stats') {
+    if (mode === 'zero-stale' || mode === 'zero-never') {
+      return send(200, {
+        ok: true, site: 'faithshield', days: 30,
+        metrics: {
+          visitors: { value: 0, change_pct: -100.0 },
+          visits: { value: 0, change_pct: -100.0 },
+          views: { value: 0, change_pct: -100.0 },
+          bounce_rate: { value: 0, change_pct: null },
+          avg_duration_s: { value: 0, change_pct: null },
+        },
+      });
+    }
     return send(200, {
       ok: true, site: 'faithshield', days: 30,
       metrics: {
@@ -38,6 +50,15 @@ const stub = http.createServer((req, res) => {
         avg_duration_s: { value: 273.0, change_pct: -75.8 },
       },
     });
+  }
+  if (u.pathname === '/api/visits') {
+    if (mode === 'zero-stale') {
+      return send(200, {
+        ok: true, site: 'faithshield', days: 365, count: 1,
+        visits: [{ started_at: '2026-10-21T14:03:00Z', entry_page: '/analytics/' }],
+      });
+    }
+    return send(200, { ok: true, site: 'faithshield', days: 365, count: 0, visits: [] });
   }
   if (u.pathname === '/api/realtime') {
     return send(200, { ok: true, site: 'faithshield', active_now: 3, visitors: [] });
@@ -132,8 +153,36 @@ test('tracker unknown site -> honest empty 200, not an error', async () => {
   assert.equal(s.json.ok, true);
   assert.equal(s.json.metrics.visitors.value, 0);
   assert.equal(s.json.metrics.bounce_rate.value, null);
+  assert.equal(s.json.last_seen, null);
   const b = await c.get('/api/sites/faithshield/breakdown?days=30');
   assert.equal(b.status, 200);
   assert.deepEqual(b.json.countries, []);
   mode = 'ok';
+});
+
+test('zero window with an older visit -> last_seen names the last recorded visit', async () => {
+  mode = 'zero-stale';
+  const s = await c.get('/api/sites/faithshield/stats?days=30');
+  assert.equal(s.status, 200);
+  assert.equal(s.json.metrics.visitors.value, 0);
+  assert.equal(s.json.metrics.views.value, 0);
+  assert.equal(s.json.last_seen, '2026-10-21T14:03:00Z');
+  mode = 'ok';
+});
+
+test('zero window with nothing recorded in a year -> last_seen is null (silent feed)', async () => {
+  mode = 'zero-never';
+  const s = await c.get('/api/sites/faithshield/stats?days=30');
+  assert.equal(s.status, 200);
+  assert.equal(s.json.metrics.visitors.value, 0);
+  assert.equal(s.json.last_seen, null);
+  mode = 'ok';
+});
+
+test('nonzero window carries no last_seen probe result', async () => {
+  mode = 'ok';
+  const s = await c.get('/api/sites/faithshield/stats?days=30');
+  assert.equal(s.status, 200);
+  assert.equal(s.json.metrics.visitors.value, 4);
+  assert.equal(s.json.last_seen, undefined);
 });

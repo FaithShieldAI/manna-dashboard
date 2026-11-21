@@ -73,7 +73,24 @@ function emptyStats(siteKey, days) {
       avg_duration_s: { value: null, change_pct: null },
     },
     daily: [],
+    // The tracker has never heard of this site, so by definition it has
+    // never recorded a visit for it.
+    last_seen: null,
   };
+}
+
+// Most recent recorded visit for a site, from tracker /api/visits over
+// the widest window the tracker allows (365 days). Returns the visit's
+// started_at ISO string, or null when nothing was recorded in that
+// year. Used to tell a silent feed (nothing recorded, ever or for a
+// year) apart from a true zero (visits recorded before, none lately):
+// the panel must never print bare zeros under a "live" label for a
+// feed that has gone silent (LIVE MEANS LIVE, 2026-11-21).
+async function fetchLastSeen(siteKey) {
+  const j = await trackerGet('/api/visits', { site: siteKey, days: 365, limit: 1 });
+  if (j.unknownSite) return null;
+  const visits = Array.isArray(j.visits) ? j.visits : [];
+  return visits.length && visits[0].started_at ? visits[0].started_at : null;
 }
 
 // GET tracker /api/stats -> Manna stats shape. (`daily` stays []: the
@@ -83,7 +100,7 @@ async function fetchStats(siteKey, days) {
   const j = await trackerGet('/api/stats', { site: siteKey, days });
   if (j.unknownSite) return emptyStats(siteKey, days);
   const m = j.metrics || {};
-  return {
+  const out = {
     ok: true, site: siteKey, days,
     metrics: {
       visitors: metric(m, 'visitors'),
@@ -93,6 +110,15 @@ async function fetchStats(siteKey, days) {
     },
     daily: [],
   };
+  // A zero window is ambiguous: true zero (the page is tracked and
+  // nobody came) or silent feed (the tracker has not seen this site
+  // in a year, so the zeros mean nothing). Probe the last recorded
+  // visit so the UI can say which one it is. A probe failure is a
+  // tracker failure: it throws TrackerDown like every other read.
+  if (!out.metrics.visitors.value && !out.metrics.views.value) {
+    out.last_seen = await fetchLastSeen(siteKey);
+  }
+  return out;
 }
 
 // GET tracker /api/realtime -> { active_now }. unknownSite is flagged so
@@ -148,5 +174,6 @@ module.exports = {
   fetchStats,
   fetchRealtime,
   fetchBreakdown,
+  fetchLastSeen,
   sendTrackerError,
 };

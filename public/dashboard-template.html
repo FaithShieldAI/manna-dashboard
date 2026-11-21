@@ -1198,7 +1198,8 @@ function loadSites(){
     ]).then(function(res){ return {cfg:s, stats:res[0], rt:res[1], bd:res[2]}; });
   });
   Promise.all(promises).then(function(results){
-    var tv=0, tp=0, ta=0, tc=0, tu=0, downCount=0;
+    var tv=0, tp=0, ta=0, tc=0, tu=0, downCount=0, silentCount=0;
+    var fmtSeen = function(iso){ var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
     var cardsHtml = '';
     results.forEach(function(r){
       var s = r.cfg;
@@ -1221,6 +1222,23 @@ function loadSites(){
       var conv = evts.reduce(function(a,e){return a+(e.count||0);},0);
       var utm = ((r.bd && r.bd.utm_sources)||[]).reduce(function(a,e){return a+(e.count||0);},0);
       tv+=v; tp+=vw; ta+=active; tc+=conv; tu+=utm;
+      /* Silent feed honesty (LIVE MEANS LIVE, 2026-11-21): a zero
+         window with no visit recorded in a year is not data, it is a
+         counter that has never seen the page. Say so plainly instead
+         of printing zeros under a live label. A zero window with an
+         older recorded visit is a true zero; the card then names the
+         last recorded visit instead of implying it is current. */
+      var lastSeen = r.stats ? r.stats.last_seen : undefined;
+      if (v === 0 && vw === 0 && lastSeen === null) {
+        silentCount++;
+        cardsHtml += '<div class="card" style="margin-top:1rem"><div class="card-header"><div>'
+          + '<div class="card-title">'+esc(s.emoji||'\u{1F310}')+' '+esc(s.name)+'</div></div></div>'
+          + '<div class="empty">' + MannaI18n.t('dash.js.sites.feed_never') + '</div></div>';
+        return;
+      }
+      var quietNote = (v === 0 && vw === 0 && typeof lastSeen === 'string')
+        ? '<div class="card-sub" style="margin-top:0.75rem">' + MannaI18n.t('dash.js.sites.last_visit', { date: fmtSeen(lastSeen) }) + '</div>'
+        : '';
       var br = (st.bounce_rate||{}).value, av = (st.avg_duration_s||{}).value;
       var dur = av ? MannaI18n.t('dash.js.sites.duration', { m: Math.floor(av/60), s: Math.floor(av%60) }) : '\u2014';
       var live = active ? '<span class="badge b-green">' + MannaI18n.t('dash.js.sites.active_now', { n: active }) + '</span>' : '<span class="badge b-purple">' + MannaI18n.t('dash.js.sites.no_one_online') + '</span>';
@@ -1235,7 +1253,7 @@ function loadSites(){
         + '<div class="stat-card"><div class="stat-label">' + MannaI18n.t('dash.js.sites.bounce_rate') + '</div><div class="stat-value">'+(br===null||br===undefined?'\u2014':br+'%')+'</div></div>'
         + '<div class="stat-card"><div class="stat-label">' + MannaI18n.t('dash.js.sites.avg_duration') + '</div><div class="stat-value">'+dur+'</div></div>'
         + '<div class="stat-card"><div class="stat-label">' + MannaI18n.t('dash.js.sites.conversions') + '</div><div class="stat-value">'+num(conv)+'</div></div>'
-        + '</div><div class="cols" style="margin-top:1rem">'
+        + '</div>' + quietNote + '<div class="cols" style="margin-top:1rem">'
         + '<div><div class="card-header"><div class="card-title">' + MannaI18n.t('dash.js.sites.countries') + '</div></div><div class="table-wrap"><table><tr><th>' + MannaI18n.t('dash.js.sites.country') + '</th><th class="n">' + MannaI18n.t('dash.js.sites.visitors') + '</th></tr>'+topRows(bd.countries)+'</table></div></div>'
         + '<div><div class="card-header"><div class="card-title">' + MannaI18n.t('dash.js.sites.referrers') + '</div></div><div class="table-wrap"><table><tr><th>' + MannaI18n.t('dash.js.sites.referrer') + '</th><th class="n">' + MannaI18n.t('dash.js.sites.count') + '</th></tr>'+topRows(bd.referrers)+'</table></div></div>'
         + '</div></div>';
@@ -1246,12 +1264,15 @@ function loadSites(){
     var now = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
     var rn = document.getElementById('refresh-note');
     if (rn) rn.textContent = MannaI18n.t('dash.js.sites.refresh_note', { time: now });
-    /* Every site down: the headline totals must not read as zeros either. */
-    if (results.length && downCount === results.length) {
+    /* Every site down or silent: the headline totals must not read as
+       zeros either. */
+    if (results.length && downCount + silentCount === results.length) {
       ['c-visitors','c-views','c-active','c-conv','c-utm'].forEach(function(id){
         var el = document.getElementById(id); if (el) el.textContent = '\u2014';
       });
-      if (rn) rn.textContent = MannaI18n.t('dash.js.sites.feed_down');
+      if (rn) rn.textContent = (silentCount && !downCount)
+        ? MannaI18n.t('dash.js.sites.feed_never_short')
+        : MannaI18n.t('dash.js.sites.feed_down');
     }
   });
 }
