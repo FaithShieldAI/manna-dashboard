@@ -1317,6 +1317,51 @@ function _effectiveEmailLimit(tenant) {
   return plan ? plan.emails_per_month : null; // null = unlimited (agency)
 }
 
+// ---------------------------------------------------------------------------
+// House sites seed (token-gated, same MIGRATION_TOKEN pattern as the
+// doors above). 2026-11-21: the house tenant's Sites panel carried only
+// FaithShield because no other house property was ever entered as a
+// site. This door idempotently ensures the house tenant (resolved from
+// the house owner account, the same resolution the send door uses) has
+// one site row per house property, so the panel lists them all.
+// Existing rows are never modified; a missing row is created with a
+// fresh collect key. Sustained is deliberately absent: it is no longer
+// a house product (given to Daniel Robinson 2026-10-28).
+// ---------------------------------------------------------------------------
+const HOUSE_SITES = [
+  { siteKey: 'faithshield', name: 'FaithShield', url: 'www.faithshield.ai' },
+  { siteKey: 'manna', name: 'MannaAi', url: 'mannaforinfluencers.com' },
+  { siteKey: 'armorbearer', name: 'Armor Bearer', url: 'armorbearerplatform.com' },
+  { siteKey: 'kpunk', name: 'K-Punk', url: 'k-poppeter118.netlify.app' },
+  { siteKey: 'twofishes', name: 'Two Fishes', url: 'd2rm.tech/twofishes' },
+];
+
+router.post('/house-sites-seed/:token', requireMigrationToken, (req, res) => {
+  try {
+    const owner = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+      .get(DOOR_HOUSE_OWNER_EMAIL);
+    if (!owner) {
+      return res.status(404).json({ ok: false, error: 'house_tenant_not_found' });
+    }
+    const tdb = forTenant(Number(owner.tenant_id));
+    const results = [];
+    for (const s of HOUSE_SITES) {
+      if (tdb.getSite(s.siteKey)) {
+        results.push({ site: s.siteKey, status: 'exists' });
+        continue;
+      }
+      tdb.createSite({
+        siteKey: s.siteKey, name: s.name, url: s.url, emoji: null,
+        collectKey: crypto.randomBytes(24).toString('hex'),
+      });
+      results.push({ site: s.siteKey, status: 'created' });
+    }
+    res.json({ ok: true, tenant_id: Number(owner.tenant_id), results, sites: tdb.listSites() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Send mail door (token-gated, same MIGRATION_TOKEN pattern as the sync
 // doors above): house send jobs that run without a live session (scheduled
 // sends) post one email here and Manna sends it through its own SES
