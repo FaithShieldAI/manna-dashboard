@@ -230,6 +230,15 @@
       <input id="instructor-input" type="text" data-i18n-ph="dash.instructor.input.placeholder" placeholder="Ask your instructor anything&hellip;" maxlength="2000" autocomplete="off">
       <button data-i18n="dash.instructor.send" type="submit" class="btn gold">Send</button>
     </form>
+    <!-- Scribe Drafts: the drafts Scribe creates wait HERE for approval.
+         Before 2026-11-22 this list did not exist anywhere in the UI:
+         drafts were written to the database and announced in chat, but
+         no screen ever showed them, so nothing could be approved. -->
+    <div id="scribe-drafts-block" style="margin-top:14px;border-top:1px solid var(--border2);padding-top:10px">
+      <div style="font-weight:700">&#128221; Scribe Drafts <span id="scribe-drafts-count" style="font-weight:400;color:var(--text2)"></span></div>
+      <div class="card-sub">Drafts Scribe made for you. Nothing sends or posts until you approve.</div>
+      <div id="scribe-drafts-list"><div class="empty">Loading drafts&hellip;</div></div>
+    </div>
   </div>
 
 <nav class="nav">
@@ -1065,6 +1074,55 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
       addMsg(MannaI18n.t('dash.js.common.network_error'), 'bot');
     });
   }
+  /* Scribe Drafts list: renders the waiting drafts under the instructor
+     chat with Approve / Dismiss wired to the drafts API. This is the
+     only place drafts can be decided; keep it loaded on page open and
+     refreshed after creation and after every decision. */
+  function loadScribeDrafts(){
+    var list = document.getElementById('scribe-drafts-list');
+    var count = document.getElementById('scribe-drafts-count');
+    if (!list) return;
+    fetch('/api/scribe/drafts?status=draft', { headers: apiH(), credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var drafts = (j && j.ok && j.drafts) || [];
+        if (count) count.textContent = drafts.length ? '(' + drafts.length + ' waiting)' : '';
+        if (!drafts.length) {
+          list.innerHTML = '<div class="empty">No drafts waiting. Run a Scribe analysis and choose "Create drafts" and they will wait for you here.</div>';
+          return;
+        }
+        list.innerHTML = drafts.map(function(d){
+          var type = String(d.draft_type || 'draft').replace(/_/g, ' ');
+          var when = String(d.created_at || '').slice(0, 10);
+          var body = String(d.body || '').slice(0, 220);
+          return '<div class="scribe-draft-row" style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-top:8px">'
+            + '<div style="font-weight:700">' + esc(d.title || 'Untitled draft') + '</div>'
+            + '<div style="font-size:12px;color:var(--text2)">' + esc(type) + (when ? ' &middot; ' + esc(when) : '') + '</div>'
+            + (body ? '<div style="font-size:13px;margin-top:4px;white-space:pre-wrap">' + esc(body) + '</div>' : '')
+            + '<div style="margin-top:8px;display:flex;gap:8px">'
+            + '<button class="btn gold" data-draft-decide="' + d.id + '" data-draft-status="approved">Approve</button>'
+            + '<button class="btn" data-draft-decide="' + d.id + '" data-draft-status="dismissed">Dismiss</button>'
+            + '</div></div>';
+        }).join('');
+      })
+      .catch(function(){
+        list.innerHTML = '<div class="empty">Drafts could not be loaded just now.</div>';
+      });
+  }
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-draft-decide]') : null;
+    if (!btn) return;
+    btn.disabled = true;
+    fetch('/api/scribe/drafts/' + btn.getAttribute('data-draft-decide') + '/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ status: btn.getAttribute('data-draft-status') })
+    }).then(function(){ loadScribeDrafts(); })
+      .catch(function(){ btn.disabled = false; });
+  });
+  loadScribeDrafts();
+
   /* Scribe analysis: POST /api/scribe/analyze and render the structured
      advice (observations citing numbers + recommendations) into the
      instructor thread. In stub mode (no Spark key yet) the server says
@@ -1114,7 +1172,7 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
           headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           body: JSON.stringify({ analysis_id: lastScribeAnalysisId })
         }).then(function(r){ return r.json(); }).then(function(dj){
-          if (dj && dj.ok) addMsg('Created ' + dj.created.length + ' draft(s) in Scribe Drafts — nothing sends or posts until you approve them.', 'bot');
+          if (dj && dj.ok) { addMsg('Created ' + dj.created.length + ' draft(s) in Scribe Drafts, listed right below this chat. Nothing sends or posts until you approve them.', 'bot'); loadScribeDrafts(); }
           else if (dj && dj.error === 'draft_cap_reached') { addMsg('You have 200 drafts waiting in Scribe Drafts — that is the limit. Approve or dismiss some of them to make room for new ones.', 'bot'); btn.disabled = false; }
           else { addMsg('Draft creation failed — nothing was created.', 'bot'); btn.disabled = false; }
         }).catch(function(){ addMsg(MannaI18n.t('dash.js.common.network_error'), 'bot'); btn.disabled = false; });

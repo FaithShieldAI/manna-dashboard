@@ -81,7 +81,17 @@ function buildContext(tdb) {
   try {
     onboardingStatus = require('./onboarding').getStatus(tdb);
   } catch (e) { /* keep null */ }
-  return { email: overview.email, goals: overview.goals, funnels, social, sites, onboarding: onboardingStatus };
+  // Scribe drafts waiting on the customer (2026-11-22): the assistant
+  // must be able to answer "where are my scribe drafts" from real data.
+  // Before this, drafts were in no context at all, so the question hit
+  // the copy-writing branch on the word "draft" and deflected.
+  let scribeDrafts = [];
+  try {
+    scribeDrafts = tdb.listScribeDrafts({ status: 'draft', limit: 100 }).map(d => ({
+      title: d.title, draft_type: d.draft_type, created_at: d.created_at,
+    }));
+  } catch (e) { /* keep [] */ }
+  return { email: overview.email, goals: overview.goals, funnels, social, sites, onboarding: onboardingStatus, scribeDrafts };
 }
 
 const SYSTEM_PROMPT = `You are the in-product marketing co-pilot for the D2RM Dashboard ("Big agency data, little guy money").
@@ -114,18 +124,32 @@ take in all at once:
 - If they ask what to do first, the answer is the current step.
 When onboarding.is_complete is true, say plainly that setup is complete
 before offering any next actions. Never describe an account as "live" or
-"collecting" unless the data shows actual sends.`;
+"collecting" unless the data shows actual sends.
+
+SCRIBE DRAFTS: the CUSTOMER DATA JSON includes a "scribeDrafts" array —
+the drafts Scribe created that are still waiting for the customer's
+decision. They live in the Scribe Drafts list directly under this chat
+at the top of the dashboard, where the customer approves or dismisses
+each one. Nothing sends or posts until they approve. When the customer
+asks where their drafts are, name that location and list the waiting
+drafts from the data. Never tell them drafts exist in a place that is
+not that list.`;
 
 // ---------------------------------------------------------------------------
 // Insight engine (no API key): real math over the tenant's data.
 // ---------------------------------------------------------------------------
-function insightReply(message, ctx) {
+function insightReply(message, ctx, history = []) {
   const msg = String(message || '').toLowerCase();
   const parts = [];
 
   const email = ctx.email || { sent: 0, opens: 0, clicks: 0, open_rate: 0, click_rate: 0 };
 
   const wants = (...words) => words.some(w => msg.includes(w));
+
+  // A bare follow-up ("where are they located") after a drafts exchange
+  // still means the drafts — the insight engine is otherwise stateless.
+  const historyMentionsDraft = (history || []).slice(-6)
+    .some(h => h && typeof h.content === 'string' && /draft/i.test(h.content));
 
   // --- onboarding nudge: one line pointing at the next setup step --------
   function onboardingNudge() {
@@ -328,6 +352,20 @@ function insightReply(message, ctx) {
   } else if (wants('goal')) {
     if (!ctx.goals.length) parts.push('No goals set yet — set one and I\'ll track your pace.');
     else ctx.goals.forEach(g => parts.push(`• ${g.label}: ${Number(g.current).toLocaleString()} / ${Number(g.goal).toLocaleString()} (${g.pct}%)`));
+  } else if ((wants('draft') && (wants('where', 'located', 'my draft', 'show', 'list', 'find', 'see', 'waiting', 'approve', 'scribe drafts')))
+             || (wants('where', 'located') && historyMentionsDraft)) {
+    // "Where are my scribe drafts" (2026-11-22): this branch must sit
+    // BEFORE the copy/write branch below — the bare word "draft" used
+    // to route the location question into "Happy to write it" and the
+    // customer never learned where the drafts live.
+    const drafts = ctx.scribeDrafts || [];
+    if (!drafts.length) {
+      parts.push('You have no Scribe drafts waiting right now. When a Scribe analysis creates drafts, they wait for you in the Scribe Drafts list directly under this chat, at the top of your dashboard.');
+    } else {
+      parts.push(`You have ${drafts.length} Scribe draft(s) waiting, in the Scribe Drafts list directly under this chat, at the top of your dashboard:`);
+      drafts.slice(0, 10).forEach(d => parts.push(`• ${d.title}`));
+      parts.push('Approve or dismiss each one there. Nothing sends or posts until you approve.');
+    }
   } else if (wants('copy', 'write', 'subject line', 'draft')) {
     parts.push('Happy to write it. Tell me: what\'s the email about, who\'s it for, and what\'s the one action you want? I\'ll draft subject lines + body.');
   } else if (wants('social', 'follower')) {
@@ -429,7 +467,7 @@ async function chat(message, tdb, history = []) {
     reply = await claudeReply(message, ctx, history);
   }
   if (!reply) {
-    reply = insightReply(message, ctx);
+    reply = insightReply(message, ctx, history);
     return { reply, provider: provider === 'Muse' ? 'insights-fallback' : 'insights', model: null };
   }
   return { reply, provider: 'Muse', model: MODEL };
