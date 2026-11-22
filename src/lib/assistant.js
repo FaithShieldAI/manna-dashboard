@@ -142,6 +142,11 @@ take in all at once:
   order (the full list is in onboarding.steps), then bring them back to
   the current step: the steps are done in order so the tracking lines up.
 - If they ask what to do first, the answer is the current step.
+- EXCEPTION: if they ask how some part of Manna works, what a tab is
+  for, or ask for a tour of the functions, teach it from the FUNCTION
+  GUIDE below, step by step. A how-it-works question is not a setup
+  question, and a feature is never described as missing because it
+  does not appear in the customer data.
 When onboarding.is_complete is true, say plainly that setup is complete
 before offering any next actions. Never describe an account as "live" or
 "collecting" unless the data shows actual sends.
@@ -508,7 +513,7 @@ async function claudeReply(message, ctx, history = []) {
         model: MODEL,
         max_tokens: 600,
         system: SYSTEM_PROMPT
-          + '\n\nFUNCTION GUIDE (how every part of Manna works, in the screens\' own words. When the customer asks how anything works, what a tab is for, or asks for a tour or to be taken through the app, walk them through it one step at a time from this guide, using these exact tab and button names. Never invent a control that is not in this guide):\n'
+          + '\n\nFUNCTION GUIDE (how every part of Manna works, in the screens\' own words. Questions about how Manna works are answered from this guide, NOT from the customer data; never say a feature is not mentioned in the data. When the customer asks how anything works, what a tab is for, or asks for a tour or to be taken through the app, walk them through it one step at a time from this guide, using these exact tab and button names. Never invent a control that is not in this guide):\n'
           + functionGuide.promptText()
           + '\n\nCUSTOMER DATA (JSON):\n' + JSON.stringify(ctx),
         messages,
@@ -562,6 +567,29 @@ async function sparkReply(message, ctx, history = [], client = sparkClient) {
 
 async function chat(message, tdb, history = [], client) {
   const ctx = buildContext(tdb);
+  // How-it-works questions are answered from the Function Guide
+  // directly, before any model sees them (2026-11-22): live proof
+  // showed the model, told in ONBOARDING MODE that the current setup
+  // step is the whole answer, deflecting "how do drips work" to the
+  // setup step and calling the IP Registry missing from the data.
+  // The guide is grounded in the screens, so its answer is the same
+  // every time, on every provider. One exception, by design: while
+  // setup is incomplete, a question about a setup step's own topic
+  // stays with the walk-through/model, which answers it in sequence.
+  const lower = String(message || '').toLowerCase();
+  const guideHit = functionGuide.findGuide(message);
+  const asksTour = /\b(tour|show me around|take me through|walk me through|every function|all the functions|everything in manna)\b/.test(lower);
+  if (guideHit || asksTour) {
+    const ob = ctx.onboarding;
+    const midSetup = !!(ob && !ob.is_complete);
+    const asksAll = /every function|all (the )?functions|everything in manna/.test(lower);
+    const setupTopic = /campaign|template|social|instagram|tiktok|youtube|lead|welcome/.test(lower);
+    if (asksAll) return { reply: functionGuide.tourText(), provider: 'guide', model: null };
+    if (!midSetup || !setupTopic) {
+      if (guideHit) return { reply: functionGuide.guideText(guideHit), provider: 'guide', model: null };
+      if (asksTour) return { reply: functionGuide.tourText(), provider: 'guide', model: null };
+    }
+  }
   const spark = await sparkReply(message, ctx, history, client);
   if (spark) {
     return { reply: spark, provider: 'spark', model: config.sparkModel };

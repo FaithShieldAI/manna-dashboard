@@ -86,13 +86,22 @@ test('a new user asking the chat gets the guide, and the tour lists everything',
 
   const drips = await c.post('/api/assistant/chat', { message: 'how do drips work' });
   assert.equal(drips.status, 200);
+  assert.equal(drips.json.provider, 'guide', 'guide questions are answered by the guide itself, not left to a model');
   assert.ok(drips.json.reply.includes('Drips tab'), 'names the tab');
   assert.ok(drips.json.reply.includes('New drip campaign'), 'names a real control');
 
   const ip = await c.post('/api/assistant/chat', { message: 'what is the IP registry' });
+  assert.equal(ip.json.provider, 'guide');
   assert.ok(ip.json.reply.includes('IP Registry tab'), 'ip answer names its tab');
 
+  // Mid-setup, a question about a setup step's own topic still
+  // belongs to the walk-through, which answers it in sequence.
+  const camp = await c.post('/api/assistant/chat', { message: 'how do I set up my first campaign' });
+  assert.notEqual(camp.json.provider, 'guide', 'setup-step questions stay with the walk-through');
+  assert.ok(camp.json.reply.includes('step'), 'walk-through answers in steps');
+
   const tour = await c.post('/api/assistant/chat', { message: 'take me through every function' });
+  assert.equal(tour.json.provider, 'guide');
   for (const f of guide.FUNCTIONS) {
     assert.ok(tour.json.reply.includes(f.name), `tour names ${f.name}`);
   }
