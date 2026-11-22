@@ -8,13 +8,22 @@
  * another tenant's rows — it only receives what req.tdb returns.
  *
  * Provider strategy:
- *   - If ANTHROPIC_API_KEY is set, replies are synthesized by Muse
- *     (model via ASSISTANT_MODEL, default claude-haiku-4-5) with the
- *     tenant context in the system prompt.
+ *   - FIRST the house Spark slot (SPARK_API_KEY / SPARK_BASE_URL /
+ *     SPARK_MODEL via src/lib/sparkClient.js). Since 2026-10-29 that
+ *     slot is xAI Grok (model grok-4.7, key "MannaScribe", installed in
+ *     Render for Scribe's analysis). Until 2026-11-22 the chat never
+ *     called it, so the owner talked to the keyword engine while Grok
+ *     sat wired only into the analysis path. Now the chat uses it.
+ *   - Else if ANTHROPIC_API_KEY is set, replies are synthesized by
+ *     Muse (model via ASSISTANT_MODEL, default claude-haiku-4-5) with
+ *     the tenant context in the system prompt.
  *   - Otherwise the built-in insight engine answers from the data
  *     directly (trend math, funnel drop-off, goal progress, next actions).
  *     No key, no network, still genuinely useful.
  */
+
+const sparkClient = require('./sparkClient');
+const config = require('../config');
 
 const MODEL = process.env.ASSISTANT_MODEL || 'claude-haiku-4-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -459,8 +468,47 @@ async function claudeReply(message, ctx, history = []) {
   }
 }
 
-async function chat(message, tdb, history = []) {
+/**
+ * House Spark slot reply (Grok in production). Single chat completion:
+ * the system prompt carries the tenant context JSON (same grounding as
+ * the Muse path); recent history is folded into the user turn as a
+ * short transcript so follow-ups ("where are they located") keep their
+ * meaning. Any failure returns null and the caller falls back — a
+ * failed model call must never become an invented answer.
+ */
+async function sparkReply(message, ctx, history = [], client = sparkClient) {
+  if (!client || typeof client.isConfigured !== 'function' || !client.isConfigured()) return null;
+  const transcript = [];
+  for (const h of (history || []).slice(-6)) {
+    if (h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string') {
+      transcript.push((h.role === 'user' ? 'Customer: ' : 'Scribe: ') + h.content.slice(0, 1000));
+    }
+  }
+  const user = (transcript.length
+      ? 'Conversation so far:\n' + transcript.join('\n') + '\n\n'
+      : '')
+    + 'Latest customer message: ' + String(message).slice(0, 2000)
+    + '\n\nAnswer the latest message directly and plainly, grounded only in the CUSTOMER DATA in the system prompt. If the data does not cover the question, say so.';
+  try {
+    const text = await client.chatCompletion({
+      system: SYSTEM_PROMPT + '\n\nCUSTOMER DATA (JSON):\n' + JSON.stringify(ctx),
+      user,
+      maxTokens: 700,
+      temperature: 0.3,
+    });
+    const out = typeof text === 'string' ? text.trim() : '';
+    return out || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function chat(message, tdb, history = [], client) {
   const ctx = buildContext(tdb);
+  const spark = await sparkReply(message, ctx, history, client);
+  if (spark) {
+    return { reply: spark, provider: 'spark', model: config.sparkModel };
+  }
   const provider = process.env.ANTHROPIC_API_KEY ? 'Muse' : 'insights';
   let reply = null;
   if (provider === 'Muse') {
@@ -474,6 +522,14 @@ async function chat(message, tdb, history = []) {
 }
 
 function status() {
+  if (sparkClient.isConfigured()) {
+    return {
+      ok: true,
+      provider: 'spark',
+      model: config.sparkModel,
+      note: 'Replies synthesized by the house model (Spark slot), grounded in your dashboard data.',
+    };
+  }
   return {
     ok: true,
     provider: process.env.ANTHROPIC_API_KEY ? 'Muse' : 'insights',
@@ -484,4 +540,4 @@ function status() {
   };
 }
 
-module.exports = { buildContext, insightReply, chat, status, SYSTEM_PROMPT };
+module.exports = { buildContext, insightReply, chat, status, SYSTEM_PROMPT, sparkReply };
