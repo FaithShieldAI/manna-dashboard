@@ -269,7 +269,7 @@ function insightReply(message, ctx, history = []) {
       ['first_campaign', /campaign/, /how|set up|setup|create|make|start|add/],
       ['starter_content', /template/, /how|install|add|set up|setup|use|pick|choose/],
       ['connect_socials', /social|instagram|tiktok|youtube/, /connect|add|link|hook up|set up|setup/],
-      ['first_lead_job', /lead/, /search|find|collect|how|run|get/],
+      ['first_lead_job', /lead/, /search|find|collect|run|get/],
       ['welcome', /tour|welcome/, /./],
     ];
     for (const [id, topic, verb] of stepMatchers) {
@@ -583,7 +583,14 @@ async function chat(message, tdb, history = [], client) {
     const ob = ctx.onboarding;
     const midSetup = !!(ob && !ob.is_complete);
     const asksAll = /every function|all (the )?functions|everything in manna/.test(lower);
-    const setupTopic = /campaign|template|social|instagram|tiktok|youtube|lead|welcome/.test(lower);
+    // Setup-step topics mirror the walk-through's own matchers: a
+    // step's subject, with the lead step needing a doing verb, so a
+    // question about Warm Leads (no setup step covers it) is not
+    // captured just for containing the word "lead". A bare "take me
+    // through it" mid-setup still starts the setup walk.
+    const setupTopic = /campaign|template|social|instagram|tiktok|youtube|welcome/.test(lower)
+      || (/lead/.test(lower) && /search|find|collect|run|get/.test(lower))
+      || /^(walk me through|take me through)( it| this)?[.! ]*$/.test(lower.trim());
     if (asksAll) return { reply: functionGuide.tourText(), provider: 'guide', model: null };
     if (!midSetup || !setupTopic) {
       if (guideHit) return { reply: functionGuide.guideText(guideHit), provider: 'guide', model: null };

@@ -94,6 +94,12 @@ test('a new user asking the chat gets the guide, and the tour lists everything',
   assert.equal(ip.json.provider, 'guide');
   assert.ok(ip.json.reply.includes('IP Registry tab'), 'ip answer names its tab');
 
+  // Warm Leads is not a setup step: the word "lead" alone must not
+  // hand the question to the setup walk.
+  const warm = await c.post('/api/assistant/chat', { message: 'how do the warm leads work' });
+  assert.equal(warm.json.provider, 'guide', 'warm leads question reaches the guide mid-setup');
+  assert.ok(warm.json.reply.includes('Warm Leads tab'), 'warm answer names its tab');
+
   // Mid-setup, a question about a setup step's own topic still
   // belongs to the walk-through, which answers it in sequence.
   const camp = await c.post('/api/assistant/chat', { message: 'how do I set up my first campaign' });
