@@ -11,7 +11,11 @@ const CATEGORIES = ['influencer', 'podcast', 'pastor', 'church', 'attorney', 'in
 const STATUSES = ['unvetted', 'vetted', 'contacted', 'active', 'rejected'];
 
 router.get('/counts', (req, res) => {
-  res.json({ ok: true, counts: req.tdb.influencerCategoryCounts() });
+  res.json({
+    ok: true,
+    counts: req.tdb.influencerCategoryCounts(),
+    tiers: req.tdb.influencerTierCounts(),
+  });
 });
 
 router.get('/', (req, res) => {

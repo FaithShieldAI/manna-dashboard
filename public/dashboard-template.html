@@ -1794,10 +1794,14 @@ function parseFunnelStages(text){
   var allRows = [];       // full unfiltered list
   var activeFilter = 'all';
   function tierOf(i){
-    var f = Number(i.followers)||0;
-    if (f >= 100000) return 'macro';
-    if (f >= 10000) return 'micro';
-    if (f > 0) return 'nano';
+    // The recorded tier is the follower band the collector measured;
+    // rows carry no followers value (the table has no such column),
+    // so a followers-based read here classed every row as tierless
+    // and the tier cards showed 0 forever (2026-11-21 audit). 'mega'
+    // (1M+) folds into the Macro card, whose band is 100K+.
+    var t = String(i.tier || '').toLowerCase();
+    if (t === 'mega') return 'macro';
+    if (t === 'macro' || t === 'micro' || t === 'nano') return t;
     return '';
   }
   function renderRows(){
@@ -1835,15 +1839,17 @@ function parseFunnelStages(text){
     counts.forEach(function(c){ byCat[c.category] = (byCat[c.category]||0) + c.n; total += c.n; });
     set('inf-total', num(total));
     set('inf-podcast', num(byCat.podcast||0));
+    // Tier cards read the whole-table tier counts carried in this
+    // same response (mega folds into macro, the 100K+ band), never a
+    // count over the loaded list window below.
+    var byTier = {};
+    ((j && j.tiers) || []).forEach(function(c){ byTier[c.tier] = (byTier[c.tier]||0) + c.n; });
+    set('inf-nano', num(byTier.nano||0));
+    set('inf-micro', num(byTier.micro||0));
+    set('inf-macro', num((byTier.macro||0) + (byTier.mega||0)));
     return fetch('/api/influencers?limit=500', { headers: apiH() });
   }).then(function(r){ return r ? r.json() : null; }).then(function(j){
     allRows = (j && j.ok && j.influencers) || [];
-    var nano=0, micro=0, macro=0;
-    allRows.forEach(function(i){
-      var t = tierOf(i);
-      if (t === 'macro') macro++; else if (t === 'micro') micro++; else if (t === 'nano') nano++;
-    });
-    set('inf-nano', num(nano)); set('inf-micro', num(micro)); set('inf-macro', num(macro));
     renderRows();
   }).catch(function(){});
 })();

@@ -21,7 +21,14 @@
  *     webhook keeps current). Platform-wide by nature: the goal is
  *     the house's FaithShield user target, not one tenant's slice.
  *   mannaai — MannaAi users: the count of user accounts in the app
- *     (the users table). Platform-wide for the same reason.
+ *     (the users table), excluding the house's own test tenants.
+ *     The QA walkthrough, red-team walk, and Scribe walk tenants
+ *     (every one named for the walk that created it, i.e. its slug
+ *     carries a 'walk' or 'walkthrough' segment) hold test accounts,
+ *     not users; counting them reported 13 against 6 real people on
+ *     2026-11-21. Exclusion here is counting only: the accounts and
+ *     tenants stand until the owner orders their erasure.
+ *     Platform-wide for the same reason.
  *
  * The remaining seeded goals have no live source in the app's data:
  *
@@ -56,7 +63,18 @@ function goalCurrent(goalKey, tdb) {
     case 'faithshield':
       return countFaithshieldPaying(db);
     case 'mannaai': {
-      const row = db.prepare('SELECT COUNT(*) AS n FROM users').get();
+      const testIds = db.prepare('SELECT id, slug FROM tenants').all()
+        .filter(t => String(t.slug || '').split('-')
+          .some(s => s === 'walk' || s === 'walkthrough'))
+        .map(t => t.id);
+      if (!testIds.length) {
+        const row = db.prepare('SELECT COUNT(*) AS n FROM users').get();
+        return row ? row.n : 0;
+      }
+      const ph = testIds.map(() => '?').join(',');
+      const row = db.prepare(
+        `SELECT COUNT(*) AS n FROM users WHERE tenant_id NOT IN (${ph})`
+      ).get(...testIds);
       return row ? row.n : 0;
     }
     default:

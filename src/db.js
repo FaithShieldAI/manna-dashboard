@@ -398,6 +398,17 @@ function forTenant(tenantId) {
         'SELECT category, COUNT(*) AS n FROM influencers WHERE tenant_id = ? GROUP BY category'
       ).all(t);
     },
+    influencerTierCounts() {
+      // Rows of { tier, n } over the tenant's whole table. The
+      // Influencers tab's tier cards must read these, never a count
+      // over the loaded list window: the table has no followers
+      // column, so the recorded tier is the only follower-band truth
+      // the app holds (2026-11-21 audit: the cards read a followers
+      // field that is never selected and showed 0 forever).
+      return db.prepare(
+        'SELECT tier, COUNT(*) AS n FROM influencers WHERE tenant_id = ? AND tier IS NOT NULL GROUP BY tier'
+      ).all(t);
+    },
     influencerVettedCounts() {
       // Rows of { category, status, n } for the Vetted tab.
       return db.prepare(
