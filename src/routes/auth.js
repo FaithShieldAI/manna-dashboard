@@ -1362,6 +1362,61 @@ router.post('/house-sites-seed/:token', requireMigrationToken, (req, res) => {
   }
 });
 
+// PR targets seed door (token-gated, same MIGRATION_TOKEN pattern as the
+// house sites door above): loads the researched press board into the
+// house tenant's PR connections. The board file lives outside the
+// deployment, so the file-based seeder (POST /api/pr/targets/import and
+// the boot seed) can never reach it on Render and the tab stood empty.
+// This door takes the board already parsed by the app's own parser
+// (src/lib/prTargetsSeed.js) in the request body and inserts it through
+// the same insert path, deduped on (publication, contact_name), so a
+// re-run tops the list up and adds nothing twice. Entries are cleaned
+// by cleanPrTargetEntry: an unverified route can never arrive as
+// verified, and a row is parked only on an exact 'do_not_pitch'.
+// Body: { entries: [parsed entry, ...] }. Response carries the house
+// tenant's PR summary before and after, plus one sample row per kind
+// (pitchable Faith-Based, pitchable Mainstream, unverified), so the
+// caller can verify the load from the response alone.
+router.post('/pr-targets-seed/:token', requireMigrationToken, express.json({ limit: '16mb' }), (req, res) => {
+  try {
+    const owner = db.prepare('SELECT tenant_id FROM users WHERE LOWER(email) = LOWER(?)')
+      .get(DOOR_HOUSE_OWNER_EMAIL);
+    if (!owner) {
+      return res.status(404).json({ ok: false, error: 'house_tenant_not_found' });
+    }
+    const tenantId = Number(owner.tenant_id);
+    const raw = (req.body && Array.isArray(req.body.entries)) ? req.body.entries : null;
+    if (!raw || raw.length === 0 || raw.length > 20000) {
+      return res.status(400).json({ ok: false, error: 'invalid_entries' });
+    }
+    const { cleanPrTargetEntry, insertPrTargetEntries } = require('../lib/prTargetsSeed');
+    const entries = [];
+    for (const e of raw) {
+      const clean = cleanPrTargetEntry(e);
+      if (clean) entries.push(clean);
+    }
+    if (entries.length === 0) {
+      return res.status(400).json({ ok: false, error: 'invalid_entries' });
+    }
+    const tdb = forTenant(tenantId);
+    const before = tdb.prSummary();
+    const result = insertPrTargetEntries(db, tenantId, entries);
+    const after = tdb.prSummary();
+    const sample = (sql) => db.prepare(sql).get(tenantId) || null;
+    const samples = {
+      pitchable_faith_based: sample(
+        "SELECT publication, contact_name, contact_route, route_verified, tier, category, status FROM pr_targets WHERE tenant_id = ? AND category = 'faith_based' AND status = 'active' AND route_verified = 1 ORDER BY id LIMIT 1"),
+      pitchable_mainstream: sample(
+        "SELECT publication, contact_name, contact_route, route_verified, tier, category, status FROM pr_targets WHERE tenant_id = ? AND category = 'mainstream' AND status = 'active' AND route_verified = 1 ORDER BY id LIMIT 1"),
+      unverified: sample(
+        'SELECT publication, contact_name, contact_route, route_verified, tier, category, status FROM pr_targets WHERE tenant_id = ? AND route_verified = 0 ORDER BY id LIMIT 1'),
+    };
+    res.json({ ok: true, tenant_id: tenantId, before, ...result, after, samples });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Send mail door (token-gated, same MIGRATION_TOKEN pattern as the sync
 // doors above): house send jobs that run without a live session (scheduled
 // sends) post one email here and Manna sends it through its own SES

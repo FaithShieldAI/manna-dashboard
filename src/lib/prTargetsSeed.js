@@ -333,6 +333,85 @@ function houseTenantId(db) {
   return row ? row.tenant_id : null;
 }
 
+const PR_TARGET_TIERS = ['faith_major', 'tech', 'niche'];
+const PR_TARGET_CATEGORIES = ['faith_based', 'mainstream', 'family_office'];
+
+/**
+ * Defensive cleanup for an entry arriving from outside the parser
+ * (the token-gated seed door takes parsed entries over the wire).
+ * Only the parser's own output shape survives: a route counts as
+ * verified only on an explicit 1/true, a row is parked only on an
+ * exact 'do_not_pitch', and tier/category fall back to the known
+ * enums. An unverified route can never be upgraded by a payload.
+ */
+function cleanPrTargetEntry(e) {
+  if (!e || typeof e !== 'object') return null;
+  const str = (v, cap) => {
+    if (typeof v !== 'string') return null;
+    const s = v.trim();
+    return s ? s.slice(0, cap) : null;
+  };
+  const publication = str(e.publication, 300);
+  if (!publication) return null;
+  const tier = PR_TARGET_TIERS.includes(e.tier) ? e.tier : 'niche';
+  return {
+    publication,
+    contact_name: str(e.contact_name, 300),
+    role: str(e.role, 300),
+    beat: str(e.beat, 300),
+    contact_route: str(e.contact_route, 4000),
+    route_verified: (e.route_verified === 1 || e.route_verified === true) ? 1 : 0,
+    tier,
+    category: PR_TARGET_CATEGORIES.includes(e.category) ? e.category : categoryFromTier(tier),
+    fit_note: str(e.fit_note, 4000),
+    source: str(e.source, 4000),
+    status: e.status === 'do_not_pitch' ? 'do_not_pitch' : 'active',
+  };
+}
+
+/** Insert parsed entries for one tenant, skipping any (publication,
+ *  contact_name) pair already on file. One transaction: a board load
+ *  is thousands of rows and lands whole or not at all. */
+function insertPrTargetEntries(db, tenantId, entries) {
+  const exists = db.prepare(
+    "SELECT id FROM pr_targets WHERE tenant_id = ? AND publication = ? AND ifnull(contact_name, '') = ifnull(?, '')"
+  );
+  const insert = db.prepare(`
+    INSERT INTO pr_targets
+      (tenant_id, publication, contact_name, role, beat, contact_route,
+       route_verified, tier, category, fit_note, source, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  let inserted = 0;
+  let skipped = 0;
+  const runAll = () => {
+    for (const e of entries) {
+      if (exists.get(tenantId, e.publication, e.contact_name)) { skipped++; continue; }
+      insert.run(tenantId, e.publication, e.contact_name, e.role, e.beat,
+        e.contact_route, e.route_verified ? 1 : 0, e.tier,
+        e.category || categoryFromTier(e.tier), e.fit_note, e.source,
+        e.status || 'active');
+      inserted++;
+    }
+  };
+  // node:sqlite has no .transaction(): drive BEGIN/COMMIT through exec,
+  // the same shape as src/db.js's transaction helper, but on the handle
+  // this function was handed (tests pass their own database).
+  if (typeof db.exec === 'function') {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      runAll();
+      db.exec('COMMIT;');
+    } catch (err) {
+      try { db.exec('ROLLBACK;'); } catch (_) { /* already rolled back */ }
+      throw err;
+    }
+  } else {
+    runAll();
+  }
+  return { inserted, skipped, total: entries.length };
+}
+
 function seedPrTargets(db, { tenantId, filePath, text } = {}) {
   const t = tenantId || houseTenantId(db);
   if (!t) return { inserted: 0, skipped: 0, total: 0, reason: 'no_house_tenant' };
@@ -345,30 +424,13 @@ function seedPrTargets(db, { tenantId, filePath, text } = {}) {
   }
 
   const entries = parsePrTargetsMarkdown(md);
-  const exists = db.prepare(
-    "SELECT id FROM pr_targets WHERE tenant_id = ? AND publication = ? AND ifnull(contact_name, '') = ifnull(?, '')"
-  );
-  const insert = db.prepare(`
-    INSERT INTO pr_targets
-      (tenant_id, publication, contact_name, role, beat, contact_route,
-       route_verified, tier, category, fit_note, source, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  let inserted = 0;
-  let skipped = 0;
-  for (const e of entries) {
-    if (exists.get(t, e.publication, e.contact_name)) { skipped++; continue; }
-    insert.run(t, e.publication, e.contact_name, e.role, e.beat,
-      e.contact_route, e.route_verified ? 1 : 0, e.tier,
-      e.category || categoryFromTier(e.tier), e.fit_note, e.source,
-      e.status || 'active');
-    inserted++;
-  }
-  return { inserted, skipped, total: entries.length };
+  return insertPrTargetEntries(db, t, entries);
 }
 
 module.exports = {
   seedPrTargets,
+  insertPrTargetEntries,
+  cleanPrTargetEntry,
   parsePrTargetsMarkdown,
   parseNamedContact,
   categoryFromTier,

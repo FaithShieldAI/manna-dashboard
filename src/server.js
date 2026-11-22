@@ -64,6 +64,10 @@ app.use((req, res, next) => {
   // The contacts mirror posts batches of up to 1000 contacts (its route
   // mounts its own 5mb parser, token-gated like the other sync routes).
   if (req.path.startsWith('/api/auth/contacts-sync/')) return next();
+  // The PR targets seed door carries the parsed press board (several MB
+  // of entries; its route mounts its own 16mb parser, token-gated like
+  // the other doors).
+  if (req.path.startsWith('/api/auth/pr-targets-seed/')) return next();
   return jsonBody(req, res, next);
 });
 // Influencer auto-provision webhook (Armor Bearer -> Manna). Mounted before
