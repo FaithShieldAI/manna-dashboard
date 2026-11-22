@@ -409,13 +409,25 @@ async function analyze(tdb, opts = {}) {
   }
 
   const transport = client ? declaredTransport(client) : declaredTransport(sparkClient.chatCompletion);
-  let text;
-  try {
-    const first = buildPrompt(signals);
+  const sparkFailure = (e) => ({
+    ok: false, mode: 'live', transport,
+    error: {
+      code: (e && e.code) || 'spark_error',
+      // Pass the client's own message through: sparkClient's messages
+      // carry the diagnosis (HTTP status, timeout) and never the key,
+      // and the analyze UI shows this text to the operator. Swallowing
+      // it left every live failure reading as the same generic line.
+      message: e && typeof e.message === 'string' && e.message.trim()
+        ? e.message
+        : 'Scribe could not reach Spark; no advice was produced.',
+    },
+    signals,
+  });
+  const callModel = async (prompt) => {
     try {
-      text = client
-        ? await client({ system: first.system, user: first.user })
-        : await sparkClient.chatCompletion({ system: first.system, user: first.user, maxTokens: 1800 });
+      return client
+        ? await client({ system: prompt.system, user: prompt.user })
+        : await sparkClient.chatCompletion({ system: prompt.system, user: prompt.user, maxTokens: 1800 });
     } catch (e) {
       if (!e || e.code !== 'spark_timeout') throw e;
       // One retry on a timeout, with a trimmed payload (compactSignals):
@@ -423,53 +435,61 @@ async function analyze(tdb, opts = {}) {
       // a smaller prompt is the difference between slow and never. Any
       // other failure is final: no retry, fail-closed as before.
       const retry = buildPrompt(compactSignals(signals));
-      text = client
+      return client
         ? await client({ system: retry.system, user: retry.user })
         : await sparkClient.chatCompletion({ system: retry.system, user: retry.user, maxTokens: 1200 });
     }
-  } catch (e) {
-    return {
-      ok: false, mode: 'live', transport,
-      error: {
-        code: (e && e.code) || 'spark_error',
-        // Pass the client's own message through: sparkClient's messages
-        // carry the diagnosis (HTTP status, timeout) and never the key,
-        // and the analyze UI shows this text to the operator. Swallowing
-        // it left every live failure reading as the same generic line.
-        message: e && typeof e.message === 'string' && e.message.trim()
-          ? e.message
-          : 'Scribe could not reach Spark; no advice was produced.',
-      },
-      signals,
-    };
-  }
+  };
+  // The output gate: parse, schema, citations. Returns { advice } or
+  // { error } — never a partial pass.
+  const checkOutput = (text) => {
+    const parsed = parseModelJson(text);
+    if (!parsed) {
+      return { error: { code: 'scribe_malformed_output', message: 'Spark returned output that was not valid JSON; no advice was produced.' } };
+    }
+    const v = validateAdvice(parsed);
+    if (!v.ok) {
+      return { error: { code: 'scribe_invalid_output', message: `Spark output failed schema validation: ${v.errors.join('; ')}` } };
+    }
+    const check = verifyCitations(v.advice, signals);
+    if (!check.ok) {
+      return { error: { code: 'scribe_unverified_citation', message: `Output cited numbers that do not match the tenant's data: ${check.errors.join('; ')}` } };
+    }
+    return { advice: v.advice };
+  };
 
-  const parsed = parseModelJson(text);
-  if (!parsed) {
-    return {
-      ok: false, mode: 'live', transport,
-      error: { code: 'scribe_malformed_output', message: 'Spark returned output that was not valid JSON; no advice was produced.' },
-      signals,
-    };
+  let text;
+  try {
+    text = await callModel(buildPrompt(signals));
+  } catch (e) {
+    return sparkFailure(e);
   }
-  const v = validateAdvice(parsed);
-  if (!v.ok) {
-    return {
-      ok: false, mode: 'live', transport,
-      error: { code: 'scribe_invalid_output', message: `Spark output failed schema validation: ${v.errors.join('; ')}` },
-      signals,
+  let out = checkOutput(text);
+  if (out.error) {
+    // One corrective retry (2026-11-22): a brand-new account's first
+    // analysis died at this gate — the model cited a number the
+    // tenant's data does not hold, and the owner got a 502 instead of
+    // advice. The retry feeds the exact failure back and demands exact
+    // citations. The gate is NOT relaxed: the retry's output passes
+    // the same checks, or the analysis fails closed exactly as before.
+    const base = buildPrompt(compactSignals(signals));
+    const correction = {
+      system: base.system,
+      user: base.user
+        + '\n\nCORRECTION: your previous answer failed verification: ' + out.error.message
+        + '\nReturn the complete JSON again. Every number in every metrics object must be copied exactly from the DATA above. If a number does not appear in the DATA, do not cite it. Where the DATA shows no activity yet, cite the zero values the DATA shows.',
     };
+    try {
+      out = checkOutput(await callModel(correction));
+    } catch (e) {
+      return sparkFailure(e);
+    }
+    if (out.error) {
+      return { ok: false, mode: 'live', transport, error: out.error, signals };
+    }
   }
-  const check = verifyCitations(v.advice, signals);
-  if (!check.ok) {
-    return {
-      ok: false, mode: 'live', transport,
-      error: { code: 'scribe_unverified_citation', message: `Output cited numbers that do not match the tenant's data: ${check.errors.join('; ')}` },
-      signals,
-    };
-  }
-  const analysisId = storeAnalysis(tdb, { mode: 'live', transport, advice: v.advice, signals });
-  return { ok: true, mode: 'live', transport, analysisId, stub: false, advice: v.advice, signals };
+  const analysisId = storeAnalysis(tdb, { mode: 'live', transport, advice: out.advice, signals });
+  return { ok: true, mode: 'live', transport, analysisId, stub: false, advice: out.advice, signals };
 }
 
 // ---------------------------------------------------------------------------

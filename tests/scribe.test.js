@@ -414,6 +414,51 @@ test('live path: exact integer citations still verify and draft', async () => {
   assert.equal(draftCount(tenantId), 1);
 });
 
+test('live path: one corrective retry rescues a first answer with a bad citation (2026-11-22)', async () => {
+  const tenantId = makeTenant('corrective');
+  seedTenant(tenantId);
+  const tdb = forTenant(tenantId);
+  const bad = {
+    summary: 'Trust me.',
+    observations: [{ text: 'Huge numbers, honestly.', metrics: { sent: 999999 } }],
+    recommendations: GOOD.recommendations,
+  };
+  const good = {
+    summary: 'Email is your measured channel.',
+    observations: [{ text: 'You sent 2,000 emails.', metrics: { sent: 2000 } }],
+    recommendations: GOOD.recommendations,
+  };
+  const users = [];
+  const client = async ({ user }) => {
+    users.push(user);
+    return JSON.stringify(users.length === 1 ? bad : good);
+  };
+  const r = await scribe.analyze(tdb, { client });
+  assert.equal(r.ok, true, r.error && r.error.message);
+  assert.equal(users.length, 2, 'exactly one correction attempt');
+  assert.match(users[1], /CORRECTION/, 'the failure is fed back to the model');
+  assert.equal(typeof r.analysisId, 'string');
+});
+
+test('live path: a model that never corrects still fails closed after one retry', async () => {
+  const tenantId = makeTenant('incorrigible');
+  seedTenant(tenantId);
+  const tdb = forTenant(tenantId);
+  const bad = {
+    summary: 'Trust me.',
+    observations: [{ text: 'Huge numbers, honestly.', metrics: { sent: 999999 } }],
+    recommendations: GOOD.recommendations,
+  };
+  let calls = 0;
+  const client = async () => { calls++; return JSON.stringify(bad); };
+  const r = await scribe.analyze(tdb, { client });
+  assert.equal(r.ok, false);
+  assert.equal(r.error.code, 'scribe_unverified_citation');
+  assert.equal(r.advice, undefined);
+  assert.equal(calls, 2, 'first answer plus one correction, no more');
+  assert.equal(draftCount(tenantId), 0);
+});
+
 test('verifyCitations: non-integer rates keep the tolerance (no over-tightening)', () => {
   const signals = {
     email: { windows: { all: { sent: 2000, opens: 300, clicks: 20, open_rate: 15.05, click_rate: 1.0 } } },
