@@ -5,6 +5,7 @@
  */
 const WHITELIST = new Set([
   'michael@faithshield.ai',  // house owner — sees all tenants
+  'leon@faithshield.ai',  // co-owner — his Manna matches Michael's exactly (Michael's order, 2026-11-22)
   'mikemixer2002@gmail.com',  // house owner
   '1faithshieldai@gmail.com',  // house owner
   'sid.allen@yahoo.com',  // Sid Allen
