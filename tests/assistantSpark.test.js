@@ -83,3 +83,18 @@ test('an unconfigured Spark slot leaves the insight engine in charge', async () 
   assert.equal(r.provider, 'insights');
   assert.equal(called, false, 'chatCompletion never called');
 });
+
+test('context carries pending follow-ups, and the insight engine can answer for them', () => {
+  const tdb = {
+    ...fakeTdb(),
+    listScribeFollowups: () => [
+      { summary: 'Your first send landed', next_move: 'Send the follow-up', questions: ['Who is it for?'] },
+    ],
+  };
+  const ctx = assistant.buildContext(tdb);
+  assert.equal(ctx.scribeFollowups.length, 1);
+  assert.equal(ctx.scribeFollowups[0].next_move, 'Send the follow-up');
+  const reply = assistant.insightReply('what is scribe waiting on', ctx);
+  assert.ok(reply.includes('Engagement tab'), 'names where follow-ups live');
+  assert.ok(reply.includes('Your first send landed'), 'answers from the real follow-up');
+});

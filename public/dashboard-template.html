@@ -238,6 +238,7 @@
       <div style="font-weight:700">&#128221; Scribe Drafts <span id="scribe-drafts-count" style="font-weight:400;color:var(--text2)"></span></div>
       <div class="card-sub">Drafts Scribe made for you. Nothing sends or posts until you approve.</div>
       <div id="scribe-drafts-list"><div class="empty">Loading drafts&hellip;</div></div>
+      <div id="scribe-drafts-decided"></div>
     </div>
   </div>
 
@@ -1108,6 +1109,46 @@ document.querySelectorAll('[data-goto-tab]').forEach(function(el){
       .catch(function(){
         list.innerHTML = '<div class="empty">Drafts could not be loaded just now.</div>';
       });
+    loadDecidedDrafts();
+  }
+  /* Decided drafts stay visible (2026-11-22): approval used to make a
+     draft vanish, because the waiting list only shows status=draft and
+     nothing anywhere showed the decided ones. Approved and dismissed
+     drafts render here, read-only, newest first. */
+  function loadDecidedDrafts(){
+    var box = document.getElementById('scribe-drafts-decided');
+    if (!box) return;
+    function get(status){
+      return fetch('/api/scribe/drafts?status=' + status, { headers: apiH(), credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(j){ return (j && j.ok && j.drafts) || []; })
+        .catch(function(){ return []; });
+    }
+    Promise.all([get('approved'), get('dismissed')]).then(function(res){
+      var decided = res[0].concat(res[1]);
+      decided.sort(function(a, b){ return String(b.decided_at || b.updated_at || '').localeCompare(String(a.decided_at || a.updated_at || '')); });
+      if (!decided.length) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div style="font-weight:700;margin-top:12px">Decided</div>'
+        + decided.slice(0, 10).map(function(d){
+          var when = String(d.decided_at || d.updated_at || '').slice(0, 10);
+          var label = d.status === 'approved' ? 'Approved' : 'Dismissed';
+          var carried = '';
+          if (d.status === 'approved' && d.payload && d.payload.carried_to === 'email_campaign') {
+            carried = '<div style="font-size:12px;color:var(--gold,#f0c876);margin-top:2px">Carried into the Email tab as a campaign.</div>';
+          } else if (d.status === 'approved' && d.payload && d.payload.carried_to === 'video_job') {
+            carried = '<div style="font-size:12px;color:var(--gold,#f0c876);margin-top:2px">Carried into My Videos (Content Library tab) as a brief.</div>';
+          } else if (d.status === 'approved' && d.draft_type === 'social_post') {
+            carried = '<div style="font-size:12px;color:var(--gold,#f0c876);margin-top:2px">The copy below is ready to paste into the Social tab.</div>';
+          }
+          var body = String(d.body || '');
+          return '<div style="border:1px solid var(--border2);border-radius:8px;padding:8px 12px;margin-top:6px;opacity:0.85">'
+            + '<span style="font-weight:700">' + esc(d.title || 'Untitled draft') + '</span>'
+            + ' <span style="font-size:12px;color:var(--text2)">' + label + (when ? ' &middot; ' + esc(when) : '') + '</span>'
+            + carried
+            + (body ? '<div style="font-size:13px;margin-top:4px;white-space:pre-wrap">' + esc(body) + '</div>' : '')
+            + '</div>';
+        }).join('');
+    });
   }
   document.addEventListener('click', function(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('[data-draft-decide]') : null;

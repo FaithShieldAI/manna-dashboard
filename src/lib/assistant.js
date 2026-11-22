@@ -100,7 +100,17 @@ function buildContext(tdb) {
       title: d.title, draft_type: d.draft_type, created_at: d.created_at,
     }));
   } catch (e) { /* keep [] */ }
-  return { email: overview.email, goals: overview.goals, funnels, social, sites, onboarding: onboardingStatus, scribeDrafts };
+  // Pending Scribe follow-ups (2026-11-22): after a recorded move,
+  // Scribe leaves questions and a prepared next move in the Engagement
+  // tab. A new person will ask about them at every step; the assistant
+  // cannot answer what it cannot see, so they ride in the context too.
+  let scribeFollowups = [];
+  try {
+    scribeFollowups = tdb.listScribeFollowups({ status: 'pending', limit: 20 }).map(f => ({
+      summary: f.summary, next_move: f.next_move, questions: f.questions || [],
+    }));
+  } catch (e) { /* keep [] */ }
+  return { email: overview.email, goals: overview.goals, funnels, social, sites, onboarding: onboardingStatus, scribeDrafts, scribeFollowups };
 }
 
 const SYSTEM_PROMPT = `You are the in-product marketing co-pilot for the D2RM Dashboard ("Big agency data, little guy money").
@@ -142,7 +152,25 @@ at the top of the dashboard, where the customer approves or dismisses
 each one. Nothing sends or posts until they approve. When the customer
 asks where their drafts are, name that location and list the waiting
 drafts from the data. Never tell them drafts exist in a place that is
-not that list.`;
+not that list. Approving a draft carries it into its tool: an email
+draft becomes a campaign in the Email tab, a video brief waits in My
+Videos (Content Library tab), and a social post's copy stays on the
+Decided list under the chat, ready to paste into the Social tab.
+
+WHERE THINGS ARE — answer every location question from this map,
+never guess a place that is not on it:
+- Scribe follow-ups: when Scribe reacts to something the customer did
+  (a send, a signup), it leaves a follow-up with questions and a
+  prepared next move. Those wait in the Engagement tab. Pending ones
+  are in the data as "scribeFollowups"; if the customer asks what
+  Scribe is waiting on, answer from that list.
+- Setup: the Setup page holds the 5-step checklist (connect socials,
+  install templates, first lead search, first campaign). The
+  "onboarding" data says which step is next; guide one step at a time.
+- Email campaigns: the Email tab. Videos: the Content Library tab,
+  which also holds My Videos. Social accounts and posting: the Social
+  tab. Lead collection: the Leads tab. Visitor tracking: the Sites
+  tab. Money and plan: the Billing tab.`;
 
 // ---------------------------------------------------------------------------
 // Insight engine (no API key): real math over the tenant's data.
@@ -373,7 +401,19 @@ function insightReply(message, ctx, history = []) {
     } else {
       parts.push(`You have ${drafts.length} Scribe draft(s) waiting, in the Scribe Drafts list directly under this chat, at the top of your dashboard:`);
       drafts.slice(0, 10).forEach(d => parts.push(`• ${d.title}`));
-      parts.push('Approve or dismiss each one there. Nothing sends or posts until you approve.');
+      parts.push('Approve or dismiss each one there. Approving carries it into its tool: an email draft becomes a campaign in the Email tab, a video brief waits in My Videos. Nothing sends or posts until you act in that tool.');
+    }
+  } else if (wants('followup', 'follow-up', 'waiting on', 'asked me', 'your questions', 'next move')) {
+    // Scribe follow-ups live in the Engagement tab (2026-11-22).
+    const fus = ctx.scribeFollowups || [];
+    if (!fus.length) {
+      parts.push('Scribe has nothing waiting on you right now. When Scribe reacts to something you do, its questions and next move wait for you in the Engagement tab.');
+    } else {
+      parts.push(`${fus.length} Scribe follow-up(s) waiting for you in the Engagement tab:`);
+      fus.slice(0, 5).forEach(f => {
+        parts.push(`• ${f.summary || 'Follow-up'}${f.next_move ? ' — next move: ' + f.next_move : ''}`);
+      });
+      parts.push('Open the Engagement tab to answer and decide.');
     }
   } else if (wants('copy', 'write', 'subject line', 'draft')) {
     parts.push('Happy to write it. Tell me: what\'s the email about, who\'s it for, and what\'s the one action you want? I\'ll draft subject lines + body.');

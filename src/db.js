@@ -916,6 +916,17 @@ function forTenant(tenantId) {
         .run(status, decidedBy || null, t, id);
       return r.changes > 0;
     },
+    updateScribeDraftPayload(id, payload) {
+      // Records the approval carry (src/lib/scribeCarry.js): which tool
+      // the approved draft was carried into, and the artifact's id.
+      const r = db.prepare(`
+        UPDATE scribe_drafts
+        SET payload_json = ?,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE tenant_id = ? AND id = ?`)
+        .run(JSON.stringify(payload || {}), t, id);
+      return r.changes > 0;
+    },
     // -- PR: connections, releases, pitches (migrations 031, 032) ------
     // The private D2RM dashboard's PR section. Routes are gated to
     // admin/whitelisted users (src/lib/pr.js); the data stays

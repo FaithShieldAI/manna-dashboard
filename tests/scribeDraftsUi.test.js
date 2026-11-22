@@ -50,6 +50,8 @@ test('template carries the Scribe Drafts list wired to the drafts API', () => {
   assert.ok(tpl.includes('/api/scribe/drafts?status=draft'), 'list fetch present');
   assert.ok(tpl.includes('data-draft-decide'), 'approve/dismiss buttons present');
   assert.ok(tpl.includes('listed right below this chat'), 'creation message names the location');
+  assert.ok(tpl.includes('id="scribe-drafts-decided"'), 'decided drafts stay visible');
+  assert.ok(tpl.includes("status=' + status"), 'decided list fetches approved and dismissed');
 });
 
 test('assistant answers "where are my scribe drafts" from real data', async () => {
@@ -92,4 +94,7 @@ test('drafts list endpoint serves the UI its waiting drafts', async () => {
   assert.equal(decided.status, 200);
   const afterDecide = await c.get('/api/scribe/drafts?status=draft');
   assert.equal(afterDecide.json.drafts.length, 1, 'approved draft leaves the waiting list');
+  const approvedList = await c.get('/api/scribe/drafts?status=approved');
+  assert.equal(approvedList.json.drafts.length, 1, 'approved draft is listed as decided, not vanished');
+  assert.ok(approvedList.json.drafts[0].decided_at, 'decision carries a timestamp');
 });

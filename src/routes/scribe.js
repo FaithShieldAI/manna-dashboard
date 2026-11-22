@@ -173,7 +173,14 @@ router.post('/followups/:id/decide', (req, res) => {
     let decided = 0;
     if (f.analysis_id) {
       for (const d of req.tdb.listScribeDraftsByAnalysis(f.analysis_id)) {
-        if (d.status === 'draft' && req.tdb.setScribeDraftStatus(d.id, decision, 'operator')) decided++;
+        if (d.status === 'draft' && req.tdb.setScribeDraftStatus(d.id, decision, 'operator')) {
+          decided++;
+          // An OK on the batch is an approval: carry each draft into
+          // its tool, same as a one-by-one approval (2026-11-22).
+          if (decision === 'approved') {
+            require('../lib/scribeCarry').carryApprovedDraft(req.tdb, req.tdb.getScribeDraft(d.id));
+          }
+        }
       }
     }
     req.tdb.setScribeFollowupStatus(id, decision);
@@ -215,7 +222,13 @@ router.post('/drafts/:id/status', (req, res) => {
       // Exists but already decided — approved/dismissed are terminal (F5).
       return res.status(409).json({ ok: false, error: 'draft_already_decided', status: draft.status });
     }
-    res.json({ ok: true, id, status });
+    // Approval carries the draft into its tool (2026-11-22): before
+    // this, approval only stamped the row and the draft went nowhere.
+    let carried = null;
+    if (status === 'approved') {
+      carried = require('../lib/scribeCarry').carryApprovedDraft(req.tdb, req.tdb.getScribeDraft(id));
+    }
+    res.json({ ok: true, id, status, carried });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[scribe/drafts status]', e);
