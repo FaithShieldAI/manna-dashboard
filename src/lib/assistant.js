@@ -23,6 +23,7 @@
  */
 
 const sparkClient = require('./sparkClient');
+const functionGuide = require('./functionGuide');
 const config = require('../config');
 
 const MODEL = process.env.ASSISTANT_MODEL || 'claude-haiku-4-5';
@@ -230,6 +231,9 @@ function insightReply(message, ctx, history = []) {
 
   function setupReply() {
     if (!ob || !Array.isArray(ob.steps) || !ob.steps.length) return null;
+    // An explicit ask for EVERY function is the function tour, not
+    // the setup walk (2026-11-22): the guide branch answers it.
+    if (/every function|all (the )?functions|whole app|tour of (the|manna|the app)/.test(msg)) return null;
     const asksComplete = /is (my |the )?setup complete|is .* complete\??$|are we (done|set up)|setup done|finished (with )?setup|what comes (next|after)/.test(msg);
     if (ob.is_complete) {
       // The final "done" of the walk-through lands here (setup just became
@@ -415,6 +419,16 @@ function insightReply(message, ctx, history = []) {
       });
       parts.push('Open the Engagement tab to answer and decide.');
     }
+  } else if (/\b(tour|show me around|take me through|walk me through|every function|all the functions|everything in manna)\b/.test(msg) || functionGuide.findGuide(msg)) {
+    // The tour and the per-function guide (2026-11-22, Michael's
+    // order: Scribe guides every function). A new person asking how
+    // anything works gets the grounded steps in the screens' own
+    // words, never a guess. A specific function beats the tour
+    // unless they asked for everything.
+    const hit = functionGuide.findGuide(msg);
+    const wantsAll = /\b(tour|show me around|every function|all the functions|everything in manna)\b/.test(msg);
+    if (wantsAll || !hit) parts.push(functionGuide.tourText());
+    else parts.push(functionGuide.guideText(hit));
   } else if (wants('copy', 'write', 'subject line', 'draft')) {
     parts.push('Happy to write it. Tell me: what\'s the email about, who\'s it for, and what\'s the one action you want? I\'ll draft subject lines + body.');
   } else if (wants('social', 'follower')) {
@@ -493,7 +507,10 @@ async function claudeReply(message, ctx, history = []) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 600,
-        system: SYSTEM_PROMPT + '\n\nCUSTOMER DATA (JSON):\n' + JSON.stringify(ctx),
+        system: SYSTEM_PROMPT
+          + '\n\nFUNCTION GUIDE (how every part of Manna works, in the screens\' own words. When the customer asks how anything works, what a tab is for, or asks for a tour or to be taken through the app, walk them through it one step at a time from this guide, using these exact tab and button names. Never invent a control that is not in this guide):\n'
+          + functionGuide.promptText()
+          + '\n\nCUSTOMER DATA (JSON):\n' + JSON.stringify(ctx),
         messages,
       }),
     });
