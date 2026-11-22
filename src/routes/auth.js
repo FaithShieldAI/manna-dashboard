@@ -142,6 +142,55 @@ router.post('/register', authLimiter, async (req, res) => {
       console.error('[auth/register] signup attribution failed:', e.message);
     }
 
+    // Instant sign-up alert to the house (Michael's order, 2026-11-22:
+    // know everything: who signed up and how to reach back out, the
+    // moment it happens). Fire-and-forget, never breaks registration.
+    // House test/walk accounts never alert: same slug rule the goals
+    // card uses (a 'walk' or 'walkthrough' slug segment marks a test
+    // tenant). The backup-snapshot watch stays as the backstop.
+    try {
+      const slugSegs = slug.split('-');
+      const isTestTenant = slugSegs.includes('walk') || slugSegs.includes('walkthrough');
+      if (!isTestTenant) {
+        const { SESSION_COOKIE } = require('../middleware/visitTracking');
+        const sessionId = req.cookies && req.cookies[SESSION_COOKIE];
+        let visitRows = [];
+        if (sessionId) {
+          visitRows = db.prepare(
+            'SELECT path, referrer FROM site_visits WHERE session_id = ? ORDER BY id ASC'
+          ).all(sessionId);
+        }
+        const dedup = [];
+        for (const r of visitRows) {
+          if (r.path && (!dedup.length || dedup[dedup.length - 1] !== r.path)) dedup.push(r.path);
+        }
+        const cameFrom = (visitRows.length && visitRows[0].referrer)
+          || (req.get('referer') || '').slice(0, 500)
+          || 'direct / not recorded';
+        const who = (typeof displayName === 'string' && displayName.trim()) || cleanEmail;
+        const lines = [
+          `New Manna sign-up: ${who}, ${cleanEmail}`,
+          `Company: ${companyName.trim()}, plan ${cleanPlan}`,
+          `When: ${new Date().toISOString()}`,
+          `Came from: ${cameFrom}`,
+          dedup.length
+            ? `Pages read before signing up (${visitRows.length}): ${dedup.slice(0, 12).join(', ')}`
+            : 'Pages read before signing up: none recorded for this session',
+          '',
+          `Reach back out at: ${cleanEmail}`,
+        ];
+        mailer.sendMail({
+          to: 'michael@faithshield.ai',
+          subject: `New Manna sign-up: ${who}`,
+          text: lines.join('\n'),
+          campaign: 'signup-alert',
+          templateKey: 'signup-alert',
+        }).catch((e) => console.error('[auth/register] signup alert failed:', e.message));
+      }
+    } catch (e) {
+      console.error('[auth/register] signup alert failed:', e.message);
+    }
+
     // Email verification token (Phase 1: returned in dev only; Phase 2: emailed).
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
