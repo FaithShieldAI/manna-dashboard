@@ -59,9 +59,13 @@ async function loginClient(email) {
 // the whitelist and the owner allowlist are small sets, and an email
 // can only register once per database.
 
-test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office, 038 adds user sign-in record, 039 adds warm leads, 040 adds youtube postings', () => {
+test('migrations applied: PR tables exist, 032 adds category shelves, 033 adds pr_events, 034 adds snapshot replies, 035 adds live_windows, 036 adds dashboard_payloads, 037 adds family_office, 038 adds user sign-in record, 039 adds warm leads, 040 adds youtube postings, 041 adds ab_affiliate_counts', () => {
   const v = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v;
-  assert.equal(v, 40);
+  assert.equal(v, 41);
+  const abCols = db.prepare('PRAGMA table_info(ab_affiliate_counts)').all().map(r => r.name);
+  assert.deepEqual(abCols, ['id', 'approved', 'pending', 'rejected', 'excluded',
+    'raw_total', 'audit_json', 'source_generated_at', 'received_at'],
+    'ab_affiliate_counts carries the classified Armor Bearer counts (migration 041)');
   const socialSql = db.prepare(
     "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'social_postings'"
   ).get().sql;

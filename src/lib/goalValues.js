@@ -29,11 +29,19 @@
  *     2026-11-21. Exclusion here is counting only: the accounts and
  *     tenants stand until the owner orders their erasure.
  *     Platform-wide for the same reason.
+ *   armor_bearer — Armor Bearer affiliates: approved real affiliates
+ *     in the separate Armor Bearer app, synced in through
+ *     POST /api/auth/ab-affiliates-sync and classified under the
+ *     owner's counting rule (2026-11-22: test accounts and second
+ *     accounts are not counted) by src/lib/abAffiliates.js into
+ *     ab_affiliate_counts. Platform-wide by nature. Unlike the
+ *     three feeds above, this one's live state is dynamic: it is
+ *     live only while the stored sync is fresh (see that module);
+ *     a stale or absent sync returns the goal to the no-feed state
+ *     below instead of serving an old number as a measurement.
  *
  * The remaining seeded goals have no live source in the app's data:
  *
- *   armor_bearer — affiliates live in the separate Armor Bearer app;
- *     Manna holds no affiliate table and nothing syncs one in.
  *   k_punk — notify-me signups are collected by the Netlify form on
  *     the K-Punk landing page; Manna holds no row for them (the
  *     stored 1 came from the form's CSV export).
@@ -48,7 +56,13 @@
  */
 const { db } = require('../db');
 const { countFaithshieldPaying } = require('./faithshieldSubs');
+const { readAbCounts } = require('./abAffiliates');
 
+// Goals whose live source is this app's own data, readable on every
+// request. armor_bearer is deliberately NOT in this set: its feed is
+// a synced row whose live state depends on the row's freshness, so
+// presentGoals resolves it separately (goalCurrent returns null when
+// the sync is stale or has never landed).
 const LIVE_FEED_KEYS = new Set(['email_collection', 'faithshield', 'mannaai']);
 
 function hasLiveFeed(goalKey) {
@@ -62,6 +76,10 @@ function goalCurrent(goalKey, tdb) {
       return tdb.leadTotal();
     case 'faithshield':
       return countFaithshieldPaying(db);
+    case 'armor_bearer': {
+      const feed = readAbCounts();
+      return feed && feed.fresh ? feed.approved : null;
+    }
     case 'mannaai': {
       const testIds = db.prepare('SELECT id, slug FROM tenants').all()
         .filter(t => String(t.slug || '').split('-')
@@ -89,8 +107,15 @@ function goalCurrent(goalKey, tdb) {
  */
 function presentGoals(tdb) {
   return tdb.goals().map(g => {
-    const live = hasLiveFeed(g.goal_key);
-    const current = live ? goalCurrent(g.goal_key, tdb) : null;
+    let live, current;
+    if (g.goal_key === 'armor_bearer') {
+      // Dynamic feed: live only while the synced counts are fresh.
+      current = goalCurrent(g.goal_key, tdb);
+      live = current !== null;
+    } else {
+      live = hasLiveFeed(g.goal_key);
+      current = live ? goalCurrent(g.goal_key, tdb) : null;
+    }
     return {
       key: g.goal_key,
       label: g.label,

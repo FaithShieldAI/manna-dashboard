@@ -546,7 +546,7 @@ router.get('/migration-export/:token', requireMigrationToken, (req, res) => {
       'pr_targets', 'pr_releases', 'pr_pitches',
       'podcast_outreach', 'dm_log', 'revenue_ledger', 'cost_ledger',
       'intake_daily', 'live_windows', 'dashboard_payloads',
-      'faithshield_subscriptions', 'provisioning_log',
+      'faithshield_subscriptions', 'ab_affiliate_counts', 'provisioning_log',
       'email_verification_tokens', 'password_reset_tokens', 'sessions',
       'tenant_seed_state'];
     
@@ -1851,6 +1851,64 @@ router.post('/live-windows-sync/:token', requireMigrationToken, express.json({ l
   }
 });
 
+// Armor Bearer affiliates sync (token-gated, same MIGRATION_TOKEN
+// pattern as the sync doors above): a local script reads the Armor
+// Bearer dashboard-read door (the affiliates live in that separate
+// app) and posts the account list here every 10 minutes. This
+// endpoint validates the list, classifies it under the owner's
+// counting rule (2026-11-22: test accounts and second accounts are
+// not counted; src/lib/abAffiliates.js), and stores the counts in
+// ab_affiliate_counts (migration 041). The armor_bearer goal reads
+// the stored approved count while the sync is fresh; the raw list
+// itself is never stored, only the per-account audit (email, status,
+// counted or not, exclusion reason).
+router.post('/ab-affiliates-sync/:token', requireMigrationToken, express.json({ limit: '1mb' }), (req, res) => {
+  try {
+    const body = req.body || {};
+    const list = body.affiliates;
+    if (!Array.isArray(list)) {
+      return res.status(400).json({ ok: false, error: 'affiliates_required' });
+    }
+    if (list.length > 10000) {
+      return res.status(400).json({ ok: false, error: 'affiliates_too_many' });
+    }
+    const { STATUSES, classifyAffiliates, storeAbCounts } = require('../lib/abAffiliates');
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || typeof e !== 'object' || Array.isArray(e)) {
+        return res.status(400).json({ ok: false, error: `invalid_affiliate:${i}` });
+      }
+      const email = typeof e.email === 'string' ? e.email.trim() : '';
+      if (!email || email.length > 254 || !email.includes('@') || /\s/.test(email)) {
+        return res.status(400).json({ ok: false, error: `invalid_affiliate:${i}.email` });
+      }
+      const status = typeof e.status === 'string' ? e.status.trim().toLowerCase() : '';
+      if (!STATUSES.includes(status)) {
+        return res.status(400).json({ ok: false, error: `invalid_affiliate:${i}.status` });
+      }
+      if (e.name !== undefined && e.name !== null
+          && (typeof e.name !== 'string' || e.name.length > 4096)) {
+        return res.status(400).json({ ok: false, error: `invalid_affiliate:${i}.name` });
+      }
+    }
+    const classified = classifyAffiliates(list);
+    const generatedAt = typeof body.generated_at === 'string' && body.generated_at.length <= 64
+      ? body.generated_at : null;
+    const receivedAt = storeAbCounts(classified, generatedAt);
+    res.json({
+      ok: true,
+      approved: classified.approved,
+      pending: classified.pending,
+      rejected: classified.rejected,
+      excluded: classified.excluded,
+      raw_total: classified.raw_total,
+      received_at: receivedAt,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Public live-windows read for the private dashboard page: a static
 // page on another origin, holding no session, so it is guarded by its
 // own read token (LIVE_WINDOWS_READ_TOKEN) and serves aggregate house
@@ -2203,7 +2261,7 @@ router.post('/migration-import/:token', requireMigrationToken, express.json({ li
 // staging-to-production MIGRATION door, not a restore door: it accepts
 // only 21 tables, drops row ids, and force-maps every row to the first
 // tenant. A wipe-restore needs the opposite semantics, so it lives here:
-//   - every table the migration-export captures (RESTORE_ORDER, all 57),
+//   - every table the migration-export captures (RESTORE_ORDER, all 58),
 //     restored in foreign-key dependency order. src/db.js runs with
 //     PRAGMA foreign_keys = ON, so the order is load-bearing: parents
 //     are inserted before children, and the clear phase runs in exact
@@ -2244,6 +2302,7 @@ const RESTORE_ORDER = [
   'video_jobs', 'video_postings', 'facebook_pages',
   'dm_log', 'revenue_ledger', 'cost_ledger', 'intake_daily',
   'live_windows', 'dashboard_payloads', 'faithshield_subscriptions',
+  'ab_affiliate_counts',
 ];
 
 router.post('/migration-restore/:token', requireMigrationToken, express.json({ limit: '100mb' }), (req, res) => {

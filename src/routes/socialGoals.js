@@ -17,8 +17,10 @@ goals.get('/', (req, res) => {
   // a goal reports a number only when the app's own data can measure
   // it today (email_collection from the tenant's live lead count,
   // faithshield from faithshield_subscriptions, mannaai from the
-  // users table). Goals with no live source (armor_bearer, k_punk,
-  // two_fishes) come back with current null and live_feed false, and
+  // users table, armor_bearer from the synced Armor Bearer counts
+  // while that sync is fresh). Goals with no live source (k_punk,
+  // two_fishes, and armor_bearer when its sync is stale or has never
+  // landed) come back with current null and live_feed false, and
   // the Overview renders them as targets with a "No live feed" label.
   // The stored current_value rows froze at seed time (identical in
   // every tenant) and are never served as measurements again.
