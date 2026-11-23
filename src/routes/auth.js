@@ -1886,8 +1886,12 @@ router.post('/ab-affiliates-sync/:token', requireMigrationToken, express.json({ 
       if (!STATUSES.includes(status)) {
         return res.status(400).json({ ok: false, error: `invalid_affiliate:${i}.status` });
       }
+      // Name cap is generous on purpose: the October red-team
+      // accounts include a 10,000-character name, and rejecting it
+      // would refuse the whole sync over one junk account. The name
+      // is used only for pattern classification, never stored.
       if (e.name !== undefined && e.name !== null
-          && (typeof e.name !== 'string' || e.name.length > 4096)) {
+          && (typeof e.name !== 'string' || e.name.length > 20000)) {
         return res.status(400).json({ ok: false, error: `invalid_affiliate:${i}.name` });
       }
     }

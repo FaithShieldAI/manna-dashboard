@@ -43,7 +43,8 @@ const CENSUS = [
   { name: 'Nicola Stiffler', email: 'nicola@afpaconnect.com', status: 'approved' },
   { name: 'Michael', email: 'mikemixer2002@gmail.com', status: 'pending' },
   { name: '<script>alert(1)</script>', email: 'xss-test@example.com', status: 'pending' },
-  { name: 'A'.repeat(500), email: 'longtest@example.com', status: 'pending' },
+  // The door's real longtest name is 10,000 characters.
+  { name: 'A'.repeat(10000), email: 'longtest@example.com', status: 'pending' },
   { name: 'Weak Test', email: 'weaktest@example.com', status: 'pending' },
   { name: 'Rapid One', email: 'rapid1@example.com', status: 'pending' },
   { name: 'Rapid Two', email: 'rapid2@example.com', status: 'pending' },
