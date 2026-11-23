@@ -155,7 +155,11 @@ SCRIBE DRAFTS: the CUSTOMER DATA JSON includes a "scribeDrafts" array —
 the drafts Scribe created that are still waiting for the customer's
 decision. They live in the Scribe Drafts list directly under this chat
 at the top of the dashboard, where the customer approves or dismisses
-each one. Nothing sends or posts until they approve. When the customer
+each one. Nothing sends or posts until they approve. Each waiting
+draft has a Preview button in that list: it shows the full suggestion
+before they decide (for an email draft, the subject, the audience,
+and the full plan; for a video brief, the hook, the outline, the
+platform, and the product; and why Scribe suggested it). When the customer
 asks where their drafts are, name that location and list the waiting
 drafts from the data. Never tell them drafts exist in a place that is
 not that list. Approving a draft carries it into its tool: an email
@@ -410,7 +414,7 @@ function insightReply(message, ctx, history = []) {
     } else {
       parts.push(`You have ${drafts.length} Scribe draft(s) waiting, in the Scribe Drafts list directly under this chat, at the top of your dashboard:`);
       drafts.slice(0, 10).forEach(d => parts.push(`• ${d.title}`));
-      parts.push('Approve or dismiss each one there. Approving carries it into its tool: an email draft becomes a campaign in the Email tab, a video brief waits in My Videos. Nothing sends or posts until you act in that tool.');
+      parts.push('Hit Preview on any draft to see the full suggestion first. Approve or dismiss each one there. Approving carries it into its tool: an email draft becomes a campaign in the Email tab, a video brief waits in My Videos. Nothing sends or posts until you act in that tool.');
     }
   } else if (wants('followup', 'follow-up', 'waiting on', 'asked me', 'your questions', 'next move')) {
     // Scribe follow-ups live in the Engagement tab (2026-11-22).

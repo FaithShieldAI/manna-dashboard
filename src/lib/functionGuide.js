@@ -27,6 +27,7 @@ const FUNCTIONS = [
       'Type your question in the box that says "Ask your instructor anything" and press Send.',
       'Or tap a shortcut under the chat: Suggest a start, Collect leads, Add my site, or What\'s next?',
       'To have Scribe study your numbers and prepare drafts, run a Scribe analysis from the chat.',
+      'Drafts wait in the Scribe Drafts list under the chat. Hit Preview on any draft to see the full suggestion before you approve or dismiss it.',
     ],
     controls: ['Ask your instructor anything', 'Suggest a start', 'Collect leads', 'Add my site'],
     keywords: ['instructor', 'scribe chat', 'ask scribe', 'chat'],

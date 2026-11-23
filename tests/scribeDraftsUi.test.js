@@ -54,6 +54,37 @@ test('template carries the Scribe Drafts list wired to the drafts API', () => {
   assert.ok(tpl.includes("status=' + status"), 'decided list fetches approved and dismissed');
 });
 
+test('draft preview: the full suggestion renders before the decision', () => {
+  const tpl = fs.readFileSync(path.join(__dirname, '..', 'public', 'dashboard-template.html'), 'utf8');
+  assert.ok(tpl.includes('data-draft-preview'), 'preview button present on waiting drafts');
+  assert.ok(tpl.includes('draftPreviewHtml'), 'preview builder present');
+  // Run the real builder from the template against drafts shaped
+  // like the ones Scribe actually creates (payload.recommendation).
+  const start = tpl.indexOf('function draftPreviewHtml');
+  const end = tpl.indexOf('function loadScribeDrafts', start);
+  assert.ok(start > 0 && end > start, 'builder extractable');
+  const vm = require('node:vm');
+  const sandbox = { esc: (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;') };
+  vm.createContext(sandbox);
+  vm.runInContext(tpl.slice(start, end) + '\nthis.build = draftPreviewHtml;', sandbox);
+  const email = sandbox.build({
+    draft_type: 'email_campaign', title: 'New Email Campaign', body: 'Subject: Boost.\nAudience: individual\nPlan.',
+    payload: { recommendation: { rationale: 'Email collection is at 13.7% of the goal.', draft: { subject: 'Boost Your Business', audience: 'individual', outline: '1. Introduce the benefits. 2. Call to action.' } } },
+  });
+  assert.ok(email.includes('Boost Your Business'), 'email preview shows the subject');
+  assert.ok(email.includes('individual'), 'email preview shows the audience');
+  assert.ok(email.includes('Introduce the benefits'), 'email preview shows the full plan');
+  assert.ok(email.includes('13.7% of the goal'), 'email preview shows why Scribe suggested it');
+  const video = sandbox.build({
+    draft_type: 'video_brief', title: 'Film Manna Promo Video', body: 'Hook: film it.',
+    payload: { recommendation: { rationale: 'All library videos have zero views.', draft: { hook: 'Get AI automation that saves you time', outline: 'Show the problem, introduce features, urge a free try', platform: 'instagram', product: 'manna' } } },
+  });
+  assert.ok(video.includes('Get AI automation'), 'video preview shows the hook');
+  assert.ok(video.includes('Show the problem'), 'video preview shows the outline');
+  assert.ok(video.includes('instagram'), 'video preview shows the platform');
+  assert.ok(video.includes('zero views'), 'video preview shows the rationale');
+});
+
 test('assistant answers "where are my scribe drafts" from real data', async () => {
   const { c } = await registerWithDrafts('where@example.org');
   const r = await c.post('/api/assistant/chat', { message: 'where are my scribe drafts' });
