@@ -75,6 +75,23 @@ const CURATED = {
   'kpkunk/en/kpunk-teaser-mission.mp4': { category: 'short', title: 'K-Punk Teaser, Mission' },
   'kpkunk/en/kpunk-teaser-reveal.mp4': { category: 'short', title: 'K-Punk Teaser, Reveal' },
   'kpkunk/en/kpunk-teaser-singalong.mp4': { category: 'short', title: 'K-Punk Teaser, Singalong' },
+  // The Angel Warriors songs Peter sent by Suno link (2026-11-25 load):
+  // the 12-track "Angel warriors" album plus Shine Your Light (Metal
+  // Remix). Suno's own share files (full song audio with cover art);
+  // the matching mp3s are saved in ~/workspace/kpunk-songs.
+  'kpkunk/en/kpunk-song-lover-of-my-soul.mp4': { category: 'song', title: 'Lover of My Soul (K-Pop Version)' },
+  'kpkunk/en/kpunk-song-break-em-out.mp4': { category: 'song', title: 'Peter118 Break Em Out (K-Pop Remix)' },
+  'kpkunk/en/kpunk-song-through-the-storm-kpop.mp4': { category: 'song', title: 'Through the Storm (K-Pop Dance Mix)' },
+  'kpkunk/en/kpunk-song-where-i-am.mp4': { category: 'song', title: 'Where I Am' },
+  'kpkunk/en/kpunk-song-start-thinking.mp4': { category: 'song', title: 'Start Thinking, Stop Drinking, Stop Fighting (Remix)' },
+  'kpkunk/en/kpunk-song-rolling-stone.mp4': { category: 'song', title: 'Rolling Stone (Pop Punk K-Night)' },
+  'kpkunk/en/kpunk-song-rise-in-me.mp4': { category: 'song', title: 'Rise In Me (K-Pop Version)' },
+  'kpkunk/en/kpunk-song-city-lights.mp4': { category: 'song', title: 'City Lights (K-Pop Remix)' },
+  'kpkunk/en/kpunk-song-lifting-me-up.mp4': { category: 'song', title: 'Lifting Me Up (Golden K-Pop Remix)' },
+  'kpkunk/en/kpunk-song-follow-him.mp4': { category: 'song', title: 'Follow Him (K-Pop Dance Remix)' },
+  'kpkunk/en/kpunk-song-thinking-of-you.mp4': { category: 'song', title: 'Thinking Of You (K-Pop Night Drive Remix)' },
+  'kpkunk/en/kpunk-song-need-you-more.mp4': { category: 'song', title: 'Need You More (Dance Mix K-Pop Remix)' },
+  'kpkunk/en/kpunk-song-shine-your-light-metal.mp4': { category: 'song', title: 'Shine Your Light (Metal Remix)' },
   // The three finals (2026-10-31)
   'armorbearer/en/armor-bearer-twin-final-2026-10-30.mp4': { category: 'influencer', title: 'Armor Bearer Twin Video (Final)' },
   'faithshield/en/faithshield-pastors-final-2026-10-31.mp4': { category: 'promo', title: 'FaithShield for Pastors (Final)' },
