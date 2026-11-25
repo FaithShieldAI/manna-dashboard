@@ -55,6 +55,7 @@ const CURATED = {
   'armorbearer/en/armor-bearer-influencer-ad-male-vo.mp4': { category: 'influencer', title: 'Stop Renting Your Influence (Male VO)' },
   'armorbearer/en/armor-bearer-influencer-ad-female-vo.mp4': { category: 'influencer', title: 'Stop Renting Your Influence (Female VO)' },
   'manna/en/manna-vs-mailerlite-v5.mp4': { category: 'promo', title: 'Manna vs MailerLite' },
+  'kpkunk/en/kpunk-fullband-v17-lyrics.mp4': { category: 'promo', title: 'K-Punk Angel Warriors, Full Band Lyric Video' },
   // The three finals (2026-10-31)
   'armorbearer/en/armor-bearer-twin-final-2026-10-30.mp4': { category: 'influencer', title: 'Armor Bearer Twin Video (Final)' },
   'faithshield/en/faithshield-pastors-final-2026-10-31.mp4': { category: 'promo', title: 'FaithShield for Pastors (Final)' },
