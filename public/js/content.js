@@ -132,26 +132,65 @@
     });
   }
 
+  function closePlayer() {
+    var modal = document.getElementById('content-modal');
+    var player = document.getElementById('content-player');
+    if (player) {
+      try { player.pause(); } catch (e) {}
+      player.removeAttribute('src');
+      try { player.load(); } catch (e) {}
+    }
+    if (modal) modal.style.display = 'none';
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
-    if (!document.getElementById('content-product-tabs')) return;
-    document.getElementById('content-close').addEventListener('click', function () {
-      var modal = document.getElementById('content-modal');
-      var player = document.getElementById('content-player');
-      player.pause();
-      player.src = '';
-      modal.style.display = 'none';
+    var tabs = document.getElementById('content-product-tabs');
+    if (!tabs) return;
+    var closeBtn = document.getElementById('content-close');
+    if (closeBtn) closeBtn.addEventListener('click', closePlayer);
+    var modal = document.getElementById('content-modal');
+    if (modal) {
+      // The player modal lives inside the content panel in the template.
+      // A fixed overlay inside a scrolled panel can render out of reach,
+      // leaving the viewer stuck with no reachable Close button. Move it
+      // to the body so it always covers the viewport, and let a click on
+      // the dark backdrop or the Escape key close it too.
+      document.body.appendChild(modal);
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closePlayer();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closePlayer();
     });
-    // Load repositories when the tab is first opened.
+
+    function ensureLoaded() {
+      if (!tabs.dataset.loaded) {
+        tabs.dataset.loaded = '1';
+        loadProductTabs();
+      }
+    }
+    // Load repositories when the tab is opened.
     document.querySelectorAll('.main-tab').forEach(function (b) {
       if (b.getAttribute('data-tab') === 'content') {
-        b.addEventListener('click', function () {
-          var tabs = document.getElementById('content-product-tabs');
-          if (!tabs.dataset.loaded) {
-            tabs.dataset.loaded = '1';
-            loadProductTabs();
-          }
-        });
+        b.addEventListener('click', ensureLoaded);
       }
     });
+    // The dashboard restores the last-open tab on load by toggling
+    // classes (localStorage 'manna_main_tab'), with no click, so a page
+    // that opens on the Content Library tab would otherwise sit on
+    // "Loading repositories…" forever. Load whenever the content panel
+    // is or becomes visible.
+    var panel = document.getElementById('panel-content');
+    function panelVisible() {
+      return !!panel && !panel.classList.contains('is-hidden') &&
+        panel.style.display !== 'none';
+    }
+    if (panelVisible()) ensureLoaded();
+    if (panel && window.MutationObserver) {
+      new MutationObserver(function () {
+        if (panelVisible()) ensureLoaded();
+      }).observe(panel, { attributes: true, attributeFilter: ['class', 'style'] });
+    }
   });
 })();
