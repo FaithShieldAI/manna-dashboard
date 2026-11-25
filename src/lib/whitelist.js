@@ -11,6 +11,7 @@ const WHITELIST = new Set([
   'sid.allen@yahoo.com',  // Sid Allen
   'basedinfaith@mail.com',  // Sid Allen (added 2026-10-31)
   'support@faithshield.ai',  // Hunter Raines (added 2026-11-14)
+  'seanhallavtech@gmail.com',  // Sean Hall — full house account (Michael's order, 2026-11-24)
 ]);
 
 function isWhitelisted(email) {
